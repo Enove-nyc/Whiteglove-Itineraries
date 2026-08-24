@@ -1,7 +1,6 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "deploy": {
-    "preDeployCommand": "npm run db:migrate",
     "healthcheckPath": "/version",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
