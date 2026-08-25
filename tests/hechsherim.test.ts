@@ -31,13 +31,20 @@ describe("what the badge says", () => {
 
 describe("reading one curated listing's hechsher", () => {
   const place = { id: "eatery:example" };
+  /**
+   * The same listing carrying an extra field of the kind a map tag or an
+   * external feed brings with it. Widened rather than written inline at the
+   * call, so it is passed the way real data arrives — and so the assertion
+   * proves the field is ignored rather than proving the compiler rejects it.
+   */
+  const tagged: { id: string; [key: string]: unknown } = { ...place, reportedHechsher: "OU" };
 
   test("a listing with nothing recorded returns the neutral default", () => {
     assert.equal(hechsherOf({}, place).state, "unverified");
   });
 
   test("does not derive a status from map tags or external data", () => {
-    assert.equal(hechsherOf({}, { ...place, reportedHechsher: "OU" }).state, "unverified");
+    assert.equal(hechsherOf({}, tagged).state, "unverified");
   });
 
   test("the owner's saved status is returned", () => {

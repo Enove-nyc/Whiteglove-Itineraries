@@ -1,4 +1,4 @@
-import { ABOUT_INTRO, type AboutProfile } from "@/data/about-profile";
+import { ABOUT_HEADING, aboutIntroFor, type AboutProfile } from "@/data/about-profile";
 import { LISTING_AUDIENCE_ABOUT } from "@/data/listing-audience";
 import { isSafeAboutPhotoUrl } from "@/lib/about-profile";
 import { BRAND_NAME, type SiteBrand } from "@/lib/site-brand-core";
@@ -38,16 +38,22 @@ export default function AboutProfileSection({ profile, siteBrand }: { profile: A
     <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">About White Glove</p>
       <h1 className="mt-3 max-w-3xl font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
-        Travel information you can plan around.
+        {ABOUT_HEADING[siteBrand]}
       </h1>
 
       <div className="mt-6 max-w-3xl space-y-5">
-        {ABOUT_INTRO.map((line, index) => (
+        {aboutIntroFor(siteBrand).map((line, index) => (
           <p key={line} className={index === 0 ? "text-lg leading-8 text-stone-600" : "leading-7 text-stone-600"}>
             {line}
           </p>
         ))}
-        <p className="leading-7 text-stone-600">{LISTING_AUDIENCE_ABOUT}</p>
+        {/* WHAT THIS SITE LISTS — and it only lists anything on the kosher
+            side. That paragraph describes how places are chosen for the
+            directory, which the itineraries site does not have: it holds
+            somebody's own trip, not a curated list of anywhere. Printing it
+            there would have the planner explaining an editorial standard it
+            does not apply to anything. */}
+        {siteBrand === "kosher" && <p className="leading-7 text-stone-600">{LISTING_AUDIENCE_ABOUT}</p>}
         {/* Normally absent, and that is correct: a website is not based
             anywhere. Kept for the day there is a place worth naming, and shown
             as a sentence rather than a label so it reads as part of the
