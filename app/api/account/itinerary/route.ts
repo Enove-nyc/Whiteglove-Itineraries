@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import { accountCookieName, getCurrentAccountData, getTripItinerary, saveAccountItinerary } from "@/lib/account-store";
 import type { Itinerary } from "@/data/itinerary";
 
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
 
 // Save the traveler's itinerary into a trip — the open one unless told which.
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const body = (await request.json().catch(() => null)) as { itinerary?: Itinerary; tripId?: string } | null;
   if (!body?.itinerary) return NextResponse.json({ error: "Provide an itinerary." }, { status: 400 });
   const cookieStore = await cookies();

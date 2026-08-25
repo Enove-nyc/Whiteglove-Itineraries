@@ -189,6 +189,7 @@ function quoteLabelFor(m: CompanionChatMessage): string {
   if (kind === "image") return "Photo";
   if (kind === "video") return "Video";
   if (kind === "audio") return "Voice note";
+  if (kind === "file") return m.text || "Document";
   if (kind === "location") return m.text || "Location";
   return m.text;
 }
@@ -238,6 +239,23 @@ async function findRawIndex(shareId: string, at: string, from: CompanionChatSide
 }
 
 /**
+ * LSET one row back, but only if it is still the exact row we read.
+ *
+ * Between finding a message's index and writing it back, another message can
+ * arrive: appendChat does RPUSH then LTRIM at the 200-message cap, which drops
+ * index 0 and shifts every remaining index down by one. A bare LSET by the now
+ * stale index would overwrite a DIFFERENT message. So re-read the row at that
+ * index and only write when it still matches what we meant to change; otherwise
+ * report failure and let the caller re-find rather than clobber the wrong turn.
+ */
+async function lsetIfUnchanged(shareId: string, index: number, expectedRaw: string, value: string): Promise<boolean> {
+  const current = await command<string>(["LINDEX", keyFor(shareId), index]);
+  if (current !== expectedRaw) return false;
+  await command(["LSET", keyFor(shareId), index, value]);
+  return true;
+}
+
+/**
  * Change a text message's words. Text only — a picture or a place is sent
  * again, not edited — and only the side that sent it, checked here as well as
  * by the route, the same belt-and-braces every other write in this file gets.
@@ -252,17 +270,24 @@ export async function editMessageText(
   text: string,
 ): Promise<CompanionChatMessage[] | null> {
   if (!chatStoreAvailable()) return null;
-  const found = await findRawIndex(shareId, at, by);
-  if (!found) return null;
-  let existing: CompanionChatMessage;
-  try {
-    existing = JSON.parse(found.raw) as CompanionChatMessage;
-  } catch {
-    return null;
+  // Re-find on each attempt so the index is fresh, and only write when the row
+  // has not moved (lsetIfUnchanged). A concurrent message that shifts the list
+  // costs a retry, never a clobbered message.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const found = await findRawIndex(shareId, at, by);
+    if (!found) return null;
+    let existing: CompanionChatMessage;
+    try {
+      existing = JSON.parse(found.raw) as CompanionChatMessage;
+    } catch {
+      return null;
+    }
+    if (existing.deletedAt || kindOf(existing.kind) !== "text") return null;
+    const updated: CompanionChatMessage = { ...existing, text, editedAt: new Date().toISOString() };
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
   }
-  if (existing.deletedAt || kindOf(existing.kind) !== "text") return null;
-  const updated: CompanionChatMessage = { ...existing, text, editedAt: new Date().toISOString() };
-  await command(["LSET", keyFor(shareId), found.index, JSON.stringify(updated)]);
+  // The row kept moving under concurrent writes — return the thread as it
+  // stands rather than risk overwriting the wrong message.
   return readChat(shareId);
 }
 
@@ -273,17 +298,21 @@ export async function editMessageText(
  */
 export async function deleteMessage(shareId: string, at: string, by: CompanionChatSide): Promise<CompanionChatMessage[] | null> {
   if (!chatStoreAvailable()) return null;
-  const found = await findRawIndex(shareId, at, by);
-  if (!found) return null;
-  let existing: CompanionChatMessage;
-  try {
-    existing = JSON.parse(found.raw) as CompanionChatMessage;
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const found = await findRawIndex(shareId, at, by);
+    if (!found) return null;
+    let existing: CompanionChatMessage;
+    try {
+      existing = JSON.parse(found.raw) as CompanionChatMessage;
+    } catch {
+      return null;
+    }
+    if (existing.deletedAt) return readChat(shareId); // already gone; nothing to do
+    const updated: CompanionChatMessage = { from: existing.from, kind: existing.kind, text: "", at: existing.at, deletedAt: new Date().toISOString() };
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
   }
-  if (existing.deletedAt) return readChat(shareId); // already gone; nothing to do
-  const updated: CompanionChatMessage = { from: existing.from, kind: existing.kind, text: "", at: existing.at, deletedAt: new Date().toISOString() };
-  await command(["LSET", keyFor(shareId), found.index, JSON.stringify(updated)]);
+  // The row kept moving under concurrent writes — leave it rather than delete
+  // the wrong message.
   return readChat(shareId);
 }
 

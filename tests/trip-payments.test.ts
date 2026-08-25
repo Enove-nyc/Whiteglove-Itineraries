@@ -230,9 +230,15 @@ describe("the payment routes and webhook keep the same fences everything else do
     assert.match(body, /received: true/);
   });
 
-  it("recordPayment is idempotent by the PaymentIntent id, not by trusting the caller", () => {
-    const fn = STORE.slice(STORE.indexOf("export async function recordPayment"), STORE.indexOf("export async function recordPayment") + 900);
+  it("recordPayment is idempotent by the PaymentIntent id AND its outcome, not by trusting the caller", () => {
+    // The dedup decision lives in mergePaymentRecord (behaviour pinned in
+    // tests/payment-dedup.test.ts). It must key on both the intent id and the
+    // outcome: a single PaymentIntent keeps its id across a declined attempt
+    // and the successful retry, so id alone would let the earlier failure
+    // swallow the later success — the trip would read as still owing.
+    const fn = STORE.slice(STORE.indexOf("export function mergePaymentRecord"), STORE.indexOf("export function mergePaymentRecord") + 900);
     assert.match(fn, /stripePaymentIntentId === record\.stripePaymentIntentId/);
+    assert.match(fn, /p\.status === record\.status/);
   });
 
   it("never stores a card, and never charges to White Glove's own account — every charge names a destination", () => {

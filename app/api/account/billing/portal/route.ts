@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
 import { readSubscription } from "@/lib/plan-billing-store";
 import { siteOrigin } from "@/lib/seo";
@@ -20,6 +21,7 @@ export const dynamic = "force-dynamic";
  * plain answer saying so, rather than an error.
  */
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const cookieStore = await cookies();
   const account = await getCurrentAccountData(cookieStore.get(accountCookieName())?.value);
   if (!account) return NextResponse.json({ error: "Sign in first." }, { status: 401 });

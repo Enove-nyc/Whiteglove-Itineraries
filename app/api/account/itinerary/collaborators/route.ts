@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import {
   accountCookieName,
   addItineraryCollaborator,
@@ -29,6 +30,7 @@ async function requireAccount() {
 // email to be added by. They simply do not get the "somebody shared a trip with
 // you" message; the trip is waiting for them when they next sign in.
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const account = await requireAccount();
   if (!account) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
   const body = (await request.json().catch(() => null)) as { email?: string; role?: string } | null;
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
 
 // Remove a person from the trip.
 export async function DELETE(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const account = await requireAccount();
   if (!account) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
   const email = request.nextUrl.searchParams.get("email")?.trim();

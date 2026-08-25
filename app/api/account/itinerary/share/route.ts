@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import {
   accountCookieName,
   ensureItineraryShare,
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
 
 // Create (or return) the public share link for the traveler's trip.
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const account = await requireAccount();
   if (!account) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
   const shareId = await ensureItineraryShare(account.email);
@@ -42,7 +44,8 @@ export async function POST(request: NextRequest) {
 }
 
 // Stop sharing: remove the public link and all collaborator access.
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const account = await requireAccount();
   if (!account) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
   await stopItineraryShare(account.email);

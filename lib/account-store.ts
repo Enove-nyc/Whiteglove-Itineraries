@@ -1354,12 +1354,22 @@ export async function saveBalance(email: string, tripId: string, balance: TripBa
 }
 
 /**
- * Append one real payment attempt to the ledger — IDEMPOTENT: if a record
- * with this exact stripePaymentIntentId is already there, this is a no-op
- * that still returns true, rather than a second row. This is the actual
- * guarantee behind "duplicate requests/webhooks cannot record duplicate
- * payments" — a Stripe webhook retried, or delivered twice, changes nothing
- * the second time.
+ * Append one real payment attempt to the ledger — IDEMPOTENT, but keyed on the
+ * intent AND its outcome, not the intent alone.
+ *
+ * A single Stripe PaymentIntent keeps the SAME `pi_…` id across a declined
+ * attempt and the successful retry that follows it (a card re-entered against
+ * the same client secret). Deduping on the id alone meant the earlier
+ * `payment_failed` row swallowed the later `payment_succeeded` for the same id:
+ * the money settled, but the ledger only ever held the failure, so the trip
+ * still read as owing and `/pay` would mint a SECOND charge. So:
+ *
+ * - the same intent with the same outcome is a genuine duplicate (a retried or
+ *   double-delivered webhook) and changes nothing;
+ * - a `failed` event for an intent that already succeeded is ignored — settled
+ *   money is never overwritten by a late or out-of-order failure;
+ * - a `succeeded` event supersedes any earlier `failed` row for that same
+ *   intent rather than sitting behind it, so paidCentsFor counts the money.
  */
 export async function recordPayment(ownerEmail: string, tripId: string, record: PaymentRecord): Promise<boolean> {
   if (!hasAccountStorage()) return false;
@@ -1369,11 +1379,36 @@ export async function recordPayment(ownerEmail: string, tripId: string, record: 
   const trip = trips.find((t) => t.id === tripId);
   if (!trip) return false;
   const balance: TripBalance = trip.balance ?? { currency: record.currency, splitMode: "equal", assignments: [], schedule: [], showTotalToTravelers: false, payments: [] };
-  if (balance.payments.some((p) => p.stripePaymentIntentId === record.stripePaymentIntentId)) return true;
+  const merged = mergePaymentRecord(balance.payments, record);
+  // Nothing changed — a genuine duplicate, or a stale failure after success.
+  // Idempotent success, exactly as a retried webhook expects.
+  if (!merged) return true;
   const next = trips.map((t) =>
-    t.id === tripId ? { ...t, balance: { ...balance, payments: [...balance.payments, record] }, updatedAt: new Date().toISOString() } : t,
+    t.id === tripId ? { ...t, balance: { ...balance, payments: merged }, updatedAt: new Date().toISOString() } : t,
   );
   return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/**
+ * Merge one payment attempt into a ledger, keyed on the intent AND its outcome.
+ * Returns the new payments array, or null when nothing should change. Pulled
+ * out of recordPayment as pure logic so the idempotency rules can be pinned by
+ * a test without a live store. See recordPayment for why the id alone is not a
+ * safe key (a declined attempt and its successful retry share one intent id).
+ */
+export function mergePaymentRecord(existing: PaymentRecord[], record: PaymentRecord): PaymentRecord[] | null {
+  const sameIntent = existing.filter((p) => p.stripePaymentIntentId === record.stripePaymentIntentId);
+  // Same intent, same outcome → a retried or double-delivered webhook. No-op.
+  if (sameIntent.some((p) => p.status === record.status)) return null;
+  // A failure arriving after this intent already succeeded is stale — drop it.
+  if (record.status === "failed" && sameIntent.some((p) => p.status === "succeeded")) return null;
+  // A success supersedes any earlier failed attempt on the same intent, rather
+  // than sitting behind it where paidCentsFor would never count the money.
+  const kept =
+    record.status === "succeeded"
+      ? existing.filter((p) => !(p.stripePaymentIntentId === record.stripePaymentIntentId && p.status === "failed"))
+      : existing;
+  return [...kept, record];
 }
 
 // ---- Live travel information ----------------------------------------------

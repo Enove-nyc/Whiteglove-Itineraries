@@ -1602,6 +1602,8 @@ function NotifyControl({ shareId }: { shareId: string }) {
 const MAX_CHAT_VIDEO_BYTES = 15 * 1024 * 1024;
 /** The most a voice note may weigh. Matches MAX_CHAT_AUDIO_BYTES server-side. */
 const MAX_CHAT_AUDIO_BYTES = 8 * 1024 * 1024;
+// A document's cap is not a fixed constant here: it is read from the server
+// (docLimit) because it depends on whether the disk volume is mounted.
 
 /** A picture, video, voice note or document picked but not yet sent.
  *  `fileName` is carried for a document, whose card shows its name. */
@@ -1740,6 +1742,9 @@ function LiveChat({
   // before the first load completes is never bigger than the server could
   // reject anyway.
   const [imageLimit, setImageLimit] = useState(MAX_CHAT_IMAGE_BYTES_FLOOR);
+  // The server's real document cap, read the same way as the image one. Starts
+  // at the small floor so an early pick can never exceed what the server takes.
+  const [docLimit, setDocLimit] = useState(MAX_CHAT_IMAGE_BYTES_FLOOR);
 
   useEffect(() => {
     if (!menuOpenAt) return;
@@ -1821,6 +1826,7 @@ function LiveChat({
       setReadAt(d.readMarkers && typeof d.readMarkers === "object" ? d.readMarkers : {});
       setOtherTyping(Boolean(d.typing));
       if (typeof d.imageLimit === "number" && d.imageLimit > 0) setImageLimit(d.imageLimit);
+      if (typeof d.docLimit === "number" && d.docLimit > 0) setDocLimit(d.docLimit);
       setLoaded(true);
     } catch {
       /* keep what we have; the next poll may reach it */
@@ -2057,14 +2063,24 @@ function LiveChat({
       return;
     }
     setNote("");
+    // The server only stores JPG, PNG and WEBP. Compress (which transcodes to
+    // JPEG) when the file is too large OR when it is a format the server won't
+    // take — an iPhone HEIC under the size cap would otherwise be staged as-is
+    // and then rejected on send. compressImage decodes HEIC on the very
+    // browsers that produce it (Safari), so this is where it turns into a JPEG.
+    const accepted = /^image\/(jpeg|png|webp)$/i;
     let toStage: File | Blob = file;
-    if (file.size > imageLimit) {
+    if (file.size > imageLimit || !accepted.test(file.type)) {
       try {
         toStage = await compressImage(file, imageLimit);
       } catch {
         // Compression failed (an unusual format, a very old browser) — fall
-        // through to the plain size check below rather than losing the pick.
+        // through to the checks below rather than losing the pick.
       }
+    }
+    if (!accepted.test(toStage.type)) {
+      setNote("That image format isn't supported here — try a JPG or PNG.");
+      return;
     }
     if (toStage.size > imageLimit) {
       setNote(`That picture is too large (max ${formatBytes(imageLimit)}).`);
@@ -2079,11 +2095,12 @@ function LiveChat({
   }
 
   // A PDF — a booking confirmation or a ticket the advisor hands the client in
-  // the thread. Unlike a photo it is not compressed, so it shares the image
-  // store's limit; a large scan only fits once the disk volume is mounted.
+  // the thread. A document is not a portrait, so it gets its own, roomier cap
+  // (docLimit, from the server); a large scan fits once the disk volume is
+  // mounted, and stays within the small Redis ceiling until then.
   function pickDocument(file: File | null | undefined) {
     if (!file) return;
-    stageFile(file, { accept: /^application\/pdf$/, kind: "file", noun: "document", max: imageLimit, maxLabel: formatBytes(imageLimit) });
+    stageFile(file, { accept: /^application\/pdf$/, kind: "file", noun: "document", max: docLimit, maxLabel: formatBytes(docLimit) });
   }
 
   // A voice note recorded right here, rather than picked from the gallery —

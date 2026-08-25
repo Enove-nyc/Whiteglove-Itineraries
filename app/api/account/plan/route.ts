@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import { askForPlan, getPlan, openRequestFor, planStoreAvailable } from "@/lib/account-plan-store";
 import { PLAN_LABELS } from "@/lib/account-plans";
 import { sendPlanRequestNotification } from "@/lib/email";
@@ -21,6 +22,7 @@ import { accountCookieName, readSessionEmail } from "@/lib/account-store";
  * asked for would make the whole thing meaningless.
  */
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const cookieStore = await cookies();
   const account = readSessionEmail(cookieStore.get(accountCookieName())?.value);
   if (!account) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
