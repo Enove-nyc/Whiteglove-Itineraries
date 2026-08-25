@@ -14,15 +14,38 @@ import { getBetaNotice } from "@/lib/beta-notice-store";
 import { googleConfig } from "@/lib/google-signin";
 import { smsConfigured } from "@/lib/sms";
 import { siteOrigin } from "@/lib/seo";
+import { BRAND_NAME, configuredBrand, type SiteBrand } from "@/lib/site-brand-core";
+
+/**
+ * The brand this build serves, settled at BUILD TIME and not per request.
+ *
+ * WHY IT HAS TO BE BUILD-TIME HERE. This object is a module constant that every
+ * page in the site inherits; reading the request inside it is not possible, and
+ * the manifest route (app/manifest.ts) pays for a request-time read precisely
+ * because it can. NEXT_PUBLIC_SITE_BRAND is substituted by name at build, so a
+ * deployment that answers exactly one domain — this one does — can be told
+ * which and cost nothing.
+ *
+ * WHAT IT WAS DOING WRONG. `applicationName` is what a phone writes under the
+ * icon when the site is installed, and it said White Glove Kosher Travel on the
+ * itineraries domain — while app/manifest.ts, three files away, correctly said
+ * White Glove Itineraries. The install named one brand and the page named the
+ * other. The fallback title and description were the same story.
+ */
+const BRAND = configuredBrand() ?? "kosher";
+const BRAND_DESCRIPTION: Record<SiteBrand, string> = {
+  kosher: "Thoughtfully planned kosher travel and Jewish heritage journeys.",
+  itineraries: "Day-by-day itineraries you build once and hand to your client as an app on their phone.",
+};
 
 export const metadata: Metadata = {
   // Set once, here, so every page below can give its canonical URL and its
   // share image as a plain path and have them resolved to this deployment's
   // real address. See lib/seo.ts.
   metadataBase: siteOrigin(),
-  title: "White Glove Kosher Travel",
-  description: "Thoughtfully planned kosher travel and Jewish heritage journeys.",
-  applicationName: "White Glove Kosher Travel",
+  title: BRAND_NAME[BRAND],
+  description: BRAND_DESCRIPTION[BRAND],
+  applicationName: BRAND_NAME[BRAND],
   appleWebApp: { capable: true, statusBarStyle: "default", title: "White Glove" },
   icons: {
     // Every icon here is built from public/logo-mark.png — the logo artwork
