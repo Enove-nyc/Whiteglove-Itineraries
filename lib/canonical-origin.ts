@@ -1,26 +1,33 @@
 /**
- * THE ONE ADDRESS THIS SITE IS SERVED ON — and it has a "www." on it.
+ * THE ONE ADDRESS THIS SITE SAYS IT IS — and it has a "www." on it.
  *
- * Cloudflare answers the bare domain with a permanent redirect to the www
- * host, so www is where every visitor, every crawler and every share link
- * actually ends up. The site used to say the opposite in its canonical tags,
- * in every <loc> of its sitemap and in robots.txt — a canonical naming an
- * address that redirects away from itself is the one instruction a search
- * engine cannot follow.
+ * THIS DEPLOYMENT SERVES whitegloveitineraries.com. The constant named the
+ * kosher domain, which is the site this one was forked from and is not the
+ * site this one is.
  *
- * WWW RATHER THAN THE BARE DOMAIN, DELIBERATELY. Either would work if the site
- * said the same thing consistently, and www is the one already in force: it is
- * where the redirect points, where anything indexed has been landing, and
- * where the sign-in cookie is set. Turning the redirect around instead would
- * invert all of that for a cosmetic preference. Long run www is also the more
- * flexible host — it can be a CNAME, and a cookie set on it does not leak to
- * every subdomain.
+ * BOTH HOSTS ANSWER, AND NEITHER REDIRECTS. whitegloveitineraries.com and
+ * www.whitegloveitineraries.com are both attached to the same service and both
+ * return 200 — verified, not assumed. So the two hosts really do serve the same
+ * pages, and the canonical tag is the only thing telling a search engine which
+ * of them to index. Both hosts now name this one, which is what consolidates
+ * them; without it the site competes with itself.
  *
- * If the redirect is ever turned around, change this and change Cloudflare in
- * the same breath. They are one decision, not two.
+ * WWW RATHER THAN THE BARE DOMAIN, DELIBERATELY. Either would do if the site
+ * said the same thing everywhere, and www is the more flexible host long run —
+ * it can be a CNAME, and a cookie set on it does not leak to every subdomain.
+ * If that is ever reversed, change this and change the DNS in the same breath.
+ * They are one decision, not two.
+ *
+ * MOST CALLERS TREAT THIS AS A FALLBACK — siteOrigin() wins wherever
+ * NEXT_PUBLIC_SITE_URL is set. Two do not, and those were printing kosher
+ * addresses on an itineraries screen: the admin shell's link back to the site,
+ * and the share link beside a flight itinerary, which is a URL somebody hands
+ * to a traveller. It also decides which apex canonicalise() rewrites to its www
+ * form, so with the old value a bare NEXT_PUBLIC_SITE_URL for this domain was
+ * left alone while the other domain's was corrected.
  *
  * IT LIVES IN ITS OWN FILE so the admin shell — a client component — can name
  * the host without pulling lib/seo, and its build-time warning, into the
  * browser bundle. Nothing here has a side effect.
  */
-export const CANONICAL_ORIGIN = "https://www.whiteglovekoshertravel.com";
+export const CANONICAL_ORIGIN = "https://www.whitegloveitineraries.com";

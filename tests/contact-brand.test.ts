@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { BUILT_IN_WORDS } from "@/data/site-words";
 import { BRAND_REASONS, CONTACT_REASONS, readReasonForBrand, reasonsForBrand } from "@/lib/contact-reasons";
+import { CANONICAL_ORIGIN } from "@/lib/canonical-origin";
 import { BRAND_CONTACT_EMAIL } from "@/lib/site-brand-core";
 import { contactEmailFor } from "@/lib/site-words";
 
@@ -132,5 +133,28 @@ describe("the root layout names the brand this build serves", () => {
     // is inherited by every page and has no request to read.
     assert.ok(layout.includes("configuredBrand()"));
     assert.ok(!layout.includes("await currentBrand()"));
+  });
+});
+
+/**
+ * The address this build prints when nothing has told it otherwise.
+ *
+ * siteOrigin() wins wherever NEXT_PUBLIC_SITE_URL is set, so this reads as a
+ * harmless fallback — except two callers use it directly, and both put a URL in
+ * front of a person: the admin shell's link back to the site, and the share
+ * link beside a flight itinerary, which is an address handed to a traveller.
+ * Both were naming the site this one was forked from.
+ */
+describe("the fallback origin is this deployment's own", () => {
+  it("names the domain this service actually serves", () => {
+    assert.equal(CANONICAL_ORIGIN, "https://www.whitegloveitineraries.com");
+  });
+
+  it("is what the two direct callers print", () => {
+    for (const file of ["components/AdminShell.tsx", "app/admin/flight-itineraries/page.tsx"]) {
+      const source = readFileSync(file, "utf8");
+      assert.ok(source.includes("CANONICAL_ORIGIN"), `${file} no longer reads it`);
+      assert.ok(!source.includes("whiteglovekoshertravel"), `${file} names the other domain outright`);
+    }
   });
 });
