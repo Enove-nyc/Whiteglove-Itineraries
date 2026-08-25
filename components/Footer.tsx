@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { brandForHost } from "@/lib/site-brand-core";
+import { useSyncExternalStore } from "react";
+import { brandForHost, configuredBrand } from "@/lib/site-brand-core";
 
 /**
  * The bottom of every page — kept extremely small at the owner's word.
@@ -35,18 +35,37 @@ const KOSHER_LINKS = [
 // The itineraries site is the planner; Advertise and Sources belong to the
 // kosher guide, so its footer carries only the three everyone needs.
 const ITINERARIES_LINKS = [
+  // What it costs, said where somebody looks for it. The page existed only in
+  // the other repository until now, so this site answered a visitor asking the
+  // most ordinary question about a paid product with a 404.
+  { label: "Pricing", href: "/pricing" },
   { label: "Contact", href: "/contact" },
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
 ];
 
+/** The hostname never changes, so subscribing is a no-op. */
+const NO_CHANGE = () => () => {};
+
 export default function Footer({ brand: brandProp }: { brand?: "kosher" | "itineraries" } = {}) {
-  const [brand, setBrand] = useState<"kosher" | "itineraries">(brandProp ?? "kosher");
-  useEffect(() => {
-    if (brandProp) return;
-    if (typeof window !== "undefined") setBrand(brandForHost(window.location.hostname));
-  }, [brandProp]);
-  const isItineraries = brand === "itineraries";
+  /**
+   * The same three answers as the navigation, in the same order: what the page
+   * passed, what this deployment was BUILT as, then the hostname.
+   *
+   * The footer settled from the hostname after mount too, so it signed itself
+   * "White Glove Kosher Travel" for a frame on this site — and in the HTML,
+   * for anything that never runs the correction. Read through
+   * useSyncExternalStore rather than an effect, which is the primitive for
+   * exactly this and clears the standing set-state-in-effect violation this
+   * file carried.
+   */
+  const built = configuredBrand();
+  const fromHost = useSyncExternalStore(
+    NO_CHANGE,
+    () => brandForHost(window.location.hostname),
+    () => built ?? "kosher",
+  );
+  const isItineraries = (brandProp ?? built ?? fromHost) === "itineraries";
   const links = isItineraries ? ITINERARIES_LINKS : KOSHER_LINKS;
 
   return (
