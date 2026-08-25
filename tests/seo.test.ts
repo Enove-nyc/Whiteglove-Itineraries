@@ -99,17 +99,19 @@ describe("the canonical host", () => {
     else process.env.NEXT_PUBLIC_SITE_URL = ENV;
   };
 
-  it("PUTS THE WWW BACK ON, BECAUSE THE BARE DOMAIN REDIRECTS TO IT", () => {
-    // The variable was set to the bare domain, so every canonical tag, every
-    // <loc> in the sitemap and the Sitemap: line in robots.txt named an
-    // address that answers 301 and sends the crawler to the www host. A
-    // canonical naming an address that redirects away from itself is the one
-    // instruction a search engine cannot follow.
+  it("PUTS THE WWW BACK ON, SO THE TWO HOSTS CONSOLIDATE ON ONE", () => {
+    // whitegloveitineraries.com and www.whitegloveitineraries.com are both
+    // attached to this service and both answer 200 — neither redirects to the
+    // other. So the same pages really are served on two hosts, and the
+    // canonical tag is the only thing telling a search engine which to index.
+    // Set the variable to the bare host and every canonical tag, every <loc>
+    // in the sitemap and the Sitemap: line in robots.txt would name the other
+    // one, and the site would compete with itself.
     for (const configured of [
-      "https://whiteglovekoshertravel.com",
-      "http://whiteglovekoshertravel.com",
-      "whiteglovekoshertravel.com",
-      "https://WhiteGloveKosherTravel.com/",
+      "https://whitegloveitineraries.com",
+      "http://whitegloveitineraries.com",
+      "whitegloveitineraries.com",
+      "https://WhiteGloveItineraries.com/",
     ]) {
       process.env.NEXT_PUBLIC_SITE_URL = configured;
       try {
@@ -133,7 +135,16 @@ describe("the canonical host", () => {
     // Only the live domain is corrected. A preview deployment saying it is a
     // preview deployment is right, and rewriting it would point every preview
     // canonical at production.
-    for (const configured of ["https://white-glove-abc123.vercel.app", "http://localhost:3000", "https://example.com"]) {
+    // The kosher domain is in this list DELIBERATELY. This deployment is not
+    // that site any more — it was forked from it — so its host is somebody
+    // else's as far as this build is concerned, and rewriting it would be the
+    // old bug in reverse.
+    for (const configured of [
+      "https://white-glove-abc123.vercel.app",
+      "http://localhost:3000",
+      "https://example.com",
+      "https://www.whiteglovekoshertravel.com",
+    ]) {
       process.env.NEXT_PUBLIC_SITE_URL = configured;
       try {
         assert.equal(siteOrigin()?.origin, new URL(configured).origin, `${configured} should be left as it is`);
