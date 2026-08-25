@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { readConversation, withTurns, MAX_TURNS, type AssistantTurn } from "@/lib/assistant-conversation";
 import { NOT_ON_THE_SITE, saysNotOnTheSite, siteAssistantSystemFor } from "@/lib/site-assistant";
-import { isClientCodeAppView } from "@/components/SiteAssistant";
+import { isCompanionAppView } from "@/components/SiteAssistant";
 
 const SITE_ASSISTANT_SYSTEM = siteAssistantSystemFor("kosher");
 
@@ -371,25 +371,29 @@ describe("signing in does not take you off the page", () => {
   });
 });
 
-describe("the assistant stays off a client's code-only app view", () => {
-  // /i/<shareId>/app is the one door a client reaches with no account at
-  // all — their adviser's code, opening straight into the full-screen app.
-  // It has its own complete chrome; a corner launcher floating over it has
-  // nothing to do there and only sits in the way of the app's own buttons.
-  it("is hidden on the client's app view, in any share id", () => {
-    assert.equal(isClientCodeAppView("/i/abc123/app"), true);
-    assert.equal(isClientCodeAppView("/i/some-long-token/app"), true);
+describe("the assistant stays off every companion-app view", () => {
+  // The White Glove app — the owner's own trip at /app, and a client's trip at
+  // /i/<shareId>/app or /t/<shareId>/app — fills the whole screen with its own
+  // chrome (tabs, wallet, the chat with the real adviser). A corner launcher
+  // floating over it has nothing to do there and only sits in the way of the
+  // app's own buttons in that same corner, so it is hidden on all of them.
+  it("is hidden on the app, whichever door reached it and in any share id", () => {
+    assert.equal(isCompanionAppView("/app"), true);
+    assert.equal(isCompanionAppView("/i/abc123/app"), true);
+    assert.equal(isCompanionAppView("/i/some-long-token/app"), true);
+    assert.equal(isCompanionAppView("/t/abc123/app"), true);
   });
 
   it("stays shown on the plain shared-itinerary page — that one has the site's own chrome", () => {
-    assert.equal(isClientCodeAppView("/i/abc123"), false);
+    assert.equal(isCompanionAppView("/i/abc123"), false);
+    assert.equal(isCompanionAppView("/t/abc123"), false);
   });
 
-  it("stays shown everywhere else, including a real account's own /app", () => {
-    assert.equal(isClientCodeAppView("/app"), false);
-    assert.equal(isClientCodeAppView("/"), false);
-    assert.equal(isClientCodeAppView("/itinerary"), false);
-    assert.equal(isClientCodeAppView(null), false);
+  it("stays shown everywhere else on the site", () => {
+    assert.equal(isCompanionAppView("/"), false);
+    assert.equal(isCompanionAppView("/itinerary"), false);
+    assert.equal(isCompanionAppView("/applesauce"), false);
+    assert.equal(isCompanionAppView(null), false);
   });
 
   it("the component bails out only after every hook has already run", () => {
@@ -397,7 +401,7 @@ describe("the assistant stays off a client's code-only app view", () => {
     // sits right before the JSX, after every other hook — never between them.
     const body = PANEL.slice(PANEL.indexOf("export default function SiteAssistant"));
     const pathnameHook = body.indexOf("usePathname()");
-    const earlyReturn = body.indexOf("if (isClientCodeAppView(pathname)) return null;");
+    const earlyReturn = body.indexOf("if (isCompanionAppView(pathname)) return null;");
     const finalReturn = body.indexOf("return (\n    <>");
     assert.ok(pathnameHook > -1 && pathnameHook < earlyReturn, "usePathname runs before the bail-out");
     assert.ok(earlyReturn > -1 && earlyReturn < finalReturn, "the bail-out comes before the render, not inside it");

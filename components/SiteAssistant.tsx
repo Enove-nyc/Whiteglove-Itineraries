@@ -41,14 +41,16 @@ import type { AssistantTurn } from "@/lib/assistant-conversation";
 type Thread = { turns: AssistantTurn[]; signedIn: boolean; kept: boolean };
 
 /**
- * The one door a client reaches with no account at all — the trip their
- * adviser's code opens, at /i/<shareId>/app. It fills the whole screen with
- * its own chrome (tabs, the chat with their real adviser) and none of the
- * site's own; a corner launcher floating over it has nothing to do there and
- * only sits in the way of the app's own buttons in that same corner.
+ * The White Glove app — the owner's own trip at /app, and a client's trip at
+ * /i/<shareId>/app or /t/<shareId>/app. Every one of them fills the whole
+ * screen with its own chrome (tabs, a travel wallet, the chat with the real
+ * adviser) and none of the site's own. A corner launcher floating over it has
+ * nothing to do there and only sits in the way of the app's own buttons in
+ * that same corner — the exact complaint the owner raised. So it is hidden on
+ * all of them, not only the client-code links.
  */
-export function isClientCodeAppView(pathname: string | null): boolean {
-  return /^\/i\/[^/]+\/app(\/|$)/.test(pathname ?? "");
+export function isCompanionAppView(pathname: string | null): boolean {
+  return /^\/(app|(i|t)\/[^/]+\/app)(\/|$)/.test(pathname ?? "");
 }
 
 /** "rgb(a)(…)" → its parts, or null for a value we cannot read. */
@@ -196,7 +198,7 @@ export default function SiteAssistant() {
   // All hooks above have already run unconditionally; bailing here, right
   // before the render, is what keeps this a normal early return rather than a
   // rules-of-hooks violation.
-  if (isClientCodeAppView(pathname)) return null;
+  if (isCompanionAppView(pathname)) return null;
 
   return (
     <>
