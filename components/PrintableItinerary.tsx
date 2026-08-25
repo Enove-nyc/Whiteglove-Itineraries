@@ -92,10 +92,19 @@ export default function PrintableItinerary({
   preparedFor = "",
   /**
    * Which of the two sites produced this document — never the reader's site,
-   * the document's own origin. Kosher by default: every caller that prints a
-   * document actually reachable from the itineraries brand passes its own
-   * value; a caller that cannot ever be reached from that brand (the sample on
-   * /sample-itinerary, guide-only) is fine leaving this unset.
+   * the document's own origin.
+   *
+   * THE DEFAULT USED TO BE LOAD-BEARING AND IS NOT ANY MORE. It said kosher on
+   * the grounds that the only caller leaving it unset — the sample on
+   * /sample-itinerary — was guide-only and could never be reached from the
+   * itineraries brand. That page is now reachable there, and the moment it was,
+   * the document on it went on printing "White Glove Kosher Travel" across its
+   * cover, its footer and the running head of every day: an advisor was being
+   * shown the other company's deliverable as proof of what this one produces.
+   *
+   * Every caller now passes its own value, and this default is only the answer
+   * for a caller that forgets. Kosher is still the right thing to forget into —
+   * it is what the document said before any of this existed.
    */
   siteBrand = "kosher",
 }: {

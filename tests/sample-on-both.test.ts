@@ -94,6 +94,35 @@ describe("the sample says true things on each brand", () => {
   });
 });
 
+/**
+ * The DOCUMENT, not just the page around it.
+ *
+ * PrintableItinerary defaults siteBrand to kosher, on grounds that were true
+ * when /sample-itinerary was guide-only and stopped being true the moment it
+ * was not: the cover, the footer and every day's running head printed "White
+ * Glove Kosher Travel" on the site that sells this. An advisor was being shown
+ * the other company's deliverable as proof of what this one produces.
+ */
+describe("the printed sample carries the brand of the site showing it", () => {
+  const source = readFileSync("app/sample-itinerary/page.tsx", "utf8");
+
+  it("passes the brand rather than taking the default", () => {
+    assert.match(source, /<PrintableItinerary[^>]*siteBrand=\{brand\}/s);
+  });
+
+  it("every caller that prints a document names its brand", () => {
+    // The default is now only an answer for a caller that forgets. None do.
+    for (const file of [
+      "app/sample-itinerary/page.tsx",
+      "app/itinerary/print/page.tsx",
+      "app/i/[shareId]/print/page.tsx",
+    ]) {
+      const caller = readFileSync(file, "utf8");
+      assert.ok(caller.includes("siteBrand="), `${file} leaves the document's brand to the default`);
+    }
+  });
+});
+
 describe("the itineraries front door offers it", () => {
   it("puts the finished document beside the empty planner", () => {
     // Both old actions asked somebody to start using the product before they
