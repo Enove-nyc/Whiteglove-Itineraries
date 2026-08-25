@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import PageBlocks from "@/components/PageBlocks";
 import { resolvePage } from "@/lib/pages";
+import { contactEmailFor } from "@/lib/site-words";
 import { BRAND_DOMAIN, BRAND_NAME } from "@/lib/site-brand-core";
 import { currentBrand } from "@/lib/site-brand";
 
@@ -45,8 +46,8 @@ export default async function PrivacyPolicyPage() {
       </main>
     );
   }
-  const { contactEmail } = await readWords();
-  const brand = await currentBrand();
+  const [words, brand] = await Promise.all([readWords(), currentBrand()]);
+  const contactEmail = contactEmailFor(brand, words);
   const itineraries = brand === "itineraries";
   const siteName = BRAND_NAME[brand];
   const siteDomain = BRAND_DOMAIN[brand];

@@ -164,7 +164,10 @@ describe("what reaches the inbox", () => {
 
 describe("the page", () => {
   it("OPENS ON THE CHOICE, not on a form", () => {
-    assert.match(PAGE, /CONTACT_REASONS\.map/);
+    // reasonsForBrand is CONTACT_REASONS filtered to the ones this front door
+    // can act on — see tests/contact-brand. Still the list, still from here.
+    assert.match(PAGE, /reasonsForBrand\(brand\)/);
+    assert.match(PAGE, /\{reasons\.map\(/);
   });
 
   it("HAS NO PLANNING FORM LEFT TO OPEN ON", () => {
@@ -181,7 +184,9 @@ describe("the page", () => {
 
   it("shows no form until a reason is picked, and still gives an address", () => {
     assert.match(PAGE, /reason === "" \?/);
-    assert.match(PAGE, /mailto:\$\{words\.contactEmail\}/);
+    // Resolved by brand now, because the built-in address names the kosher
+    // domain and this deployment is not it.
+    assert.match(PAGE, /mailto:\$\{contactEmail\}/);
   });
 
   it("sends every reason to the one short form", () => {

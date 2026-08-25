@@ -9,6 +9,7 @@
  */
 
 import { BUILT_IN_WORDS, type SiteWords } from "@/data/site-words";
+import { BRAND_CONTACT_EMAIL, type SiteBrand } from "@/lib/site-brand-core";
 
 /** Only what the owner actually changed. */
 export type StoredWords = Partial<SiteWords>;
@@ -68,6 +69,23 @@ export function mergeWords(stored: StoredWords | null | undefined): SiteWords {
     if (typeof value === "string" && value.trim()) merged[key] = value.trim();
   }
   return merged;
+}
+
+/**
+ * The address to show a visitor, given which front door they came through.
+ *
+ * WHY NOT INSIDE readWords. That read is cached under one key for the whole
+ * deployment and nothing about the request reaches it, so a brand resolved in
+ * there would be whichever brand happened to warm the cache. The brand belongs
+ * to the request, so it is applied where the page renders.
+ *
+ * AN ADDRESS THE OWNER TYPED HIMSELF WINS ON BOTH SITES. Only the built-in
+ * one moves, because the built-in one names the kosher domain and was never a
+ * decision about either brand — it is simply what shipped.
+ */
+export function contactEmailFor(brand: SiteBrand, words: SiteWords = BUILT_IN_WORDS): string {
+  if (words.contactEmail !== BUILT_IN_WORDS.contactEmail) return words.contactEmail;
+  return BRAND_CONTACT_EMAIL[brand];
 }
 
 /** Only what differs from the built-in set, so the store holds decisions. */

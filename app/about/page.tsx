@@ -13,6 +13,7 @@ import { readPublicCaseStudies } from "@/lib/case-studies-store";
 import { readWords } from "@/lib/site-words-store";
 import { currentBrand } from "@/lib/site-brand";
 import { BRAND_NAME } from "@/lib/site-brand-core";
+import { contactEmailFor } from "@/lib/site-words";
 
 export async function generateMetadata() {
   const [page, name] = await Promise.all([resolvePage("about"), currentBrand().then((b) => BRAND_NAME[b])]);
@@ -61,7 +62,9 @@ export default async function AboutPage() {
             </h2>
           </div>
           <p className="mt-4 max-w-2xl leading-7 text-slate-200">
-            Write about a trip, tell us something on the site is wrong, or ask a question about a destination.{" "}
+            {siteBrand === "itineraries"
+              ? "Ask about a plan, tell us something on the site is broken, or ask a question."
+              : "Write about a trip, tell us something on the site is wrong, or ask a question about a destination."}{" "}
             {words.replyPromise}
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -72,10 +75,10 @@ export default async function AboutPage() {
               Open the contact form
             </Link>
             <a
-              href={`mailto:${words.contactEmail}`}
+              href={`mailto:${contactEmailFor(siteBrand, words)}`}
               className="inline-flex min-h-11 items-center rounded-md border border-white/30 px-6 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:border-[var(--gold-light)] hover:text-[var(--gold-light)]"
             >
-              {words.contactEmail}
+              {contactEmailFor(siteBrand, words)}
             </a>
           </div>
         </div>

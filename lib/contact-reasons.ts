@@ -19,6 +19,8 @@
  * planning has been removed". Do not add it back as a contact reason.
  */
 
+import { type SiteBrand } from "@/lib/site-brand-core";
+
 export type ContactReason = "correction" | "advertise" | "question" | "fault";
 
 export type ContactField = {
@@ -152,12 +154,50 @@ export const CONTACT_REASONS: readonly ContactReasonSpec[] = [
   },
 ] as const;
 
+/**
+ * Which errands exist on each front door.
+ *
+ * TWO OF THE FOUR ARE ABOUT A DIRECTORY THIS BRAND DOES NOT HAVE. "Something
+ * here is wrong" asks which listing carries the wrong address or hechsher, and
+ * "Advertise or list a business" offers a place in that same directory. Neither
+ * exists on whitegloveitineraries.com, which sells an itinerary tool — so
+ * offering them there invites a message nobody can act on, and names kosher
+ * listings to a visitor who came for something else.
+ *
+ * The two that remain apply to any website: it is broken, or I have a question.
+ */
+export const BRAND_REASONS: Record<SiteBrand, readonly ContactReason[]> = {
+  kosher: ["correction", "advertise", "fault", "question"],
+  itineraries: ["fault", "question"],
+};
+
+/** The reasons to put on the page, in the order they are declared above. */
+export function reasonsForBrand(brand: SiteBrand): readonly ContactReasonSpec[] {
+  const allowed = BRAND_REASONS[brand];
+  return CONTACT_REASONS.filter((reason) => allowed.includes(reason.value));
+}
+
 export const DEFAULT_CONTACT_REASON: ContactReason = "question";
 
 /** A reason from a query string. Anything unrecognised is not a reason. */
 export function readReason(value: string | string[] | undefined): ContactReason | "" {
   const raw = (Array.isArray(value) ? value[0] : value)?.trim().toLowerCase() ?? "";
   return CONTACT_REASONS.some((reason) => reason.value === raw) ? (raw as ContactReason) : "";
+}
+
+/**
+ * The same, but a reason this brand does not offer is not a reason either.
+ *
+ * /contact?reason=advertise is a link that can be sent, bookmarked or indexed,
+ * so the query string has to be filtered as well as the buttons — otherwise the
+ * form the page will not offer is still one address away.
+ */
+export function readReasonForBrand(
+  value: string | string[] | undefined,
+  brand: SiteBrand,
+): ContactReason | "" {
+  const reason = readReason(value);
+  return reason && BRAND_REASONS[brand].includes(reason) ? reason : "";
 }
 
 export function reasonSpec(value: ContactReason): ContactReasonSpec {
