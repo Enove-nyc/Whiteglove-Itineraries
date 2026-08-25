@@ -108,3 +108,29 @@ describe("the pages read the brand rather than the built-in words", () => {
     assert.ok(source.includes("page?.edited"));
   });
 });
+
+/**
+ * What a phone writes under the icon, and what a page falls back to saying.
+ *
+ * app/manifest.ts already answered "White Glove Itineraries" on this domain
+ * while the root layout's applicationName — three files away, and the one the
+ * browser actually reads on the page — said White Glove Kosher Travel. The
+ * install named one brand and the page named the other.
+ */
+describe("the root layout names the brand this build serves", () => {
+  const layout = readFileSync("app/layout.tsx", "utf8");
+
+  it("takes its name and description from the brand, not a literal", () => {
+    assert.ok(layout.includes("applicationName: BRAND_NAME[BRAND]"));
+    assert.ok(layout.includes("title: BRAND_NAME[BRAND]"));
+    assert.ok(layout.includes("description: BRAND_DESCRIPTION[BRAND]"));
+    assert.ok(!/applicationName: "White Glove/.test(layout));
+  });
+
+  it("settles it at build time, because a module constant cannot read a request", () => {
+    // The manifest route can and does pay for a request-time read. This object
+    // is inherited by every page and has no request to read.
+    assert.ok(layout.includes("configuredBrand()"));
+    assert.ok(!layout.includes("await currentBrand()"));
+  });
+});
