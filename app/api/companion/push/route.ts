@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { removePushSubscription, savePushSubscription } from "@/lib/account-store";
+import { removePushSubscription, resolveCompanionShare, savePushSubscription } from "@/lib/account-store";
+import { mayServeCompanionClients } from "@/lib/account-limits";
+import { getPlan } from "@/lib/account-plan-store";
+import { rateLimit } from "@/lib/rate-limit";
 import { sameOrigin } from "@/lib/secure-access";
 import type { PushSubscriptionRecord } from "@/data/push-subscriptions";
 
@@ -29,6 +32,22 @@ export async function POST(request: NextRequest) {
     | null;
   const shareId = body?.shareId?.trim();
   if (!shareId) return NextResponse.json({ ok: false, error: "Missing the trip." }, { status: 400 });
+
+  // A courtesy fence against a hammered subscribe/unsubscribe loop. The store
+  // already caps a trip at a dozen subscriptions and dedups by endpoint, so
+  // this is about request rate, not storage.
+  const limited = await rateLimit(`companion-push:${shareId}`, { limit: 30, windowSeconds: 3600 });
+  if (!limited.ok) {
+    return NextResponse.json({ ok: false, error: "Too many changes at once — try again shortly." }, { status: 429 });
+  }
+
+  // Push, like the chat itself, is a companion-app feature: only a trip whose
+  // owner may serve companion clients (Business) has an app to be pushed from.
+  // A share token from any other plan is a read-only itinerary, not a channel.
+  const resolved = await resolveCompanionShare(shareId);
+  if (!resolved || !mayServeCompanionClients(await getPlan(resolved.ownerEmail))) {
+    return NextResponse.json({ ok: false, error: "That link is not active." }, { status: 404 });
+  }
 
   if (body?.action === "unsubscribe") {
     const endpoint = body.endpoint?.trim();

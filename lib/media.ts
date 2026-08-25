@@ -54,6 +54,23 @@ export const MAX_CHAT_VIDEO_BYTES = 15 * 1024 * 1024;
  */
 export const MAX_CHAT_AUDIO_BYTES = 8 * 1024 * 1024;
 
+/**
+ * The cap for a PDF document shared in a chat — a booking confirmation, a
+ * ticket, an itinerary a client actually needs to keep. A document is not a
+ * picture: a multi-page ticket with a boarding pass on it runs well past the
+ * old 2 MB portrait cap, which is why real documents were bouncing. Given its
+ * own number, roomier than a portrait but below a video, and only honoured
+ * where the disk is (see docUploadLimit()) — on a Redis-only host a document
+ * stays within the small per-value ceiling like any other picture.
+ */
+export const MAX_CHAT_DOC_BYTES = 15 * 1024 * 1024;
+
+/** What a chat PDF may weigh, wherever the store is today: the roomier disk
+ *  cap when the volume is mounted, the small Redis cap when it is not. */
+export function docUploadLimit(): number {
+  return diskMediaActive() ? MAX_CHAT_DOC_BYTES : MAX_MEDIA_BYTES;
+}
+
 export function videoUploadsAvailable(): boolean {
   return diskMediaActive();
 }

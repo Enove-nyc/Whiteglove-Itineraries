@@ -182,6 +182,57 @@ function isAndroidAppRequest(request: NextRequest): boolean {
   return isAndroidAppHeaders((name) => request.headers.get(name));
 }
 
+/**
+ * Constant-time string comparison. The admin cookie is an HMAC and the rest of
+ * the auth path (lib/edge-lock.ts) already compares in constant time; a plain
+ * `===` here short-circuits on the first differing byte. Practically
+ * unexploitable over a network against a base64url HMAC, but there is no reason
+ * for the one comparison in this file to be the odd one out.
+ */
+function timingSafeEqual(a: string | undefined | null, b: string | undefined | null): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/**
+ * The site-lock gate as a value: a redirect to /access when this request must
+ * be stopped, or null when it may proceed. Pulled out of the middleware body so
+ * the same gate covers the ordinary path AND the admin-host public-path branch
+ * that has nowhere to redirect to — a locked page must never be served in the
+ * clear just because it was reached on the admin hostname.
+ */
+async function siteLockRedirect(request: NextRequest, pathname: string): Promise<NextResponse | null> {
+  // /version is the deployment health check and contains no private content.
+  // It stays reachable while the site is locked so health checks keep working.
+  if (pathname === "/access" || pathname === "/version" || pathname.startsWith("/admin")) return null;
+
+  let locked = hostIsOpen(request) ? false : await edgeSiteIsLocked();
+  if (!locked && !hostIsOpen(request)) {
+    const lockedPaths = await edgeLockedPaths();
+    locked = lockedPaths.some((raw) => {
+      const prefix = raw.endsWith("/") ? raw.slice(0, -1) : raw;
+      return prefix.length > 0 && (pathname === prefix || pathname.startsWith(prefix + "/"));
+    });
+  }
+  if (!locked) return null;
+
+  const generation = await edgeAccessGeneration();
+  let allowed = await edgeSiteAccessValid(request.cookies.get("white_glove_site_access")?.value, generation);
+  // Someone the owner has let in by name gets through without being told the
+  // shared password — they just sign in to their own account.
+  if (!allowed) {
+    const email = await edgeAccountEmail(request.cookies.get("white_glove_account")?.value);
+    allowed = await edgeAccountHasSiteAccess(email);
+  }
+  if (allowed) return null;
+
+  const url = new URL("/access", request.url);
+  url.searchParams.set("next", pathname);
+  return NextResponse.redirect(url);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname.startsWith("/api/")) return NextResponse.next();
@@ -217,21 +268,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  const onAdminHost = isAdminHost(request);
+
   // The itineraries domain is strictly the planner — a guide page reached on it
   // is sent to the kosher site, where the guide lives. Brand is read from the
   // request (the proxy's x-wg-brand header first, then the Host), so it is right
   // whether the request came straight to Railway or through the Cloudflare
   // worker that fronts the itineraries domain. 307, not 308: the split is still
   // young, and a permanent redirect would stick in browser caches if it moved.
-  if (isGuidePath(pathname) && brandFromRequestHeaders(request.headers) === "itineraries") {
+  //
+  // NEVER on the admin host: some admin screen names ("/destinations") are also
+  // guide prefixes, and the admin's own links out to them must reach the admin
+  // routing below, not get bounced to the kosher site.
+  if (!onAdminHost && isGuidePath(pathname) && brandFromRequestHeaders(request.headers) === "itineraries") {
     return NextResponse.redirect(new URL(pathname + request.nextUrl.search, BRAND_ORIGIN.kosher), 307);
   }
 
-  const onAdminHost = isAdminHost(request);
-
   if (onAdminHost && pathname.startsWith("/admin")) {
     const token = await edgeAccessToken("admin");
-    const authed = Boolean(token && request.cookies.get("white_glove_admin")?.value === token);
+    const authed = timingSafeEqual(request.cookies.get("white_glove_admin")?.value, token);
     const entry = adminHostEntry(pathname, request.nextUrl.search, authed);
     if (entry.kind === "redirect") {
       const url = request.nextUrl.clone();
@@ -265,8 +320,13 @@ export async function middleware(request: NextRequest) {
       const target = new URL(pathname + url.search, origin);
       return NextResponse.redirect(target);
     }
-    // Nowhere to send them. Serve the page here rather than 404 — noindexed,
-    // because the admin hostname must never look like a second copy of the site.
+    // Nowhere to send them. The site lock still applies — a locked public page
+    // must not be served in the clear just because it was reached on the admin
+    // host with no public origin configured to bounce to.
+    const lockRedirect = await siteLockRedirect(request, pathname);
+    if (lockRedirect) return lockRedirect;
+    // Serve the page here rather than 404 — noindexed, because the admin
+    // hostname must never look like a second copy of the site.
     const response = NextResponse.next();
     response.headers.set("x-robots-tag", "noindex, nofollow");
     return response;
@@ -292,10 +352,10 @@ export async function middleware(request: NextRequest) {
 
   if (adminPath.startsWith("/admin") && adminPath !== "/admin/login") {
     // A null token means this deployment has no signing secret and cannot
-    // authorise anybody. Said explicitly rather than relying on a cookie never
-    // being equal to null, so a later refactor cannot turn it into fail-open.
+    // authorise anybody: timingSafeEqual returns false for a null expected
+    // value, so no cookie can ever match it and the request goes to login.
     const token = await edgeAccessToken("admin");
-    if (!token || request.cookies.get("white_glove_admin")?.value !== token) {
+    if (!timingSafeEqual(request.cookies.get("white_glove_admin")?.value, token)) {
       const login = new URL(onAdminHost ? "/login" : "/admin/login", request.url);
       const nextPath = (onAdminHost ? pathname : pathname.replace(/^\/admin/, "") || "/") + request.nextUrl.search;
       if (nextPath && nextPath !== "/" && nextPath !== "/login" && !nextPath.startsWith("/admin/login")) {
@@ -342,35 +402,8 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // /version is the deployment health check and contains no private content.
-  // It stays reachable while the site is locked so health checks keep working.
-  if (pathname !== "/access" && pathname !== "/version" && !pathname.startsWith("/admin")) {
-    let locked = hostIsOpen(request) ? false : await edgeSiteIsLocked();
-    if (!locked && !hostIsOpen(request)) {
-      const lockedPaths = await edgeLockedPaths();
-      locked = lockedPaths.some((raw) => {
-        const prefix = raw.endsWith("/") ? raw.slice(0, -1) : raw;
-        return prefix.length > 0 && (pathname === prefix || pathname.startsWith(prefix + "/"));
-      });
-    }
-    if (locked) {
-      const generation = await edgeAccessGeneration();
-      let allowed = await edgeSiteAccessValid(request.cookies.get("white_glove_site_access")?.value, generation);
-
-      // Someone the owner has let in by name gets through without being told
-      // the shared password — they just sign in to their own account.
-      if (!allowed) {
-        const email = await edgeAccountEmail(request.cookies.get("white_glove_account")?.value);
-        allowed = await edgeAccountHasSiteAccess(email);
-      }
-
-      if (!allowed) {
-        const url = new URL("/access", request.url);
-        url.searchParams.set("next", pathname);
-        return NextResponse.redirect(url);
-      }
-    }
-  }
+  const lockRedirect = await siteLockRedirect(request, pathname);
+  if (lockRedirect) return lockRedirect;
   return NextResponse.next();
 }
 

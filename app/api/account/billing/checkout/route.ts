@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import { PLAN_LABELS } from "@/lib/account-plans";
 import { getPlan } from "@/lib/account-plan-store";
 import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
@@ -29,6 +30,7 @@ export const dynamic = "force-dynamic";
  * when Stripe says money moved.
  */
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const cookieStore = await cookies();
   const account = await getCurrentAccountData(cookieStore.get(accountCookieName())?.value);
   if (!account) return NextResponse.json({ error: "Sign in first." }, { status: 401 });

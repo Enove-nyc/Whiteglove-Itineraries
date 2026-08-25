@@ -79,7 +79,11 @@ export async function edgeAccessGeneration(): Promise<number> {
  */
 export async function edgeMintSiteAccess(generation: number, minutes?: number): Promise<string> {
   const expires = minutes === undefined ? 0 : Date.now() + minutes * 60_000;
-  const secret = process.env.WHITE_GLOVE_SESSION_SECRET || process.env.ADMIN_PASSWORD || "white-glove-development-secret";
+  const secret = edgeSecret();
+  // With no signing secret this deployment cannot mint a real access cookie.
+  // Return one that will never verify (edgeSiteAccessValid fails closed on the
+  // same null secret) rather than signing with the public development key.
+  if (!secret) return `${expires}.${generation}.`;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const bytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`white-glove:site:${expires}:${generation}`));
   return `${expires}.${generation}.${toBase64Url(bytes)}`;
@@ -96,6 +100,12 @@ export async function edgeMintSiteAccess(generation: number, minutes?: number): 
 export async function edgeSiteAccessValid(value: string | undefined, generation: number): Promise<boolean> {
   if (!value) return false;
 
+  // No signing secret — nothing can be a valid cookie. Fails closed in
+  // production exactly as edgeSecret() does for the admin token, rather than
+  // verifying against a key that is public in the source tree.
+  const secret = edgeSecret();
+  if (!secret) return false;
+
   // The old bare token, from before expiries existed. Honoured until the first
   // revoke, so shipping this does not sign everybody out.
   if (generation === 0 && value === (await edgeAccessToken("site"))) return true;
@@ -107,7 +117,6 @@ export async function edgeSiteAccessValid(value: string | undefined, generation:
   if (!Number.isFinite(expires) || !Number.isFinite(cookieGeneration)) return false;
   if (cookieGeneration !== generation) return false;
 
-  const secret = process.env.WHITE_GLOVE_SESSION_SECRET || process.env.ADMIN_PASSWORD || "white-glove-development-secret";
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signatureBytes = await crypto.subtle.sign(
     "HMAC",
@@ -209,7 +218,10 @@ export async function edgeAccountEmail(cookieValue?: string): Promise<string | n
     return null;
   }
 
-  const secret = process.env.WHITE_GLOVE_SESSION_SECRET || process.env.ADMIN_PASSWORD || "white-glove-development-secret";
+  // No signing secret — no account cookie can be trusted. Fails closed like the
+  // admin and site-access checks, never falling back to the public dev key.
+  const secret = edgeSecret();
+  if (!secret) return null;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const expectedBytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(email));
   const expected = toBase64Url(expectedBytes);

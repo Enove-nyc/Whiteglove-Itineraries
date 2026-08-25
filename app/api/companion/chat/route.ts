@@ -18,6 +18,7 @@ import {
 } from "@/lib/companion-chat-store";
 import {
   audioUploadsAvailable,
+  docUploadLimit,
   effectiveMediaLimit,
   MAX_CHAT_AUDIO_BYTES,
   MAX_CHAT_VIDEO_BYTES,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/media";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { getPlan } from "@/lib/account-plan-store";
+import { parseChatDataUrl } from "@/lib/chat-media";
 import { identityKey } from "@/lib/identity";
 import { rateLimit } from "@/lib/rate-limit";
 import { sameOrigin } from "@/lib/secure-access";
@@ -55,9 +57,11 @@ function mediaKindFor(contentType: string): { kind: ChatMediaKind; limit: number
   if (CHAT_IMAGE_TYPES.has(contentType)) return { kind: "image", limit: effectiveMediaLimit(), available: mediaStoreAvailable };
   if (CHAT_VIDEO_TYPES.has(contentType)) return { kind: "video", limit: MAX_CHAT_VIDEO_BYTES, available: videoUploadsAvailable };
   if (CHAT_AUDIO_TYPES.has(contentType)) return { kind: "audio", limit: MAX_CHAT_AUDIO_BYTES, available: audioUploadsAvailable };
-  // A PDF stores like a picture — small enough for Redis, larger once the disk
-  // volume is mounted — so it shares the image store and limit.
-  if (CHAT_DOC_TYPES.has(contentType)) return { kind: "file", limit: effectiveMediaLimit(), available: mediaStoreAvailable };
+  // A PDF stores like a picture — base64 in the same store — but a document is
+  // not a portrait: it gets its own, roomier cap (docUploadLimit), honoured
+  // where the disk is and falling back to the small Redis ceiling where it is
+  // not. This is what lets a real booking confirmation through.
+  if (CHAT_DOC_TYPES.has(contentType)) return { kind: "file", limit: docUploadLimit(), available: mediaStoreAvailable };
   return null;
 }
 
@@ -127,6 +131,8 @@ export async function GET(request: NextRequest) {
     // effectiveMediaLimit() in lib/media.ts. Read fresh so the composer's
     // own cap never drifts from what the server will actually accept.
     imageLimit: effectiveMediaLimit(),
+    // And the document cap, which is roomier than a picture where the disk is.
+    docLimit: docUploadLimit(),
   });
 }
 
@@ -233,10 +239,11 @@ export async function POST(request: NextRequest) {
   // data URL's own declared type, never from a separate field the caller
   // could mismatch.
   if (typeof body?.dataUrl === "string" && body.dataUrl) {
-    const match = /^data:([\w/+.-]+);base64,([A-Za-z0-9+/=]+)$/.exec(body.dataUrl);
-    if (!match) return NextResponse.json({ error: "Share a photo, a video, a voice note or a PDF." }, { status: 400 });
-    const contentType = match[1];
-    const base64 = match[2];
+    // parseChatDataUrl tolerates a codec parameter (audio/webm;codecs=opus) and
+    // returns the base content type — see lib/chat-media.ts, tested there.
+    const parsed = parseChatDataUrl(body.dataUrl);
+    if (!parsed) return NextResponse.json({ error: "Share a photo, a video, a voice note or a PDF." }, { status: 400 });
+    const { contentType, base64 } = parsed;
     const media = mediaKindFor(contentType);
     if (!media) {
       return NextResponse.json(

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import { accountCookieName, getAccountData, getAccountRecord, getShareOwnerEmail, readSessionEmail, tripAccessFor } from "@/lib/account-store";
 import { sendTripNoteEmail } from "@/lib/email";
 import { isPhoneIdentity } from "@/lib/identity";
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const found = await whoAndWhat(request);
   if ("error" in found) return found.error;
   if (!found.canComment) {
@@ -112,6 +114,7 @@ async function notifyOwner(owner: string, from: string, comment: TripComment, re
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const found = await whoAndWhat(request);
   if ("error" in found) return found.error;
   const body = (await request.json().catch(() => null)) as { id?: string; done?: boolean } | null;
@@ -131,6 +134,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const found = await whoAndWhat(request);
   if ("error" in found) return found.error;
   const id = request.nextUrl.searchParams.get("id")?.trim();

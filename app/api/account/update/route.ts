@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/secure-access";
 import {
   accountCookieName,
   changeAccountEmail,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/account-store";
 
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const cookieStore = await cookies();
   const cookie = cookieStore.get(accountCookieName())?.value;
   const email = readSessionEmail(cookie);
