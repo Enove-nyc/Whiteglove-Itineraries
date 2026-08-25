@@ -208,10 +208,19 @@ export default async function PricingPage() {
           </div>
         </dl>
 
+        {/* THIS SENTENCE POINTED AT /app, WHICH DOES NOT ANSWER IT. To a
+            visitor with no account — everybody reading a pricing page — /app is
+            two doors: enter a client code, or log in. It shows nothing of what
+            a client receives. /sample-itinerary is the finished document, open
+            to anybody, and it is what the sentence was promising all along. */}
         <p className="mt-10 text-sm text-stone-600">
           Still deciding?{" "}
+          <Link href="/sample-itinerary" className="font-semibold text-[var(--gold-ink)] underline">
+            See a finished itinerary
+          </Link>
+          , or read how{" "}
           <Link href="/app" className="font-semibold text-[var(--gold-ink)] underline">
-            See what your client receives
+            the app reaches your client
           </Link>
           .
         </p>
