@@ -16,6 +16,7 @@ import {
 } from "@/lib/edge-lock";
 import { MIGRATION_LISTS, movedTo } from "@/lib/route-migration";
 import { BRAND_ORIGIN, brandFromRequestHeaders } from "@/lib/site-brand-core";
+import { isAndroidAppHeaders } from "@/lib/android-app";
 
 /**
  * The guide lives on the kosher site; the itineraries site is strictly the
@@ -168,10 +169,37 @@ function publicOrigin(): string | null {
   }
 }
 
+/**
+ * The Android app is a Trusted Web Activity wrapping this site, and its launch
+ * URL — baked into the published binary — is the bare domain. The owner wants it
+ * to open on the planner app (/app), not the marketing home page. Rather than
+ * ship a new binary and wait on another Play review, we land it here: the app's
+ * WebView tags every request with its package name, so a home-page open coming
+ * from the app is sent on to /app while an ordinary browser gets the home page
+ * untouched. Detection lives in lib/android-app.ts, tested there.
+ */
+function isAndroidAppRequest(request: NextRequest): boolean {
+  return isAndroidAppHeaders((name) => request.headers.get(name));
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname.startsWith("/api/")) return NextResponse.next();
   if (/\.[a-z0-9]+$/i.test(pathname)) return NextResponse.next();
+
+  // The Android app opens on the bare domain; the owner wants it to land on the
+  // planner app instead. Only the home page, and only when the request comes
+  // from the app itself — an ordinary browser at "/" still gets the home page.
+  // 307, never cached: the choice depends on a request header, so a shared cache
+  // must not serve one visitor's /app redirect to the next.
+  if (pathname === "/" && isAndroidAppRequest(request)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/app";
+    const response = NextResponse.redirect(url, 307);
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("Vary", "X-Requested-With");
+    return response;
+  }
 
   // A heritage town that used to live under /destinations.
   //
