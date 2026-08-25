@@ -115,7 +115,12 @@ export default async function SampleItineraryPage() {
               printed page has a fixed width and a phone does not. */}
           <div className="mt-8 overflow-x-auto rounded-2xl border border-[var(--gold-light)] bg-white p-3 shadow-[0_18px_45px_rgba(23,45,82,.09)] sm:p-6">
             <div className="min-w-[42rem]">
-              <PrintableItinerary itin={SAMPLE_ITINERARY} burials={{}} embedded />
+              {/* THE DOCUMENT'S OWN BRAND, not the reader's — and on this page they
+                  are the same thing, because the sample is produced by whichever
+                  site is showing it. Left unset, the cover, the footer and every
+                  day's running head said White Glove Kosher Travel on the site
+                  that sells this. */}
+              <PrintableItinerary itin={SAMPLE_ITINERARY} burials={{}} embedded siteBrand={brand} />
             </div>
           </div>
 
