@@ -783,7 +783,11 @@ function HotelsForm({
           }),
         });
         const data = await response.json();
-        if (data?.ok && data.mode === "live" && Array.isArray(data.stays)) {
+        // A live response with zero stays used to return here with empty rows,
+        // skipping the hand-off — the user was told to "open the partner
+        // search" with no button to do it. Require at least one stay to take
+        // the results path; otherwise fall through to handOff() below.
+        if (data?.ok && data.mode === "live" && Array.isArray(data.stays) && data.stays.length > 0) {
           setLiveMessage(data.message ?? "");
           const nextRows: PartnerResultRow[] = data.stays.map(
             (stay: {

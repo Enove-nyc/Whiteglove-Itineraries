@@ -118,80 +118,94 @@ export default function LoginForm({
 
   async function continueToAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
     setMessage("");
 
-    if (mode === "forgot") {
-      const response = await fetch("/api/account/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await response.json().catch(() => null) as { message?: string; error?: string } | null;
-      setSaving(false);
-      if (!response.ok) {
-        setMessage(data?.error || "Please try again.");
-        return;
-      }
-      // The same words whether or not the account exists. Saying where the
-      // code went would say that an account is there to send it to.
-      setMode("reset");
-      setMessage(data?.message ?? "If that account exists, a reset code is on its way.");
-      return;
-    }
-
-    if (mode === "reset") {
-      const response = await fetch("/api/account/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, password: newPassword }),
-      });
-      const data = await response.json().catch(() => null) as { error?: string } | null;
-      setSaving(false);
-      if (!response.ok) {
-        setMessage(data?.error || "Please try again.");
-        return;
-      }
-      setMode("login");
-      setPassword("");
-      setCode("");
-      setNewPassword("");
-      setMessage("Password updated. Log in with your new password.");
-      return;
-    }
-
+    // Signup validation must run BEFORE the button is disabled. It used to run
+    // after setSaving(true) with no reset, so a too-short password or an
+    // unticked terms box returned early and left the submit button disabled
+    // forever. These are early returns with just a message — nothing is sent.
     if (mode === "signup") {
       if (!agreed) { setMessage("Please agree to the terms and the privacy policy to create an account."); return; }
       const problem = passwordProblem(password);
       if (problem) { setMessage(problem); return; }
     }
-    const endpoint = mode === "signup" ? "/api/account/register" : mode === "login" ? "/api/account/login" : "/api/account/verify";
-    const payload = mode === "verify" ? { email, code } : mode === "signup" ? { email, password, name, phone: contactPhone } : { email, password };
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json().catch(() => null) as Delivery | null;
-    if (!response.ok) {
-      setMessage(data?.error || "Please try again.");
+
+    setSaving(true);
+
+    // A network rejection anywhere below used to leave the button stuck. The
+    // whole request path is wrapped so a failed fetch resets saving and says
+    // so, rather than sticking on "Checking...".
+    try {
+      if (mode === "forgot") {
+        const response = await fetch("/api/account/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+        setSaving(false);
+        if (!response.ok) {
+          setMessage(data?.error || "Please try again.");
+          return;
+        }
+        // The same words whether or not the account exists. Saying where the
+        // code went would say that an account is there to send it to.
+        setMode("reset");
+        setMessage(data?.message ?? "If that account exists, a reset code is on its way.");
+        return;
+      }
+
+      if (mode === "reset") {
+        const response = await fetch("/api/account/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, code, password: newPassword }),
+        });
+        const data = await response.json().catch(() => null) as { error?: string } | null;
+        setSaving(false);
+        if (!response.ok) {
+          setMessage(data?.error || "Please try again.");
+          return;
+        }
+        setMode("login");
+        setPassword("");
+        setCode("");
+        setNewPassword("");
+        setMessage("Password updated. Log in with your new password.");
+        return;
+      }
+
+      const endpoint = mode === "signup" ? "/api/account/register" : mode === "login" ? "/api/account/login" : "/api/account/verify";
+      const payload = mode === "verify" ? { email, code } : mode === "signup" ? { email, password, name, phone: contactPhone } : { email, password };
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null) as Delivery | null;
+      if (!response.ok) {
+        setMessage(data?.error || "Please try again.");
+        setSaving(false);
+        if (data?.verificationRequired) setMode("verify");
+        return;
+      }
+      if (mode === "signup") {
+        setMode("verify");
+        setMessage(whereTheCodeWent(data, "verification code"));
+        setSaving(false);
+        return;
+      }
+      forgetSignedIn();
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+      router.push(next ?? "/account");
+      router.refresh();
+    } catch {
+      setMessage("Could not reach the server. Please check your connection and try again.");
       setSaving(false);
-      if (data?.verificationRequired) setMode("verify");
-      return;
     }
-    if (mode === "signup") {
-      setMode("verify");
-      setMessage(whereTheCodeWent(data, "verification code"));
-      setSaving(false);
-      return;
-    }
-    forgetSignedIn();
-    if (onSuccess) {
-      onSuccess();
-      return;
-    }
-    router.push(next ?? "/account");
-    router.refresh();
   }
 
   return (
@@ -296,6 +310,9 @@ export default function LoginForm({
               onChange={(event) => setPassword(event.target.value)}
               type={showPassword ? "text" : "password"}
               required
+              // Signing up must meet the minimum before the browser will
+              // submit; logging in accepts whatever the existing password is.
+              minLength={mode === "signup" ? MIN_PASSWORD_LENGTH : undefined}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               name={mode === "login" ? "password" : "new-password"}
               placeholder={mode === "login" ? "Your password" : "Choose a password"}

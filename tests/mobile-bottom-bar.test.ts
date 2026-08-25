@@ -25,7 +25,9 @@ describe("the mobile bottom bar", () => {
     assert.match(BAR_CODE, /label:\s*signedIn\s*\?\s*"Account"\s*:\s*"Sign in"/, "the account label ignores the signed-in state");
     assert.match(BAR_CODE, /href:\s*signedIn\s*\?\s*"\/account"\s*:\s*signInHref\(\)/, "the account destination changed");
     // One source of truth for that state: the bar is told, it does not ask.
-    assert.match(BAR_CODE, /\{\s*signedIn\s*\}\s*:\s*\{\s*signedIn:\s*boolean\s*\}/, "the bar should take signedIn as a prop, not re-derive it");
+    // It also takes the brand as a prop (to drop Search on itineraries), so the
+    // props object carries both — but signedIn is still passed in, not derived.
+    assert.match(BAR_CODE, /\{\s*signedIn,\s*brand\s*\}\s*:\s*\{\s*signedIn:\s*boolean;\s*brand\?:\s*SiteBrand\s*\}/, "the bar should take signedIn as a prop, not re-derive it");
   });
 
   it("only appears below the breakpoint where the header icons hide", () => {

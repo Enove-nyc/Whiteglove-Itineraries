@@ -25,18 +25,32 @@ export default function SaveTripItemButton({ item, label = "Add to Route" }: { i
   const signedIn = useSignedIn();
   const requireSignIn = useRequireSignIn();
   const [saved, setSaved] = useState(() => typeof window !== "undefined" && readRoute().some((place) => place.id === item.id));
+  const [failed, setFailed] = useState(false);
 
   async function save() {
-    const current = readRoute();
-    const next = saved ? current.filter((place) => place.id !== item.id) : [...current, item];
+    const previous = readRoute();
+    const wasSaved = saved;
+    const next = wasSaved ? previous.filter((place) => place.id !== item.id) : [...previous, item];
+    // Optimistic — show it and write the browser copy at once. If the POST does
+    // not confirm, undo both so the button never claims a save the account did
+    // not keep, and offer a retry instead of lying about it.
     localStorage.setItem(routeKey, JSON.stringify(next));
     window.dispatchEvent(new Event("whiteglove-route"));
-    setSaved(!saved);
-    await fetch("/api/account/places", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ collection: "route", action: "replace", items: next }),
-    });
+    setSaved(!wasSaved);
+    setFailed(false);
+    try {
+      const res = await fetch("/api/account/places", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collection: "route", action: "replace", items: next }),
+      });
+      if (!res.ok) throw new Error("save failed");
+    } catch {
+      localStorage.setItem(routeKey, JSON.stringify(previous));
+      window.dispatchEvent(new Event("whiteglove-route"));
+      setSaved(wasSaved);
+      setFailed(true);
+    }
   }
 
   // Still asking — hold the space rather than flash the wrong button.
@@ -48,7 +62,7 @@ export default function SaveTripItemButton({ item, label = "Add to Route" }: { i
       onClick={() => requireSignIn(save, "Sign in to add to Route")}
       className={`inline-flex min-h-11 items-center border px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] transition ${saved ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--gold)] text-[var(--navy)] hover:bg-[var(--cream-deep)]"}`}
     >
-      {saved ? "Added to Route" : label}
+      {failed ? "Didn’t save — try again" : saved ? "Added to Route" : label}
     </button>
   );
 }

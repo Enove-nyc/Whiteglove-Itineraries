@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { startingPointsExcept } from "@/lib/starting-points";
+import { readBookingLink } from "@/lib/booking-access-store";
 
 /**
  * "Which of these is the one I want?"
@@ -14,7 +15,7 @@ import { startingPointsExcept } from "@/lib/starting-points";
  * Personal planning is not one of them and is not a call-out here at all —
  * removed at the owner's word, not merely left off this list.
  */
-export default function StartingPoints({
+export default async function StartingPoints({
   omit = [],
   heading = "Ways to start",
   intro,
@@ -35,6 +36,12 @@ export default function StartingPoints({
   const points = startingPointsExcept(...omit);
   if (points.length === 0) return null;
 
+  // /book can be locked, and middleware then sends a visitor pressing it to the
+  // access-code box. Every other booking CTA resolves through the booking lock
+  // first — so this door does too, taking its href and label from the resolved
+  // link (the search when open, the contact page when it is closed).
+  const booking = await readBookingLink();
+
   return (
     <div className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-6 sm:p-9">
       <h2 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
@@ -45,10 +52,13 @@ export default function StartingPoints({
       <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {points.map((point) => {
           const low = deemphasize.includes(point.href);
+          const isBooking = point.href === "/book";
+          const href = isBooking ? booking.href : point.href;
+          const label = isBooking ? booking.label : point.label;
           return (
             <li key={point.href} className={low ? "sm:self-end" : undefined}>
               <Link
-                href={point.href}
+                href={href}
                 className={
                   low
                     ? "group flex h-full flex-col rounded-2xl border border-transparent p-5 transition hover:border-[var(--gold-light)]"
@@ -62,7 +72,7 @@ export default function StartingPoints({
                       : "block font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]"
                   }
                 >
-                  {point.label}
+                  {label}
                 </span>
                 <span className={low ? "mt-2 flex-1 text-xs leading-5 text-stone-500" : "mt-3 flex-1 text-sm leading-6 text-stone-600"}>
                   {point.body}

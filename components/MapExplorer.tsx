@@ -268,7 +268,10 @@ export default function MapExplorer({
                     {m.name}
                   </a>
                   <p className="mt-1 text-xs text-stone-500">{m.subtitle}</p>
-                  <p className="mt-2 text-sm font-semibold text-[var(--gold-ink)]">{m.km?.toFixed(1)} km away</p>
+                  {/* Show the distance line only when a distance exists —
+                      `{m.km?.toFixed(1)}` left a stray " km away" when km was
+                      undefined. */}
+                  {m.km != null ? <p className="mt-2 text-sm font-semibold text-[var(--gold-ink)]">{m.km.toFixed(1)} km away</p> : null}
                 </li>
               ))}
             </ul>
