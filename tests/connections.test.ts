@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { CONNECTIONS, launchSummary, readConnectionsProperly, sortForReview } from "@/lib/connections";
+import { CONNECTIONS, DEPLOYMENT_SETTINGS, launchSummary, readConnectionsProperly, sortForReview } from "@/lib/connections";
 
 /**
  * Every outside thing this site is connected to.
@@ -176,7 +176,9 @@ describe("nothing is invisible", () => {
     // name is a connection nobody can see — which is how a site goes live with
     // flight lookup quietly dead. A hand-written list goes stale the first
     // time somebody adds an integration in a hurry; this reads the source.
-    const described = new Set(CONNECTIONS.flatMap((c) => c.vars));
+    // DEPLOYMENT_SETTINGS counts as described: same shape, same screen,
+    // separate only because a brand flag is not a connection to anything.
+    const described = new Set([...CONNECTIONS, ...DEPLOYMENT_SETTINGS].flatMap((c) => c.vars));
     const unexplained = [...envNamesInSource()].filter((name) => !described.has(name) && !NOT_A_CONNECTION.has(name));
     assert.deepEqual(
       unexplained,

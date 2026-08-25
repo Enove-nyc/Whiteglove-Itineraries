@@ -31,6 +31,28 @@ export const BRAND_HOSTS: Record<SiteBrand, readonly string[]> = {
   itineraries: ["www.whitegloveitineraries.com", "whitegloveitineraries.com"],
 };
 
+/**
+ * The brand this DEPLOYMENT serves, when it only ever serves one.
+ *
+ * WHY THIS EXISTS. The navigation rendered as kosher and corrected itself from
+ * the hostname after mount, on the stated grounds that reading the host on the
+ * server would turn every static page dynamic. That was a real trade when one
+ * deployment answered both domains. This one answers exactly one — it is the
+ * service behind whitegloveitineraries.com — so it can simply be told which,
+ * and be right in the markup it sends rather than a frame later.
+ *
+ * A visitor here was served White Glove Kosher Travel and shown it change.
+ * Anything reading the HTML — a search engine, a link preview — never saw it
+ * change at all.
+ *
+ * Unset means "work it out from the host", which is what happened before, so a
+ * deployment that does not set it is no worse off than it was.
+ */
+export function configuredBrand(): SiteBrand | null {
+  const value = process.env.NEXT_PUBLIC_SITE_BRAND?.trim().toLowerCase();
+  return value === "itineraries" || value === "kosher" ? value : null;
+}
+
 export const BRAND_NAME: Record<SiteBrand, string> = {
   kosher: "White Glove Kosher Travel",
   itineraries: "White Glove Itineraries",
