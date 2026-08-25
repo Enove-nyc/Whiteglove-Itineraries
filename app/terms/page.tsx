@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import PageBlocks from "@/components/PageBlocks";
 import { resolvePage } from "@/lib/pages";
+import { contactEmailFor } from "@/lib/site-words";
 import { BRAND_DOMAIN, BRAND_NAME } from "@/lib/site-brand-core";
 import { currentBrand } from "@/lib/site-brand";
 
@@ -51,8 +52,9 @@ export default async function TermsOfUsePage() {
       </main>
     );
   }
-  const { contactEmail, affiliateDisclosure } = await readWords();
-  const brand = await currentBrand();
+  const [words, brand] = await Promise.all([readWords(), currentBrand()]);
+  const { affiliateDisclosure } = words;
+  const contactEmail = contactEmailFor(brand, words);
   const itineraries = brand === "itineraries";
   const siteName = BRAND_NAME[brand];
   const siteDomain = BRAND_DOMAIN[brand];
@@ -97,13 +99,29 @@ export default async function TermsOfUsePage() {
         </Section>
 
         <Section title="Travel information — please verify">
-          <p>
-            Our guides gather details such as addresses, contacts, minyan and mikvah times, access notes, and safety notices to help
-            your planning. This information can change, and access and travel conditions vary. <strong className="text-[var(--navy)]">Please
-            confirm anything critical — access arrangements, hours, and current safety conditions — directly with the relevant contact
-            or authority before you rely on it.</strong> White Glove is not responsible for outdated details or for the acts of third
-            parties such as hotels, drivers, or cemetery custodians.
-          </p>
+          {/* The kosher wording names minyan and mikvah times and cemetery
+              custodians, which are guides this deployment does not carry. The
+              obligation is the same on both sides; only the examples differ. */}
+          {itineraries ? (
+            <p>
+              An itinerary built here gathers details such as addresses, opening hours, transfer times, and travel
+              notices. This information can change, and travel conditions vary.{" "}
+              <strong className="text-[var(--navy)]">
+                Please confirm anything critical — bookings, opening hours, and current safety conditions — directly
+                with the supplier or authority before you or your client rely on it.
+              </strong>{" "}
+              White Glove is not responsible for outdated details or for the acts of third parties such as hotels,
+              airlines, drivers, or tour operators.
+            </p>
+          ) : (
+            <p>
+              Our guides gather details such as addresses, contacts, minyan and mikvah times, access notes, and safety notices to help
+              your planning. This information can change, and access and travel conditions vary. <strong className="text-[var(--navy)]">Please
+              confirm anything critical — access arrangements, hours, and current safety conditions — directly with the relevant contact
+              or authority before you rely on it.</strong> White Glove is not responsible for outdated details or for the acts of third
+              parties such as hotels, drivers, or cemetery custodians.
+            </p>
+          )}
         </Section>
 
         <Section title="Bookings and third-party services">

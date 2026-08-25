@@ -5,20 +5,29 @@ import ContactForm from "@/components/ContactForm";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import PageBlocks from "@/components/PageBlocks";
-import { CONTACT_REASONS, readReason } from "@/lib/contact-reasons";
+import { readReasonForBrand, reasonsForBrand } from "@/lib/contact-reasons";
 import { resolvePage } from "@/lib/pages";
 import { currentBrand } from "@/lib/site-brand";
 import { BRAND_NAME } from "@/lib/site-brand-core";
+import { contactEmailFor } from "@/lib/site-words";
 
 export async function generateMetadata() {
   const [page, name] = await Promise.all([resolvePage("contact"), currentBrand().then((b) => BRAND_NAME[b])]);
   // The owner writes the title and description in the admin; the
   // canonical URL and the share card come from the page it is.
+  //
+  // ONLY WHEN HE HAS ACTUALLY EDITED IT. resolvePage hands back the built-in
+  // page when he has not, and the built-in title names White Glove Kosher
+  // Travel — so reading it unconditionally put the other brand's name in the
+  // tab, the search result and the link preview of every page on this site.
+  const edited = page?.edited ? page : null;
+  const errands =
+    name === BRAND_NAME.itineraries
+      ? "Tell us something on the site is broken, or ask a question."
+      : "Tell us something on the site is wrong, ask about advertising, or ask a question.";
   return pageMetadata({
-    title: page?.seoTitle ?? name,
-    description:
-      page?.seoDescription ??
-      "Tell us something on the site is wrong, ask about advertising, or ask a question.",
+    title: edited?.seoTitle ?? `Contact — ${name}`,
+    description: edited?.seoDescription ?? errands,
     path: "/contact",
   });
 }
@@ -42,8 +51,10 @@ export default async function ContactPage({
   searchParams: Promise<{ reason?: string; from?: string }>;
 }) {
   const { reason: reasonParam } = await searchParams;
-  const reason = readReason(reasonParam);
-  const [page, words] = await Promise.all([resolvePage("contact"), readWords()]);
+  const [page, words, brand] = await Promise.all([resolvePage("contact"), readWords(), currentBrand()]);
+  const reason = readReasonForBrand(reasonParam, brand);
+  const reasons = reasonsForBrand(brand);
+  const contactEmail = contactEmailFor(brand, words);
 
   return (
     <main className="min-h-screen bg-[var(--cream)]">
@@ -55,7 +66,7 @@ export default async function ContactPage({
           Reason for writing
         </h2>
         <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-          {CONTACT_REASONS.map((entry) => {
+          {reasons.map((entry) => {
             const chosen = entry.value === reason;
             return (
               <li key={entry.value}>
@@ -92,15 +103,15 @@ export default async function ContactPage({
             <p className="rounded-xl border border-[var(--gold-light)] bg-[var(--surface)] p-6 leading-7 text-stone-600">
               Or write to us at{" "}
               <a
-                href={`mailto:${words.contactEmail}`}
+                href={`mailto:${contactEmail}`}
                 className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
               >
-                {words.contactEmail}
+                {contactEmail}
               </a>
               . {words.replyPromise}
             </p>
           ) : (
-            <ContactForm reason={reason} words={words} />
+            <ContactForm reason={reason} words={{ ...words, contactEmail }} />
           )}
         </div>
       </section>

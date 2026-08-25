@@ -58,6 +58,19 @@ export const BRAND_NAME: Record<SiteBrand, string> = {
   itineraries: "White Glove Itineraries",
 };
 
+/**
+ * The address a visitor on each front door is told to write to.
+ *
+ * The two brands are two companies, so a visitor on whitegloveitineraries.com
+ * must never be handed Kosher Travel's address — the same rule the contact
+ * form already routes by (see DEFAULT_CONTACT_INBOX in lib/email.ts). This is
+ * the same pair, said out loud on the page rather than only in the routing.
+ */
+export const BRAND_CONTACT_EMAIL: Record<SiteBrand, string> = {
+  kosher: "contact@whiteglovekoshertravel.com",
+  itineraries: "contact@whitegloveitineraries.com",
+};
+
 /** The bare domain a brand is credited by, on printed and shared documents. */
 export const BRAND_DOMAIN: Record<SiteBrand, string> = {
   kosher: "whiteglovekoshertravel.com",
