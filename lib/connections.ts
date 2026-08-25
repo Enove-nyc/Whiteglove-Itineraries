@@ -66,6 +66,14 @@ export const DEPLOYMENT_SETTINGS: Connection[] = [
     weight: "nicety",
     where: "Set it on the deployment itself — Railway → the service → Variables.",
   },
+  {
+    vars: ["PLATFORM_FEE_BPS"],
+    what: "White Glove's take rate on a trip payment, in basis points (10 = 0.1%).",
+    without:
+      "The default of a tenth of a percent is kept on every trip payment. Set this to change what White Glove keeps, in basis points — 25 for a quarter percent, 0 to take nothing — and no deploy is needed. Whatever it is, it comes off the advisor's payout, never added to what the traveler pays.",
+    weight: "nicety",
+    where: "Set it on the deployment itself — Railway → the service → Variables. A whole number of basis points.",
+  },
 ];
 
 export const CONNECTIONS: Connection[] = [

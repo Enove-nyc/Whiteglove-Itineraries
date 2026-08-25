@@ -13,9 +13,15 @@ import "server-only";
  * `transfer_data.destination` set to the planner's own Stripe Connect
  * account. Stripe settles the funds to the PLANNER's account, not White
  * Glove's; White Glove is never a money-transmitter for anyone else's trip.
- * No application fee is taken today — see createDestinationPaymentIntent —
- * this file has the hook to add one later if the owner ever wants a take
- * rate, but nothing charges one now, because nobody asked for one.
+ *
+ * WHITE GLOVE'S TAKE RATE. A small platform fee (application_fee_amount, 0.1%
+ * by default, PLATFORM_FEE_BPS to change it) is retained from each charge — the
+ * only slice White Glove keeps. The charge is also created `on_behalf_of` the
+ * planner's connected account, which makes them the merchant of record, so
+ * Stripe's own processing fee comes out of THEIR settlement, not White Glove's.
+ * Net effect: the traveler pays the face amount, and both Stripe's fee and
+ * White Glove's 0.1% come off the planner's payout. See platformFeeCents and
+ * createDestinationPaymentIntent.
  *
  * NO CARD NUMBER EVER REACHES THIS SITE, same rule as lib/stripe.ts's own
  * subscription checkout: the client app collects the card with Stripe
@@ -30,6 +36,7 @@ import "server-only";
  */
 
 import { call, stripeSecretKey } from "@/lib/stripe";
+import { platformFeeCents } from "@/lib/platform-fee";
 
 /** Whether a planner can even be sent to connect a Stripe account. */
 export function canConnectAccounts(): boolean {
@@ -95,7 +102,10 @@ type PaymentIntentData = { id: string; client_secret: string };
  * A PaymentIntent for one traveler/family's payment, destined for their
  * planner's own connected account — never White Glove's.
  *
- * metadata carries everything the webhook needs to record the payment
+ * `on_behalf_of` makes the planner the merchant of record, so Stripe's fee is
+ * drawn from their settlement; `application_fee_amount` is White Glove's 0.1%.
+ * Together: the traveler pays the face amount, both fees come off the planner's
+ * payout. metadata carries everything the webhook needs to record the payment
  * against the right trip and unit; Stripe hands metadata back on every event
  * for this PaymentIntent untouched, so the webhook never has to guess.
  */
@@ -109,6 +119,7 @@ export async function createDestinationPaymentIntent(input: {
   scheduleItemId?: string;
   idempotencyKey?: string;
 }): Promise<{ clientSecret: string; paymentIntentId: string } | { error: string }> {
+  const feeCents = platformFeeCents(input.amountCents);
   const result = await call<PaymentIntentData>(
     "payment_intents",
     {
@@ -116,6 +127,8 @@ export async function createDestinationPaymentIntent(input: {
       currency: input.currency.toLowerCase(),
       automatic_payment_methods: { enabled: true },
       transfer_data: { destination: input.destinationAccountId },
+      on_behalf_of: input.destinationAccountId,
+      ...(feeCents > 0 ? { application_fee_amount: feeCents } : {}),
       metadata: {
         ownerEmail: input.ownerEmail,
         tripId: input.tripId,

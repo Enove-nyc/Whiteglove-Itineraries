@@ -246,7 +246,13 @@ describe("the payment routes and webhook keep the same fences everything else do
     assert.match(CONNECT, /transfer_data/);
   });
 
-  it("no application fee is charged today — nobody asked White Glove to take a cut", () => {
-    assert.doesNotMatch(CONNECT, /application_fee/);
+  it("takes White Glove's platform fee, and makes the advisor bear Stripe's own fee", () => {
+    // The take rate itself (0.1% by default) is pure math in lib/platform-fee.ts,
+    // pinned by tests/stripe-platform-fee.test.ts. Here we just hold the charge
+    // shape: an application fee is set, and on_behalf_of makes the advisor the
+    // merchant of record so Stripe's processing fee comes off THEIR settlement.
+    assert.match(CONNECT, /application_fee_amount/);
+    assert.match(CONNECT, /on_behalf_of/);
+    assert.match(CONNECT, /platformFeeCents/);
   });
 });
