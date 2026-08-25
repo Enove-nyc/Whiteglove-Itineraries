@@ -17,10 +17,19 @@ import { contactEmailFor } from "@/lib/site-words";
 
 export async function generateMetadata() {
   const [page, name] = await Promise.all([resolvePage("about"), currentBrand().then((b) => BRAND_NAME[b])]);
+  // ONLY WHEN HE HAS ACTUALLY EDITED IT — the same trap /contact fell into.
+  // resolvePage hands back the BUILT-IN page when the owner has not written
+  // one, and that page's seoTitle reads "About White Glove Kosher Travel — who
+  // we are and how we work". Read unconditionally, it put the other brand in
+  // this page's tab, its search result, its share card and — because
+  // pageMetadata settles og:site_name from whichever brand the title names —
+  // in the site name on the card too. The body of the page had been saying
+  // Itineraries for a while; the head went on saying Kosher Travel.
+  const edited = page?.edited ? page : null;
   return pageMetadata({
-    title: page?.seoTitle ?? `About — ${name}`,
+    title: edited?.seoTitle ?? `About — ${name}`,
     description:
-      page?.seoDescription ??
+      edited?.seoDescription ??
       `Who is behind ${name}, how the practical detail on this site is put together, and how to reach a person.`,
     path: "/about",
   });
