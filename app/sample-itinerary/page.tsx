@@ -11,13 +11,26 @@ import { ACTION_BUTTON_CLASS } from "@/lib/action-button";
 import { resolvePage } from "@/lib/pages";
 import { pageMetadata } from "@/lib/seo";
 import { breadcrumbs } from "@/lib/structured-data";
+import { currentBrand } from "@/lib/site-brand";
+import { BRAND_NAME } from "@/lib/site-brand-core";
 
-export const metadata = pageMetadata({
-  title: "A sample itinerary — what you actually receive | White Glove Kosher Travel",
-  description:
-    "A whole week in Rome for a family of five, as the itinerary is delivered: a day per page, real walking and driving times, the kosher side per day, and a Shabbos with nothing scheduled on it.",
-  path: "/sample-itinerary",
-});
+// PER REQUEST, because the page is now served on both domains and they are two
+// companies. A static export cannot ask which one is being visited, and the
+// title is the line a search result and a share card show before anything else.
+export async function generateMetadata() {
+  const brand = await currentBrand();
+  return pageMetadata({
+    title:
+      brand === "itineraries"
+        ? `A sample itinerary — what your client opens | ${BRAND_NAME.itineraries}`
+        : `A sample itinerary — what you actually receive | ${BRAND_NAME.kosher}`,
+    description:
+      brand === "itineraries"
+        ? "A whole week in Rome for a family of five, as the itinerary is handed over: a day per page, real walking and driving times, and what is filled in on a live trip that is left blank here."
+        : "A whole week in Rome for a family of five, as the itinerary is delivered: a day per page, real walking and driving times, the kosher side per day, and a Shabbos with nothing scheduled on it.",
+    path: "/sample-itinerary",
+  });
+}
 
 /**
  * The proof that was missing.
@@ -47,7 +60,8 @@ export const metadata = pageMetadata({
  * available, which is the work itself.
  */
 export default async function SampleItineraryPage() {
-  const page = await resolvePage("sample-itinerary");
+  const [page, brand] = await Promise.all([resolvePage("sample-itinerary"), currentBrand()]);
+  const itineraries = brand === "itineraries";
 
   return (
     <main className="min-h-screen bg-[var(--cream)] text-[var(--ink)]">
@@ -70,7 +84,9 @@ export default async function SampleItineraryPage() {
               A week in Rome, as it arrives.
             </h1>
             <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-600">
-              A family of five, seven nights, and a Shabbos in the middle of it — the document you are actually handed.
+              {itineraries
+                ? "A family of five, seven nights — the document your client is actually handed."
+                : "A family of five, seven nights, and a Shabbos in the middle of it — the document you are actually handed."}
             </p>
             <p className="mt-4 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#fcf6e9] px-5 py-3 leading-7 text-stone-700">
               <span className="font-semibold text-[var(--navy)]">{SAMPLE_NOTICE}</span>
@@ -88,8 +104,9 @@ export default async function SampleItineraryPage() {
             The document
           </h2>
           <p className="mt-3 max-w-3xl leading-7 text-stone-600">
-            A cover, then a page per day — and it arrives in your account too, where you can move a day and print it
-            again.
+            {itineraries
+              ? "A cover, then a page per day. The same trip also opens as an app on their phone, and stays in your account where you can move a day and print it again."
+              : "A cover, then a page per day — and it arrives in your account too, where you can move a day and print it again."}
           </p>
 
           {/* Framed rather than dropped straight onto the page, so it reads as
@@ -125,36 +142,70 @@ export default async function SampleItineraryPage() {
           <div>
             <SectionHeading
               eyebrow="About this sample"
-              title="What is filled in on yours, and blank on this one."
-              description="The places are real — they are the Rome records this site publishes, with their sources. Nothing else here is booked."
+              title={itineraries ? "What is filled in on a real one, and blank here." : "What is filled in on yours, and blank on this one."}
+              description={
+                itineraries
+                  ? "The places are real. Nothing here is booked, and none of it is invented to look like it was."
+                  : "The places are real — they are the Rome records this site publishes, with their sources. Nothing else here is booked."
+              }
             />
+            {/* The kosher wording says "yours" because that visitor is the
+                traveller. Here the person reading is the one BUILDING it, and
+                the document goes to somebody else — so the same four facts are
+                said about a live trip rather than about theirs. */}
             <GloveList
-              items={[
-                "Your itinerary names the hotel, its address and the confirmation number. This one says which quarter it is in.",
-                "Yours names the airline and the flight number. This one gives the route and the times.",
-                "Yours carries what you paid. There are no prices anywhere on this site.",
-                "Neither carries opening hours — they change by season, and a stale one sends a family to a locked door.",
-              ]}
+              items={
+                itineraries
+                  ? [
+                      "A live itinerary names the hotel, its address and the confirmation number. This one says which quarter it is in.",
+                      "It names the airline and the flight number. This one gives the route and the times.",
+                      "It carries what was paid. There are no prices anywhere on this sample.",
+                      "Neither carries opening hours — they change by season, and a stale one sends a family to a locked door.",
+                    ]
+                  : [
+                      "Your itinerary names the hotel, its address and the confirmation number. This one says which quarter it is in.",
+                      "Yours names the airline and the flight number. This one gives the route and the times.",
+                      "Yours carries what you paid. There are no prices anywhere on this site.",
+                      "Neither carries opening hours — they change by season, and a stale one sends a family to a locked door.",
+                    ]
+              }
               className="mt-8 space-y-3 leading-7 text-stone-600"
             />
-            <p className="mt-8">
-              <Link
-                href="/verification"
-                className="inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-6 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white"
-              >
-                How we check what goes on these pages
-              </Link>
-            </p>
+            {/* /verification is guide-only: on this domain the button would
+                throw the reader onto the other company's site, which is the
+                whole bug this page was moved out of. */}
+            {!itineraries && (
+              <p className="mt-8">
+                <Link
+                  href="/verification"
+                  className="inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-6 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white"
+                >
+                  How we check what goes on these pages
+                </Link>
+              </p>
+            )}
           </div>
 
           <div className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-7">
+            {/* THE KOSHER SIDE SAYS "FREE" BECAUSE IT IS. This domain charges
+                for the thing the page has just shown, so the same words would
+                be a payment promise the site does not keep — see AGENTS.md.
+                AND NO NUMBER IS PRINTED HERE EITHER: the amounts are the
+                owner's, set in the admin and read at request time through
+                offerLine(), which refuses to print a figure the billing code
+                cannot stand behind. A "$15" typed into this file would be a
+                promise nothing enforces. So it points at /pricing, which asks
+                properly. */}
             <div className="flex items-center gap-3">
               <GloveMark size="lg" />
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Free, either way</p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">
+                {itineraries ? "Build one of these" : "Free, either way"}
+              </p>
             </div>
             <p className="mt-4 leading-7 text-stone-600">
-              Build the same document yourself, for your own dates — or answer three short steps for destination
-              ideas first. Sign in to start; it&apos;s free.
+              {itineraries
+                ? "The planner builds this document from the days you enter, and the same trip opens as an app on your client’s phone. A single trip is a one-off; an adviser plan is a subscription with no cap on how many."
+                : "Build the same document yourself, for your own dates — or answer three short steps for destination ideas first. Sign in to start; it’s free."}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
@@ -164,10 +215,10 @@ export default async function SampleItineraryPage() {
                 Open the itinerary planner
               </Link>
               <Link
-                href="/plan"
+                href={itineraries ? "/pricing" : "/plan"}
                 className="inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-6 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]"
               >
-                Get recommendations
+                {itineraries ? "What it costs" : "Get recommendations"}
               </Link>
             </div>
           </div>

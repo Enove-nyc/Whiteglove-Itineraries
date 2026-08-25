@@ -39,12 +39,21 @@ export default function ItinerariesHome() {
             the days, the map, a travel wallet kept for when there is no signal, and a chat
             with you. One link per client.
           </p>
+          {/* THE SECOND ACTION IS THE SAMPLE, not the app.
+              Both of the old two asked a visitor to start using the product
+              before they had seen what it produces: "Build a trip" opens an
+              empty planner and "See the app" opens their own, which is empty
+              too. /sample-itinerary is the finished document — a real week,
+              rendered by the same component that prints a customer's trip —
+              and it needs no account. It also used to be unreachable from this
+              domain entirely; see the note in middleware.ts. The app is still
+              one line down, in the "Hand it over" card. */}
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <Link href="/itinerary" className={`${cta} bg-white text-[var(--navy)] hover:bg-[var(--gold-light)]`}>
               Build a trip
             </Link>
-            <Link href="/app" className={`${cta} border border-white/40 text-white hover:bg-white/10`}>
-              See the app
+            <Link href="/sample-itinerary" className={`${cta} border border-white/40 text-white hover:bg-white/10`}>
+              See a finished one
             </Link>
           </div>
         </div>

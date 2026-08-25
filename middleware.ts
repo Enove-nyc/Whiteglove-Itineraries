@@ -51,10 +51,19 @@ const GUIDE_ONLY_PREFIXES = [
   "/verification",
   "/submit",
   "/alerts",
-  "/sample-itinerary",
   "/case-studies",
   "/info",
 ];
+
+/*
+ * /sample-itinerary IS NOT ON THAT LIST, and used to be.
+ *
+ * It is the one page that answers "what do I actually get" — a real week
+ * rendered by the same component that prints a customer's trip. On the domain
+ * that CHARGES for that document, a visitor who clicked to see it was thrown
+ * onto a different company's website. The planner's own page links to it, so
+ * the site was ejecting its own prospects mid-decision.
+ */
 
 function isGuidePath(pathname: string): boolean {
   return GUIDE_ONLY_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
