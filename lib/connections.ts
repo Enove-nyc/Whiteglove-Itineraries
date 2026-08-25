@@ -49,6 +49,25 @@ export type Connection = {
  * can see. tests/connections.test.ts reads the source and fails on one, so a
  * new integration added later cannot be invisible.
  */
+/**
+ * Which brand this deployment serves.
+ *
+ * Not a connection to anything — no key, no account, nobody to sign up with —
+ * but it is read by the code, and this file is where the owner looks to find
+ * out what a variable is for. Leaving it out would make it invisible in
+ * exactly the way the test on this list exists to prevent.
+ */
+export const DEPLOYMENT_SETTINGS: Connection[] = [
+  {
+    vars: ["NEXT_PUBLIC_SITE_BRAND"],
+    what: "Which of the two sites this deployment is.",
+    without:
+      "The navigation renders as White Glove Kosher Travel and corrects itself in the browser a moment later, so a visitor sees the wrong name change in front of them — and anything reading the HTML, a search engine or a link preview, never sees it change at all. This service answers whitegloveitineraries.com, so set it to `itineraries`.",
+    weight: "nicety",
+    where: "Set it on the deployment itself — Railway → the service → Variables.",
+  },
+];
+
 export const CONNECTIONS: Connection[] = [
   {
     vars: ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
@@ -95,12 +114,13 @@ export const CONNECTIONS: Connection[] = [
     where: "Google Cloud console, under APIs & Services → Credentials → OAuth client ID (Web application). The redirect URI must be exactly https://www.whiteglovekoshertravel.com/api/account/google/callback — with the www. Google matches it as text, so the version without the www is a different address to it and sign-in fails with redirect_uri_mismatch. Keeping both listed costs nothing and covers an older deployment.",
   },
   {
-    vars: ["RESEND_API_KEY", "RESEND_FROM_EMAIL"],
+    vars: ["RESEND_API_KEY", "RESEND_FROM_EMAIL", "RESEND_FROM_EMAIL_ITINERARIES"],
     what: "Sending email.",
     without:
       "No verification code, no password reset, no share invitation, and nothing in your inbox when somebody writes in or leaves a note on a trip. Accounts still work; the emails simply never arrive. Messages sent from the website are still kept and counted on the dashboard — that half does not depend on this.",
     weight: "feature",
-    where: "Resend.",
+    where:
+      "Resend. RESEND_FROM_EMAIL_ITINERARIES is what this site should send as: without it, its email arrives from the kosher travel address, which tells a recipient who never asked about kosher travel that there is another business behind the one they signed up to. It needs its own verified domain in Resend. Left unset, everything still sends — from the shared address.",
   },
   {
     vars: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import DestinationSearch from "@/components/DestinationSearch";
 import SitePromotions from "@/components/SitePromotions";
 import MobileBottomBar from "@/components/MobileBottomBar";
 import { Icon } from "@/components/icons/Icon";
 import { IconLink } from "@/components/icons/IconAction";
 import { categoriesForBrand, categoryIsCurrent, isCurrent, itinerariesBookingCategoryFor, SIGN_IN, travelCategoryFor, type NavCategory } from "@/lib/navigation";
-import { brandForHost } from "@/lib/site-brand-core";
+import { brandForHost, configuredBrand } from "@/lib/site-brand-core";
 import AccountMenu, { ACCOUNT_PLACES, advisorPlacesFor } from "@/components/AccountMenu";
 import type { AccountPlan } from "@/lib/account-plans";
 import { useOpenSignIn } from "@/components/SignInGate";
@@ -34,17 +34,38 @@ import { useBookingLink } from "@/components/BookingLinkProvider";
  * tools) and sign-out in place and drops only the four public categories.
  */
 
-export default function Navbar({ brand: brandProp = "kosher", minimal = false }: { brand?: "kosher" | "itineraries"; minimal?: boolean } = {}) {
-  // A page that knows its brand server-side passes it (the itineraries home);
-  // everywhere else Navbar renders with the default and settles from the
-  // hostname after mount — one frame on the itineraries domain, nothing on the
-  // kosher one. Client-side on purpose, so the kosher site's static pages stay
-  // static (a server read of the host would turn every page dynamic).
-  const [brand, setBrand] = useState<"kosher" | "itineraries">(brandProp);
-  useEffect(() => {
-    if (brandProp === "itineraries") return;
-    if (typeof window !== "undefined") setBrand(brandForHost(window.location.hostname));
-  }, [brandProp]);
+/** The hostname never changes, so subscribing is a no-op. */
+const NO_CHANGE = () => () => {};
+
+export default function Navbar({ brand: brandProp, minimal = false }: { brand?: "kosher" | "itineraries"; minimal?: boolean } = {}) {
+  /**
+   * WHICH BRAND THIS IS, DECIDED AS EARLY AS IT CAN BE.
+   *
+   * Three answers in order, and the order is the point:
+   *
+   *   1. What the page passed. A page that resolved the brand on the server
+   *      knows better than anything here.
+   *   2. What this deployment was BUILT as — NEXT_PUBLIC_SITE_BRAND. This
+   *      service answers one domain, so it can be told once and be right in
+   *      the markup it sends.
+   *   3. The hostname, in the browser.
+   *
+   * It used to be (3) alone, corrected after mount: a visitor here was served
+   * White Glove Kosher Travel and shown it change, and anything reading the
+   * HTML never saw it change at all. Setting the variable removes the
+   * correction; leaving it unset leaves the old behaviour exactly as it was.
+   *
+   * Read through useSyncExternalStore rather than an effect — the primitive
+   * for exactly this, letting the server and the browser disagree honestly
+   * instead of rendering and then setting state on itself.
+   */
+  const built = configuredBrand();
+  const fromHost = useSyncExternalStore(
+    NO_CHANGE,
+    () => brandForHost(window.location.hostname),
+    () => built ?? "kosher",
+  );
+  const brand = brandProp ?? built ?? fromHost;
   const isItineraries = brand === "itineraries";
   const openSignIn = useOpenSignIn();
   const [searchOpen, setSearchOpen] = useState(false);
