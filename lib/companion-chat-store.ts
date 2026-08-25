@@ -22,7 +22,7 @@ export type CompanionChatSide = "client" | "advisor";
  * current place, so the advisor can see and hear what they are looking at
  * rather than only read about it.
  */
-export type CompanionChatKind = "text" | "image" | "video" | "audio" | "location";
+export type CompanionChatKind = "text" | "image" | "video" | "audio" | "file" | "location";
 
 export type CompanionChatMessage = {
   from: CompanionChatSide;
@@ -123,7 +123,7 @@ async function command<T>(args: (string | number)[]): Promise<T | null> {
 
 /** A stored kind we recognise, or "text" — an old or unknown row is text. */
 function kindOf(raw: unknown): CompanionChatKind {
-  return raw === "image" || raw === "video" || raw === "audio" || raw === "location" ? raw : "text";
+  return raw === "image" || raw === "video" || raw === "audio" || raw === "file" || raw === "location" ? raw : "text";
 }
 
 /**
@@ -151,7 +151,7 @@ export function parseChatMessages(rows: string[] | null): CompanionChatMessage[]
       // A picture, video or voice note with no file, or a place with neither
       // a coordinate nor an address, is a broken row, not a message — skip it
       // rather than render an empty bubble.
-      if ((kind === "image" || kind === "video" || kind === "audio") && typeof m.mediaId !== "string") continue;
+      if ((kind === "image" || kind === "video" || kind === "audio" || kind === "file") && typeof m.mediaId !== "string") continue;
       if (kind === "location" && !(Number.isFinite(m.lat) && Number.isFinite(m.lng)) && !(typeof m.address === "string" && m.address.trim())) continue;
       out.push({ ...m, kind });
     } catch {

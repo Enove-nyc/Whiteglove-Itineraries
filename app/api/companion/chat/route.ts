@@ -33,17 +33,21 @@ import { sameOrigin } from "@/lib/secure-access";
 
 export const dynamic = "force-dynamic";
 
-// A picture in a chat is a photograph, not a document — the three the phone's
-// camera and gallery produce, and nothing else the media store also happens to
-// accept (PDFs, GIFs).
+// A picture in a chat is a photograph — the three the phone's camera and
+// gallery produce.
 const CHAT_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 // A video is a short clip, not any container a phone might produce.
 const CHAT_VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
 // A voice note, recorded in the browser — the two containers MediaRecorder
 // actually produces across Safari and everywhere else.
 const CHAT_AUDIO_TYPES = new Set(["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg"]);
+// A document, so an advisor can hand a client the one file the wallet cannot
+// reach them with — a booking confirmation, a ticket. PDF only: it is the one
+// format that opens the same on every phone, and the media store already
+// accepts it (lib/media.ts ALLOWED_TYPES).
+const CHAT_DOC_TYPES = new Set(["application/pdf"]);
 
-type ChatMediaKind = "image" | "video" | "audio";
+type ChatMediaKind = "image" | "video" | "audio" | "file";
 
 /** What a content type is, its limit, its rate key, and whether the store can
  * take it — one table instead of three parallel if/else ladders. */
@@ -51,11 +55,14 @@ function mediaKindFor(contentType: string): { kind: ChatMediaKind; limit: number
   if (CHAT_IMAGE_TYPES.has(contentType)) return { kind: "image", limit: effectiveMediaLimit(), available: mediaStoreAvailable };
   if (CHAT_VIDEO_TYPES.has(contentType)) return { kind: "video", limit: MAX_CHAT_VIDEO_BYTES, available: videoUploadsAvailable };
   if (CHAT_AUDIO_TYPES.has(contentType)) return { kind: "audio", limit: MAX_CHAT_AUDIO_BYTES, available: audioUploadsAvailable };
+  // A PDF stores like a picture — small enough for Redis, larger once the disk
+  // volume is mounted — so it shares the image store and limit.
+  if (CHAT_DOC_TYPES.has(contentType)) return { kind: "file", limit: effectiveMediaLimit(), available: mediaStoreAvailable };
   return null;
 }
 
-const RATE_LIMIT_FOR: Record<ChatMediaKind, number> = { image: 20, video: 8, audio: 15 };
-const NOUN_FOR: Record<ChatMediaKind, string> = { image: "picture", video: "video", audio: "voice note" };
+const RATE_LIMIT_FOR: Record<ChatMediaKind, number> = { image: 20, video: 8, audio: 15, file: 20 };
+const NOUN_FOR: Record<ChatMediaKind, string> = { image: "picture", video: "video", audio: "voice note", file: "document" };
 
 /**
  * The chat on one trip, between the client on the app link and the advisor.
@@ -227,13 +234,13 @@ export async function POST(request: NextRequest) {
   // could mismatch.
   if (typeof body?.dataUrl === "string" && body.dataUrl) {
     const match = /^data:([\w/+.-]+);base64,([A-Za-z0-9+/=]+)$/.exec(body.dataUrl);
-    if (!match) return NextResponse.json({ error: "Share a photo, a video or a voice note." }, { status: 400 });
+    if (!match) return NextResponse.json({ error: "Share a photo, a video, a voice note or a PDF." }, { status: 400 });
     const contentType = match[1];
     const base64 = match[2];
     const media = mediaKindFor(contentType);
     if (!media) {
       return NextResponse.json(
-        { error: "Use a JPG, PNG or WEBP picture, an MP4, MOV or WEBM video, or a recorded voice note." },
+        { error: "Use a JPG, PNG or WEBP picture, an MP4, MOV or WEBM video, a recorded voice note, or a PDF document." },
         { status: 400 },
       );
     }
