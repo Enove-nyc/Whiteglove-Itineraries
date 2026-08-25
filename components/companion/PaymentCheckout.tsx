@@ -97,6 +97,10 @@ export default function PaymentCheckout({ payment, publishableKey, onDone }: { p
         return;
       }
       setClientSecret(data.clientSecret);
+    } catch {
+      // A network rejection creating the PaymentIntent used to be a silent
+      // no-op — the button twitched and nothing happened. Say so instead.
+      setError("Could not reach the payment service. Please try again.");
     } finally {
       setStarting(false);
     }

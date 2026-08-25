@@ -686,7 +686,9 @@ export default function CompanionApp({
       )}
 
       <div style={{ marginTop: 22, paddingLeft: 20 }}>
-        <div style={kicker("#78716c")}>{trip.days.length === 8 ? "Eight days" : `${trip.days.length} days`}</div>
+        {/* "1 days" read wrong for a one-day trip; the odd hardcoded eight-day
+            special case is gone with it. */}
+        <div style={kicker("#78716c")}>{`${trip.days.length} ${trip.days.length === 1 ? "day" : "days"}`}</div>
       </div>
       <div style={{ display: "flex", gap: 9, overflowX: "auto", padding: "12px 20px 4px", scrollbarWidth: "none" }}>
         {days.map((d, i) => {
@@ -1370,7 +1372,7 @@ export default function CompanionApp({
       {/* header */}
       <div style={{ flexShrink: 0, padding: "18px 18px 10px", display: "flex", alignItems: "center", gap: 10, background: CREAM, borderBottom: "1px solid rgba(38,50,58,.08)" }}>
         {canBack && (
-          <button onClick={back} className="wg-fade" style={{ border: "1px solid rgba(38,50,58,.14)", background: "#ffffff", width: 34, height: 34, borderRadius: 14, cursor: "pointer", fontSize: 15, color: "#57534e", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>
+          <button onClick={back} aria-label="Back" className="wg-fade" style={{ border: "1px solid rgba(38,50,58,.14)", background: "#ffffff", width: 34, height: 34, borderRadius: 14, cursor: "pointer", fontSize: 15, color: "#57534e", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>
         )}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
           <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#a8a29e" }}>{kickers[st.screen]}</div>
@@ -1849,6 +1851,14 @@ function LiveChat({
     if (!el) return;
     nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
   }
+  // Also called when a chat image/video finishes loading and grows — a thread
+  // ending in media used to open scrolled ABOVE the newest item because this
+  // ran on message change, before the media had its real height. Only re-pins
+  // when the reader was already near the bottom.
+  function pinToBottomIfNear() {
+    const el = scrollerRef.current;
+    if (el && nearBottomRef.current) el.scrollTop = el.scrollHeight;
+  }
   useEffect(() => {
     const el = scrollerRef.current;
     if (el && nearBottomRef.current) el.scrollTop = el.scrollHeight;
@@ -1858,7 +1868,9 @@ function LiveChat({
   // land here; the reply carries the whole thread back, so the send is also
   // the refresh. Whatever is staged in `replyingTo` rides along automatically
   // — a caller sends its own payload without having to remember the quote.
-  async function post(payload: Record<string, unknown>) {
+  // Resolves true only when the send was confirmed OK, so callers can hold on
+  // to what they typed or staged and restore it when it did not go through.
+  async function post(payload: Record<string, unknown>): Promise<boolean> {
     setSending(true);
     setNote("");
     // Sending is the one moment the screen must follow the new message down
@@ -1880,12 +1892,15 @@ function LiveChat({
         setMessages(Array.isArray(d.messages) ? d.messages : []);
         setReplyingTo(null);
         setItineraryRef(null);
+        return true;
       } else {
         setNote((d && d.error) || "That didn't send. Try again.");
         void load();
+        return false;
       }
     } catch {
       setNote("That didn't send. Try again.");
+      return false;
     } finally {
       setSending(false);
     }
@@ -1898,8 +1913,10 @@ function LiveChat({
       void saveEdit(editingAt, t);
       return;
     }
+    // Clear optimistically, but put the text back if the send failed — a failed
+    // send used to wipe the message with nothing left to resend.
     setDraft("");
-    void post({ text: t });
+    void post({ text: t }).then((ok) => { if (!ok) setDraft(t); });
   }
 
   /** A message either side can reply to — anything still standing. Staged
@@ -1950,14 +1967,20 @@ function LiveChat({
         body: JSON.stringify({ share: shareId, at, text }),
       });
       const d = await r.json().catch(() => null);
-      if (r.ok && d) setMessages(Array.isArray(d.messages) ? d.messages : []);
-      else setNote((d && d.error) || "That couldn't be changed.");
+      if (r.ok && d) {
+        setMessages(Array.isArray(d.messages) ? d.messages : []);
+        // Leave edit mode only when the change actually saved. It used to run
+        // in `finally`, so a failed edit was discarded and dropped out of
+        // editing — the change is now kept staged for a retry on failure.
+        setEditingAt(null);
+        setDraft("");
+      } else {
+        setNote((d && d.error) || "That couldn't be changed.");
+      }
     } catch {
       setNote("That couldn't be changed.");
     } finally {
       setSending(false);
-      setEditingAt(null);
-      setDraft("");
     }
   }
 
@@ -2019,8 +2042,11 @@ function LiveChat({
       // thread reads "boarding-pass.pdf" rather than an opaque id — a typed
       // caption, if there is one, wins.
       const text = caption.trim() || (kind === "file" ? fileName ?? "Document" : "");
-      if (dataUrl) void post({ dataUrl, text });
-      clearStaged();
+      if (!dataUrl) { setNote(`Could not read that ${noun}.`); return; }
+      // Clear the staged pick only once the send is confirmed. clearStaged()
+      // used to run synchronously while post was still in flight, so a failed
+      // media/voice-note send lost the file and caption with nothing to retry.
+      void post({ dataUrl, text }).then((ok) => { if (ok) clearStaged(); });
     };
     reader.onerror = () => setNote(`Could not read that ${noun}.`);
     reader.readAsDataURL(file);
@@ -2278,7 +2304,15 @@ function LiveChat({
                 <img
                   src={`/api/media?id=${encodeURIComponent(m.mediaId)}`}
                   alt={m.text || "Shared photo"}
+                  // Keyboard-operable, not mouse-only: opens the viewer on
+                  // Enter/Space as well as click.
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setViewerMedia({ kind: "image", mediaId: m.mediaId!, text: m.text })}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setViewerMedia({ kind: "image", mediaId: m.mediaId!, text: m.text }); } }}
+                  // Once the photo has its real height, re-pin to the bottom if
+                  // the reader was already there — the thread opened above it.
+                  onLoad={pinToBottomIfNear}
                   style={{ display: "block", width: "100%", maxWidth: 240, maxHeight: 280, objectFit: "cover", cursor: "pointer" }}
                 />
                 {m.text && <div style={{ padding: "9px 13px", fontSize: 13.5, lineHeight: 1.45 }}>{m.text}</div>}
@@ -2287,7 +2321,7 @@ function LiveChat({
           } else if (m.kind === "video" && m.mediaId) {
             content = (
               <div style={bubble}>
-                <video controls preload="metadata" style={{ display: "block", width: "100%", maxWidth: 240, maxHeight: 280 }}>
+                <video controls preload="metadata" onLoadedMetadata={pinToBottomIfNear} style={{ display: "block", width: "100%", maxWidth: 240, maxHeight: 280 }}>
                   <source src={`/api/media?id=${encodeURIComponent(m.mediaId)}`} />
                 </video>
                 {m.text && <div style={{ padding: "9px 13px", fontSize: 13.5, lineHeight: 1.45 }}>{m.text}</div>}
@@ -2573,7 +2607,7 @@ function LiveChat({
                 style={{ flex: 1, minWidth: 0, border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", borderRadius: 14, padding: "14px 17px", fontFamily: "Inter,sans-serif", fontSize: 16, color: "#26323a", outline: "none" }}
               />
             )}
-            <button onClick={() => sendStaged()} disabled={sending} className="wg-press" style={{ flex: staged.kind === "audio" ? 1 : "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, height: 46, minWidth: 46, borderRadius: 14, fontSize: staged.kind === "audio" ? 14 : 17, fontWeight: staged.kind === "audio" ? 700 : 400, padding: staged.kind === "audio" ? "0 20px" : 0, opacity: sending ? 0.6 : 1 }}>
+            <button onClick={() => sendStaged()} disabled={sending} aria-label="Send" className="wg-press" style={{ flex: staged.kind === "audio" ? 1 : "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, height: 46, minWidth: 46, borderRadius: 14, fontSize: staged.kind === "audio" ? 14 : 17, fontWeight: staged.kind === "audio" ? 700 : 400, padding: staged.kind === "audio" ? "0 20px" : 0, opacity: sending ? 0.6 : 1 }}>
               {staged.kind === "audio" ? "Send voice note" : "↑"}
             </button>
           </div>

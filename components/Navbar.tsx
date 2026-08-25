@@ -512,7 +512,7 @@ export default function Navbar({ brand: brandProp, minimal = false }: { brand?: 
         )}
       </nav>
       <SitePromotions />
-      <MobileBottomBar signedIn={signedIn} />
+      <MobileBottomBar signedIn={signedIn} brand={brand} />
     </>
   );
 }

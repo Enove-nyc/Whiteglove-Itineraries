@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { moneyLabel } from "@/components/PartnerResultsPanel";
 
 /**
  * Rental car prices on White Glove's own page.
@@ -174,12 +175,18 @@ export default function CarPrices({
             <div className="shrink-0 text-right">
               {car.price ? (
                 <p className="text-base font-semibold tabular-nums text-[var(--navy)]">
-                  {car.price.currency} {car.price.amount}
+                  {/* Use the shared currency formatter, as the rest of /book
+                      does — a raw "EUR 340.5" was showing here instead. */}
+                  {moneyLabel(car.price.amount, car.price.currency)}
                 </p>
               ) : null}
               {car.bookHref ? (
                 <a
                   href={car.bookHref}
+                  // The checkout is the rental company's own site — open it in a
+                  // new tab like every other partner hand-off, and with rel set.
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="mt-2 inline-flex min-h-11 items-center rounded-full border border-[var(--navy)] bg-[var(--navy)] px-4 text-xs font-bold uppercase tracking-[0.1em] text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)]"
                 >
                   Continue

@@ -113,8 +113,12 @@ export const NAV_CATEGORIES: readonly NavCategory[] = [
       { label: "Eruvin", href: "/eruvin" },
       { label: "Zmanim", href: "/zmanim" },
       { label: "Kevarim", href: "/tzaddikim" },
+      // /cemeteries is the page that lists the worldwide batei hachaim. A
+      // separate "Batei hachaim worldwide" entry used to point at
+      // /cemeteries/heritage, which has no page of its own (only
+      // /cemeteries/heritage/[slug]) and 404'd. It was a second name for the
+      // page this "Cemeteries" link already opens, so the dead duplicate is gone.
       { label: "Cemeteries", href: "/cemeteries" },
-      { label: "Batei hachaim worldwide", href: "/cemeteries/heritage" },
     ],
   },
   {

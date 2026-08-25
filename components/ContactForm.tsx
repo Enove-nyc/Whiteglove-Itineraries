@@ -65,30 +65,37 @@ export default function ContactForm({
       return;
     }
     setBusy(true);
-    const res = await fetch("/api/contact", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        // The reason travels with the message so the server can put the right
-        // card on the board. It is checked there against the known list rather
-        // than trusted — this is a public endpoint.
-        reason,
-        subject: spec.subject,
-        message: composeMessage(reason, answers, form.message),
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (!res.ok) {
-      setError(data.error || "Could not send your message.");
-      return;
+    // A network failure used to leave the button stuck on "Sending…" with no
+    // error. try/catch/finally reports the failure and always frees the button.
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          // The reason travels with the message so the server can put the right
+          // card on the board. It is checked there against the known list rather
+          // than trusted — this is a public endpoint.
+          reason,
+          subject: spec.subject,
+          message: composeMessage(reason, answers, form.message),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Could not send your message.");
+        return;
+      }
+      setSent(true);
+      setForm({ name: "", email: "", phone: "", message: "" });
+      setAnswers({});
+    } catch {
+      setError("Could not reach the server. Please check your connection and try again.");
+    } finally {
+      setBusy(false);
     }
-    setSent(true);
-    setForm({ name: "", email: "", phone: "", message: "" });
-    setAnswers({});
   }
 
   if (sent) {

@@ -78,19 +78,26 @@ export default function AccountSettings({
     event.preventDefault();
     setSaving(true);
     setMessage(null);
-    const response = await fetch("/api/account/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone }),
-    });
-    const data = await response.json().catch(() => null);
-    setSaving(false);
-    if (!response.ok) {
-      setMessage({ ok: false, text: data?.error || "Could not save your changes." });
-      return;
+    // A network failure used to leave the button stuck on "Saving…" with no
+    // message. try/catch/finally reports it and always frees the button.
+    try {
+      const response = await fetch("/api/account/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setMessage({ ok: false, text: data?.error || "Could not save your changes." });
+        return;
+      }
+      setMessage({ ok: true, text: "Saved" });
+      router.refresh();
+    } catch {
+      setMessage({ ok: false, text: "Could not reach the server. Please check your connection and try again." });
+    } finally {
+      setSaving(false);
     }
-    setMessage({ ok: true, text: "Saved" });
-    router.refresh();
   }
 
   async function removeAccount() {

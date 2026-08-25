@@ -6,6 +6,7 @@ import { Icon, type IconName } from "@/components/icons/Icon";
 import { isCurrent } from "@/lib/navigation";
 import { useOpenSignIn } from "@/components/SignInGate";
 import { signInHref } from "@/lib/use-signed-in";
+import type { SiteBrand } from "@/lib/site-brand-core";
 
 /**
  * The compact bottom bar for phones — Search, Route, Itinerary, Account.
@@ -22,11 +23,14 @@ const ITEMS: Array<{ key: string; icon: IconName; label: string; href: string }>
   { key: "itinerary", icon: "suitcase", label: "Itinerary", href: "/itinerary" },
 ];
 
-export default function MobileBottomBar({ signedIn }: { signedIn: boolean }) {
+export default function MobileBottomBar({ signedIn, brand }: { signedIn: boolean; brand?: SiteBrand }) {
   const pathname = usePathname();
   const openSignIn = useOpenSignIn();
   const items = [
-    ...ITEMS,
+    // The itineraries brand omits Search (the desktop header does too): every
+    // result bounces to the kosher domain, so a "search here" door that always
+    // leads away is dropped rather than kept.
+    ...ITEMS.filter((item) => !(item.key === "search" && brand === "itineraries")),
     {
       key: "account",
       icon: "account" as IconName,

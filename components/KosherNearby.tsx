@@ -77,6 +77,9 @@ export default function KosherNearby({
 }) {
   const point = useMemo(() => coordinatesToPoint(coordinates), [coordinates]);
   const [added, setAdded] = useState<Record<string, boolean>>({});
+  // A failed "Add to my trip" used to be silent; this flags the one that
+  // failed so its button can say so and invite a retry.
+  const [addFailed, setAddFailed] = useState<Record<string, boolean>>({});
   // This card is also used inside the itinerary builder, reachable on the
   // itineraries domain — where /kosher does not exist (middleware.ts sends
   // guide-only paths to the kosher site). A same-tab link there would bounce
@@ -152,12 +155,17 @@ export default function KosherNearby({
                       type="button"
                       onClick={() =>
                         requireSignIn(async () => {
-                          if (await addKosherToTrip(place)) setAdded((current) => ({ ...current, [place.id]: true }));
+                          if (await addKosherToTrip(place)) {
+                            setAdded((current) => ({ ...current, [place.id]: true }));
+                            setAddFailed((current) => ({ ...current, [place.id]: false }));
+                          } else {
+                            setAddFailed((current) => ({ ...current, [place.id]: true }));
+                          }
                         }, "Sign in to add to your trip")
                       }
                       className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2"
                     >
-                      {added[place.id] ? "Added ✓" : "Add to my trip"}
+                      {added[place.id] ? "Added ✓" : addFailed[place.id] ? "Couldn’t add — try again" : "Add to my trip"}
                     </button>
                   )}
                 </div>
