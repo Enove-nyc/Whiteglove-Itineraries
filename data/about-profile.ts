@@ -53,6 +53,29 @@ export const EMPTY_ABOUT_PROFILE: AboutProfile = {
  * It also does not sell the planning service. That is the bottom option and
  * not what this website offers — see AGENTS.md.
  */
+/**
+ * The About page's opening, per brand.
+ *
+ * WHY TWO. This app serves two sites, and the About page was one page: on
+ * whitegloveitineraries.com it opened "White Glove Kosher Travel is built
+ * around the questions that decide a Jewish family's trip. Where the kosher
+ * food is..." — to a visitor who came for an itinerary tool, has quite
+ * possibly never heard of the other site, and is now reading about a business
+ * they did not come to. Substituting the NAME would not have fixed it: the
+ * sentences underneath are about a kosher travel guide, and they are not true
+ * of a planner.
+ *
+ * So the itineraries brand gets its own three paragraphs, saying what that
+ * site is for and what its information is worth. Same voice, same restraint:
+ * no personal facts, nobody's name, nowhere it is based, and no offer to plan
+ * anybody's trip for them.
+ */
+export const ABOUT_INTRO_ITINERARIES: readonly string[] = [
+  "White Glove Itineraries is for the part of a trip that happens after the planning. A day laid out properly — the flight, where everybody sleeps, what happens and when — handed over so the person travelling has it in their pocket rather than in an email they have to find at an airport.",
+  "What it shows is what you put in, worked out rather than guessed: how long the drive between two real places takes, what a border adds to it, what time a day actually ends once the driving is counted. Where a figure comes from somewhere else — a flight's status, a government advisory — it says so, and says when it was last true.",
+  "An adviser builds a trip once and sends it to their client as a link that opens like an app, under their own name. Somebody planning their own trip uses the same thing for themselves.",
+];
+
 export const ABOUT_INTRO: readonly string[] = [
   "White Glove Kosher Travel is built around the questions that decide a Jewish family's trip. Where the kosher food is, and who stands behind it. Which quarter keeps you within walking distance on Shabbos. How long the drive between two places really takes, and what Friday afternoon looks like when the clock is against you.",
   "Answers like those are only worth having if they hold up. So every listing here names its source, nothing is shown as checked unless somebody checked it, and where we cannot yet stand behind something we leave it out — better an honest gap than a phone number that stopped working two years ago.",
@@ -64,3 +87,14 @@ export const ABOUT_INTRO: readonly string[] = [
  * Same voice, same promise, no personal claim.
  */
 export const ABOUT_FALLBACK_INTRO = ABOUT_INTRO[0];
+
+/** The heading above each, so neither page opens with the other's promise. */
+export const ABOUT_HEADING: Record<"kosher" | "itineraries", string> = {
+  kosher: "Travel information you can plan around.",
+  itineraries: "The trip you plan, in your client's pocket.",
+};
+
+/** Which opening a brand gets. */
+export function aboutIntroFor(brand: "kosher" | "itineraries"): readonly string[] {
+  return brand === "itineraries" ? ABOUT_INTRO_ITINERARIES : ABOUT_INTRO;
+}

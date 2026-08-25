@@ -49,7 +49,17 @@ import {
  */
 
 const SOURCES: VacationSources = { attractions, stays: kosherStays, eateries: kosherEateries, areas: kosherAreas };
-const CARDS = cardModels(vacationDestinations, SOURCES);
+/**
+ * The built-in destinations in the shape the directory actually works in.
+ *
+ * data/vacation-destinations.ts ships the plain record; everything downstream
+ * takes the overlaid one, which also carries whether the owner added or edited
+ * the destination and any photos he uploaded. A built-in with no owner edits on
+ * top of it is exactly this — which is what lib/vacation-destinations-view.ts
+ * builds when it reads the same list.
+ */
+const asItem = (d: VacationDestination) => ({ ...d, ownerAdded: false, edited: false, photos: [] });
+const CARDS = cardModels(vacationDestinations.map(asItem), SOURCES);
 /**
  * The same cards as directory entries.
  *
@@ -60,10 +70,10 @@ const CARDS = cardModels(vacationDestinations, SOURCES);
  */
 const DIRECTORY = CARDS.map((card) => ({ kind: "vacation" as const, ...card }));
 
-function destination(slug: string): VacationDestination {
+function destination(slug: string) {
   const found = getVacationDestination(slug);
   assert.ok(found, `no destination ${slug}`);
-  return found;
+  return asItem(found);
 }
 
 describe("the destination list itself", () => {
