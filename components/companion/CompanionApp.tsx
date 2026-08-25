@@ -1439,7 +1439,7 @@ export default function CompanionApp({
 /** A live message — text, a picture, a video, a voice note, or a place. */
 type LiveMsg = {
   from: ChatSide;
-  kind?: "text" | "image" | "video" | "audio" | "location";
+  kind?: "text" | "image" | "video" | "audio" | "file" | "location";
   text: string;
   mediaId?: string;
   lat?: number;
@@ -1603,8 +1603,21 @@ const MAX_CHAT_VIDEO_BYTES = 15 * 1024 * 1024;
 /** The most a voice note may weigh. Matches MAX_CHAT_AUDIO_BYTES server-side. */
 const MAX_CHAT_AUDIO_BYTES = 8 * 1024 * 1024;
 
-/** A picture, video or voice note picked but not yet sent. */
-type StagedMedia = { kind: "image" | "video" | "audio"; file: File | Blob; previewUrl: string; noun: string };
+/** A picture, video, voice note or document picked but not yet sent.
+ *  `fileName` is carried for a document, whose card shows its name. */
+type StagedMedia = { kind: "image" | "video" | "audio" | "file"; file: File | Blob; previewUrl: string; noun: string; fileName?: string };
+
+/** A small document glyph — the media Icon set has no file icon, and a chat
+ *  document should read as a document at a glance, in the composer and in the
+ *  thread. Inline so it carries its own colour from the surrounding text. */
+function DocGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+    </svg>
+  );
+}
 
 /** "Today" / "Yesterday" / a short date — the divider between a run of
  *  messages sent on different days, the way any messaging app breaks up
@@ -1709,6 +1722,7 @@ function LiveChat({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -1971,7 +1985,7 @@ function LiveChat({
       return;
     }
     setNote("");
-    setStaged({ kind: opts.kind, file, previewUrl: URL.createObjectURL(file), noun: opts.noun });
+    setStaged({ kind: opts.kind, file, previewUrl: URL.createObjectURL(file), noun: opts.noun, fileName: file instanceof File ? file.name : undefined });
   }
 
   function clearStaged() {
@@ -1991,11 +2005,15 @@ function LiveChat({
   // route expects, with whatever caption was typed while it sat in preview.
   function sendStaged() {
     if (!staged || sending) return;
-    const { file, noun } = staged;
+    const { file, noun, kind, fileName } = staged;
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = typeof reader.result === "string" ? reader.result : "";
-      if (dataUrl) void post({ dataUrl, text: caption.trim() });
+      // A document rides with its filename as the label, so the card in the
+      // thread reads "boarding-pass.pdf" rather than an opaque id — a typed
+      // caption, if there is one, wins.
+      const text = caption.trim() || (kind === "file" ? fileName ?? "Document" : "");
+      if (dataUrl) void post({ dataUrl, text });
       clearStaged();
     };
     reader.onerror = () => setNote(`Could not read that ${noun}.`);
@@ -2058,6 +2076,14 @@ function LiveChat({
   function pickVideo(file: File | null | undefined) {
     if (!file) return;
     stageFile(file, { accept: /^video\//, kind: "video", noun: "video", max: MAX_CHAT_VIDEO_BYTES, maxLabel: "15 MB" });
+  }
+
+  // A PDF — a booking confirmation or a ticket the advisor hands the client in
+  // the thread. Unlike a photo it is not compressed, so it shares the image
+  // store's limit; a large scan only fits once the disk volume is mounted.
+  function pickDocument(file: File | null | undefined) {
+    if (!file) return;
+    stageFile(file, { accept: /^application\/pdf$/, kind: "file", noun: "document", max: imageLimit, maxLabel: formatBytes(imageLimit) });
   }
 
   // A voice note recorded right here, rather than picked from the gallery —
@@ -2260,6 +2286,21 @@ function LiveChat({
                   <source src={`/api/media?id=${encodeURIComponent(m.mediaId)}`} />
                 </audio>
               </div>
+            );
+          } else if (m.kind === "file" && m.mediaId) {
+            content = (
+              <a
+                href={`/api/media?id=${encodeURIComponent(m.mediaId)}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ ...bubble, display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", textDecoration: "none" }}
+              >
+                <DocGlyph size={20} />
+                <span style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{m.text || "Document"}</span>
+                  <span style={{ fontSize: 11.5, opacity: 0.75 }}>PDF · tap to open</span>
+                </span>
+              </a>
             );
           } else if (m.kind === "location" && ((typeof m.lat === "number" && typeof m.lng === "number") || m.address)) {
             const href =
@@ -2484,10 +2525,18 @@ function LiveChat({
                   <Icon name="microphone" className="h-6 w-6" strokeWidth={1.4} />
                 </span>
               )}
+              {staged.kind === "file" && (
+                <span style={{ color: ICON_BLUE }}>
+                  <DocGlyph size={26} />
+                </span>
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: "#26323a", textTransform: "capitalize" }}>{staged.noun} ready to send</span>
               {staged.kind === "audio" && <audio src={staged.previewUrl} controls style={{ height: 30, width: 200, maxWidth: "100%" }} />}
+              {staged.kind === "file" && staged.fileName && (
+                <span style={{ fontSize: 11.5, color: "#78716c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{staged.fileName}</span>
+              )}
             </div>
             <button onClick={clearStaged} disabled={sending} title="Discard" aria-label="Discard" className="wg-warm" style={{ flex: "none", border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", color: ICON_BLUE, cursor: "pointer", width: 36, height: 36, borderRadius: 12, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="close" className="h-4 w-4" />
@@ -2574,6 +2623,7 @@ function LiveChat({
           <div style={{ display: "flex", gap: 7, alignItems: "flex-end" }}>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={(e) => { void pickImage(e.target.files?.[0]); e.target.value = ""; }} />
             <input ref={videoRef} type="file" accept="video/mp4,video/quicktime,video/webm" style={{ display: "none" }} onChange={(e) => { pickVideo(e.target.files?.[0]); e.target.value = ""; }} />
+            <input ref={docRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => { pickDocument(e.target.files?.[0]); e.target.value = ""; }} />
             {!editingAt && (
               <>
                 {/* One "attach" button for photo, video and location, instead
@@ -2585,7 +2635,7 @@ function LiveChat({
                     onClick={() => setAttachOpen((o) => !o)}
                     disabled={sending || recording}
                     title="Attach"
-                    aria-label="Attach a photo, video or location"
+                    aria-label="Attach a photo, video, document or location"
                     aria-expanded={attachOpen}
                     className="wg-warm"
                     style={{ border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", color: ICON_BLUE, cursor: "pointer", width: 40, height: 46, borderRadius: 14, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending || recording ? 0.6 : 1 }}
@@ -2614,6 +2664,9 @@ function LiveChat({
                       </button>
                       <button role="menuitem" onClick={() => { setAttachOpen(false); videoRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="video" className="h-4 w-4" /> Video
+                      </button>
+                      <button role="menuitem" onClick={() => { setAttachOpen(false); docRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
+                        <DocGlyph /> Document
                       </button>
                       <button role="menuitem" onClick={() => { setAttachOpen(false); setLocationChoiceOpen(true); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="map-pin" className="h-4 w-4" /> Location
