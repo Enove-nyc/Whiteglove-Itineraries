@@ -148,14 +148,24 @@ export default function CaseStudiesForm({
           {studies.map((study, index) => {
             const publicReady = caseStudyIsPublic(study);
             return (
-              <li key={study.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
+              /* STACKED ON A PHONE, SIDE BY SIDE FROM sm.
+                 It was one flex row with flex-wrap, which sounds like it
+                 handles narrow screens and does not: the four actions have a
+                 fixed width and never shrink, so the flex-1 title collapsed to
+                 nothing instead of wrapping. On a phone the rows read "S…" and
+                 "F…" with the DRAFT pill sitting on top of "Move up" and
+                 Delete pushed off the edge under the assistant button.
+                 Measured on the owner's phone, not guessed. */
+              <li key={study.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                 <button
                   type="button"
                   onClick={() => setEditing(fromStudy(study))}
-                  className="min-w-0 flex-1 text-left"
+                  className="w-full min-w-0 text-left sm:flex-1"
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="truncate font-semibold text-[var(--navy)] underline decoration-[var(--gold-light)] decoration-2 underline-offset-4">
+                  {/* WRAPS rather than truncating: a name and its state pill
+                      squeezed onto one line is what produced "S…". */}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-[var(--navy)] underline decoration-[var(--gold-light)] decoration-2 underline-offset-4">
                       {study.attribution || "Untitled study"}
                     </span>
                     <span
@@ -169,29 +179,36 @@ export default function CaseStudiesForm({
                     </span>
                   </span>
                   {study.tripRequest && (
-                    <span className="mt-1 block max-w-2xl truncate text-xs text-stone-500">{study.tripRequest}</span>
+                    // Two lines on a phone, then clipped — a single truncated
+                    // line at this width shows about three words.
+                    <span className="mt-1 block max-w-2xl text-xs leading-5 text-stone-500 line-clamp-2">
+                      {study.tripRequest}
+                    </span>
                   )}
                 </button>
 
-                <div className="flex flex-wrap items-center gap-3">
+                {/* gap-x-4 so two underlined words are not mistaken for one
+                    link, and a real 44px target on touch — the same rule the
+                    public side follows. */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <form action={reorder}>
                     <input type="hidden" name="id" value={study.id} />
                     <input type="hidden" name="direction" value="up" />
-                    <button type="submit" disabled={listBusy || index === 0} className="text-xs font-semibold text-stone-600 underline disabled:opacity-40">
+                    <button type="submit" disabled={listBusy || index === 0} className="inline-flex min-h-11 items-center text-xs font-semibold text-stone-600 underline disabled:opacity-40 sm:min-h-0">
                       Move up
                     </button>
                   </form>
                   <form action={reorder}>
                     <input type="hidden" name="id" value={study.id} />
                     <input type="hidden" name="direction" value="down" />
-                    <button type="submit" disabled={listBusy || index === studies.length - 1} className="text-xs font-semibold text-stone-600 underline disabled:opacity-40">
+                    <button type="submit" disabled={listBusy || index === studies.length - 1} className="inline-flex min-h-11 items-center text-xs font-semibold text-stone-600 underline disabled:opacity-40 sm:min-h-0">
                       Move down
                     </button>
                   </form>
                   {publicReady ? (
                     <form action={unpublish}>
                       <input type="hidden" name="id" value={study.id} />
-                      <button type="submit" disabled={listBusy} className="text-xs font-semibold text-amber-800 underline disabled:opacity-50">
+                      <button type="submit" disabled={listBusy} className="inline-flex min-h-11 items-center text-xs font-semibold text-amber-800 underline disabled:opacity-50 sm:min-h-0">
                         Unpublish
                       </button>
                     </form>
@@ -201,7 +218,7 @@ export default function CaseStudiesForm({
                       <button
                         type="submit"
                         disabled={listBusy || Boolean(caseStudyCompleteness(study))}
-                        className="text-xs font-semibold text-emerald-800 underline disabled:opacity-50"
+                        className="inline-flex min-h-11 items-center text-xs font-semibold text-emerald-800 underline disabled:opacity-50 sm:min-h-0"
                         title={caseStudyCompleteness(study) ?? undefined}
                       >
                         Publish
@@ -210,7 +227,7 @@ export default function CaseStudiesForm({
                   )}
                   <form action={del}>
                     <input type="hidden" name="id" value={study.id} />
-                    <button type="submit" disabled={listBusy} className="text-xs font-semibold text-red-700 underline disabled:opacity-50">
+                    <button type="submit" disabled={listBusy} className="inline-flex min-h-11 items-center text-xs font-semibold text-red-700 underline disabled:opacity-50 sm:min-h-0">
                       Delete
                     </button>
                   </form>
