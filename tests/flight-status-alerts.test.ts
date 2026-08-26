@@ -126,10 +126,16 @@ describe("the live-travel-information wiring keeps the same fences everything el
     assert.ok(ALERTS_ROUTE.indexOf("sameOrigin") < ALERTS_ROUTE.indexOf("Please log in first"));
   });
 
-  it("a client viewer never gets the Dismiss control — only the trip's own side does", () => {
-    const marker = APP.indexOf("[...liveAlerts].reverse()");
-    const block = APP.slice(marker, marker + 1500);
-    assert.match(block, /!isClientViewer && !a\.acknowledged/);
+  it("a client's read state never touches the server — only their own browser does", () => {
+    // Opening the Changes screen marks its alerts read. The owner (an account)
+    // records that on the server; a client on a per-trip code keeps it in their
+    // own browser, so the client app still asks the server to manage nothing.
+    const marker = APP.indexOf('if (st.screen !== "alerts")');
+    assert.ok(marker > 0, "expected the mark-read-on-open effect");
+    const block = APP.slice(marker, marker + 1400);
+    assert.match(block, /!isClientViewer && trip\.tripId/); // only the owner writes to the server
+    assert.match(block, /wg-alerts-read/); // the client's read state, kept in localStorage
+    assert.match(block, /localStorage\.setItem/);
   });
 
   it("still does not add a sixth tab for live alerts — they live on the existing Changes screen", () => {

@@ -6,6 +6,7 @@ import { proposalOptionToItinerary, type Proposal } from "@/data/proposal";
 import type { ManualTripStage } from "@/data/trip-pipeline";
 import type { PaymentRecord, TripBalance } from "@/data/trip-payments";
 import { alertsFromStatusChange, type FlightStatusSnapshot, type TripAlert } from "@/data/trip-alerts";
+import { summarizeItineraryChange, type ItineraryChange } from "@/data/trip-changes";
 import { checkFlightStatus } from "@/lib/flight-status";
 import type { LibraryItem, LibraryPack } from "@/data/library";
 import type { ClientFormResponse, ClientFormTemplate } from "@/data/client-form";
@@ -1267,13 +1268,56 @@ export async function saveAccountItinerary(email: string, itinerary: Itinerary, 
   const data = await getAccountData(normalized);
   const { trips, activeId } = withTrips(data);
   const targetId = id && trips.some((t) => t.id === id) ? id : activeId;
-  const stamped = { ...itinerary, updatedAt: new Date().toISOString() };
-  const next = trips.map((t) =>
-    t.id === targetId
-      ? { ...t, itinerary: stamped, name: stamped.title?.trim() || t.name, updatedAt: new Date().toISOString() }
-      : t,
-  );
+  const target = trips.find((t) => t.id === targetId);
+  const now = new Date().toISOString();
+  const stamped = { ...itinerary, updatedAt: now };
+
+  // A shared trip has someone else watching it — a client on a per-trip code,
+  // family on a group link. When the plan they were handed moves, record it on
+  // the Changes feed so they see WHAT changed, not just a silently different
+  // itinerary the next time they open the app. A trip nobody has been given a
+  // link to has no such audience, so its edits are logged for no one.
+  const change = target?.shareId ? summarizeItineraryChange(target.itinerary, stamped) : null;
+
+  const next = trips.map((t) => {
+    if (t.id !== targetId) return t;
+    const withPlan = { ...t, itinerary: stamped, name: stamped.title?.trim() || t.name, updatedAt: now };
+    if (change) withPlan.alerts = coalesceItineraryChange(t.alerts ?? [], change, now, tripAlertId);
+    return withPlan;
+  });
   return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/** How close two edits must be to read as one sitting. Beyond it, a fresh
+ *  round of changes earns its own entry — and its own unread mark, which
+ *  matters for a client whose read state is kept per alert id in their own
+ *  browser rather than in the server's `acknowledged` flag. */
+const CHANGE_COALESCE_MS = 30 * 60 * 1000;
+
+/**
+ * Fold a fresh plan-change into a trip's alerts. A burst of edits in one
+ * sitting should read as one "Trip updated", not a wall of them — so while the
+ * newest alert is a still-unseen itinerary_update from within the last
+ * half-hour, this refreshes that one in place (newest wording, newest time)
+ * rather than adding another. A later round of edits, or one after the
+ * traveler has read this, starts a fresh entry. Alerts are stored oldest-first,
+ * so the last element is the newest.
+ */
+function coalesceItineraryChange(
+  alerts: TripAlert[],
+  change: ItineraryChange,
+  now: string,
+  idFor: () => string,
+): TripAlert[] {
+  const last = alerts[alerts.length - 1];
+  const recent = last ? Date.parse(now) - Date.parse(last.createdAt) < CHANGE_COALESCE_MS : false;
+  if (last && last.kind === "itinerary_update" && !last.acknowledged && recent) {
+    return [...alerts.slice(0, -1), { ...last, title: change.title, note: change.note, createdAt: now }];
+  }
+  return [
+    ...alerts,
+    { id: idFor(), kind: "itinerary_update", title: change.title, note: change.note, createdAt: now, acknowledged: false },
+  ];
 }
 
 // ---- Proposals ----------------------------------------------------------
@@ -1529,6 +1573,25 @@ export async function acknowledgeAlert(email: string, tripId: string, alertId: s
   const nextTrips = trips.map((t) =>
     t.id === tripId
       ? { ...t, alerts: (t.alerts ?? []).map((a) => (a.id === alertId ? { ...a, acknowledged: true } : a)), updatedAt: new Date().toISOString() }
+      : t,
+  );
+  return Boolean(await writeTrips(normalized, nextTrips, activeId));
+}
+
+/** Mark every alert on this trip read at once — what opening the Changes
+ *  screen does, rather than dismissing them one by one. No-op, and reported as
+ *  success, when they were all already read. */
+export async function acknowledgeAllAlerts(email: string, tripId: string): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return false;
+  if (!(trip.alerts ?? []).some((a) => !a.acknowledged)) return true;
+  const nextTrips = trips.map((t) =>
+    t.id === tripId
+      ? { ...t, alerts: (t.alerts ?? []).map((a) => (a.acknowledged ? a : { ...a, acknowledged: true })), updatedAt: new Date().toISOString() }
       : t,
   );
   return Boolean(await writeTrips(normalized, nextTrips, activeId));
