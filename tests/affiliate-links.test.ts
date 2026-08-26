@@ -208,19 +208,36 @@ describe("the whole journey survives the hand-off", () => {
 describe("a link that names its own partner", () => {
   const MARKER = "761677";
   const kayakConfig = { travelpayouts: {}, stay22: NO_STAY22, marker: MARKER, partners: { flights: "kayak" } as never };
-  const legs = [{ from: "JFK", to: "PRG", date: "2026-08-25" }];
+  /**
+   * DATES THAT DO NOT WALK INTO THE PAST.
+   *
+   * This block was pinned to a departure of 2026-08-25, and on 2026-08-26 all
+   * five of its tests broke at once — not because anything regressed, but
+   * because the site correctly refuses a flight that has already left, so the
+   * request stopped parsing and every `resolved!` in here dereferenced null.
+   * A fixture dated by hand is a test with an expiry date on it.
+   *
+   * A month out, always, and the expectations are computed from the same two
+   * values rather than typed beside them.
+   */
+  const isoInDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  const OUT = isoInDays(30);
+  const BACK = isoInDays(37);
+  /** Aviasales writes a date in its route as DDMM. */
+  const ddmm = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}`;
+  const legs = [{ from: "JFK", to: "PRG", date: OUT }];
   const resolve = (href: string, config = kayakConfig) =>
     resolveLink(readAffiliateRequest(new URLSearchParams(href.slice(href.indexOf("?") + 1)))!, config);
 
   it("lands on the Aviasales results list for the route and dates, with the marker", () => {
     // The failure this replaces: the button opened a second, empty search form
     // and the traveller retyped the trip they had just typed.
-    const href = goHref({ product: "flight", partner: "aviasales", legs, checkOut: "2026-09-01" });
+    const href = goHref({ product: "flight", partner: "aviasales", legs, checkOut: BACK });
     assert.match(href, /partner=aviasales/);
     const resolved = resolve(href);
     const url = new URL(resolved!.url);
     assert.equal(url.hostname, "www.aviasales.com");
-    assert.equal(url.pathname, "/search/JFK2508PRG01091");
+    assert.equal(url.pathname, `/search/JFK${ddmm(OUT)}PRG${ddmm(BACK)}1`);
     assert.equal(url.searchParams.get("marker"), MARKER);
     assert.equal(isAviasalesHref(resolved!.url), true, "the search link is not on the host the fare rows are held to");
     // Recorded as earning, or the owner cannot tell this from a link that works
@@ -241,8 +258,8 @@ describe("a link that names its own partner", () => {
   });
 
   it("keeps the Kayak peer button on Kayak, and priceless", () => {
-    const resolved = resolve(goHref({ product: "flight", partner: "kayak", legs, checkOut: "2026-09-01" }));
-    assert.match(resolved!.url, /^https:\/\/www\.kayak\.com\/flights\/JFK-PRG\/2026-08-25\/2026-09-01/);
+    const resolved = resolve(goHref({ product: "flight", partner: "kayak", legs, checkOut: BACK }));
+    assert.ok(resolved!.url.startsWith(`https://www.kayak.com/flights/JFK-PRG/${OUT}/${BACK}`), resolved!.url);
     assert.equal(resolved!.route.destinationLabel, "Kayak");
     // Even when the owner's own setting is the other partner: a button that
     // says Kayak has to open Kayak.
@@ -277,7 +294,7 @@ describe("a link that names its own partner", () => {
     const hotel = resolve(goHref({ product: "hotel", partner: "aviasales" as never, destination: "Prague" }));
     assert.match(hotel!.url, /^https:\/\/www\.booking\.com\//);
     const car = resolve(
-      goHref({ product: "car", partner: "aviasales" as never, destination: "Prague", checkIn: "2026-08-25", checkOut: "2026-09-01" }),
+      goHref({ product: "car", partner: "aviasales" as never, destination: "Prague", checkIn: OUT, checkOut: BACK }),
     );
     assert.match(car!.url, /^https:\/\/www\.kayak\.com\/cars\//);
   });
