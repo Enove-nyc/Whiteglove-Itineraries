@@ -89,7 +89,7 @@ export default async function ItineraryPage() {
         placement="itinerary-essentials"
       />
 
-      <Footer />
+      <Footer minimal={itineraries} />
     </main>
   );
 }

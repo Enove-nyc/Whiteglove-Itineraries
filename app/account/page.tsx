@@ -225,7 +225,7 @@ export default async function AccountPage() {
           </div>
         </section>
       </section>
-      <Footer />
+      <Footer minimal={siteBrand === "itineraries"} />
     </main>
   );
 }

@@ -60,7 +60,7 @@ export default async function PaymentsPage() {
           />
         )}
       </section>
-      <Footer />
+      <Footer minimal />
     </main>
   );
 }

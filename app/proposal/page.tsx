@@ -60,7 +60,7 @@ export default async function ProposalPage() {
           />
         )}
       </section>
-      <Footer />
+      <Footer minimal />
     </main>
   );
 }

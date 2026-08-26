@@ -47,7 +47,11 @@ const ITINERARIES_LINKS = [
 /** The hostname never changes, so subscribing is a no-op. */
 const NO_CHANGE = () => () => {};
 
-export default function Footer({ brand: brandProp }: { brand?: "kosher" | "itineraries" } = {}) {
+// Footer links that are marketing, not support/legal — dropped in the app's
+// minimal footer so a sealed app surface has no tap-path out to the sales side.
+const FOOTER_MARKETING = new Set(["Pricing", "Advertise", "Sources"]);
+
+export default function Footer({ brand: brandProp, minimal = false }: { brand?: "kosher" | "itineraries"; minimal?: boolean } = {}) {
   /**
    * The same three answers as the navigation, in the same order: what the page
    * passed, what this deployment was BUILT as, then the hostname.
@@ -66,7 +70,10 @@ export default function Footer({ brand: brandProp }: { brand?: "kosher" | "itine
     () => built ?? "kosher",
   );
   const isItineraries = (brandProp ?? built ?? fromHost) === "itineraries";
-  const links = isItineraries ? ITINERARIES_LINKS : KOSHER_LINKS;
+  const allLinks = isItineraries ? ITINERARIES_LINKS : KOSHER_LINKS;
+  // Inside the app, keep only support/legal (Contact, Terms, Privacy) — no
+  // Pricing or other marketing. Contact/Terms/Privacy belong in an app.
+  const links = minimal ? allLinks.filter((link) => !FOOTER_MARKETING.has(link.label)) : allLinks;
 
   return (
     <footer id="contact" className="border-t border-[var(--gold-light)] bg-[var(--navy-deep)] text-[#f7f3eb]">

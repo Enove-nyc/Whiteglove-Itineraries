@@ -34,9 +34,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     next && next.startsWith("/") && !next.startsWith("//") && backPath !== "/login" && backPath !== "/access"
       ? next
       : undefined;
+  // The itineraries app bounces an unauthenticated advisor here, so login is
+  // part of the app's own flow — give it app chrome (no marketing dropdowns,
+  // logo back into the app) so it isn't a one-tap exit to marketing. Kosher is
+  // unaffected. The logo follows where they were headed.
+  const itineraries = (await currentBrand()) === "itineraries";
+  const appHome = backPath.startsWith("/advisor") ? "/advisor" : "/app";
   return (
     <main className="min-h-screen bg-[var(--cream)]">
-      <Navbar />
+      <Navbar minimal={itineraries} homeHref={itineraries ? appHome : undefined} />
       {/*
         THE FORM COMES FIRST, and on a phone that is the whole point.
         Side by side on a wide screen the order does not matter — the pitch is
@@ -82,7 +88,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
         </div>
       </section>
-      <Footer />
+      <Footer minimal={itineraries} />
     </main>
   );
 }

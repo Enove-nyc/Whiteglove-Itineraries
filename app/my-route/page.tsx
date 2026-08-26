@@ -34,7 +34,7 @@ export default async function MyRoutePage() {
     <main className="min-h-screen bg-[var(--cream)]">
       <Navbar minimal={itineraries} />
       <MyRouteDashboard crossings={crossings} today={new Date().toISOString().slice(0, 10)} />
-      <Footer />
+      <Footer minimal={itineraries} />
     </main>
   );
 }

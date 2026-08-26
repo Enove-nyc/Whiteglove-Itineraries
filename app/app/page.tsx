@@ -108,7 +108,7 @@ export default async function AppPage({
             </div>
           </div>
         </section>
-        <Footer />
+        <Footer minimal />
       </main>
     );
   }
@@ -214,7 +214,7 @@ export default async function AppPage({
             </div>
           )}
         </section>
-        <Footer />
+        <Footer minimal />
       </main>
     );
   }
@@ -269,7 +269,7 @@ export default async function AppPage({
           </Link>
         </div>
       </section>
-      <Footer />
+      <Footer minimal />
     </main>
   );
 }
