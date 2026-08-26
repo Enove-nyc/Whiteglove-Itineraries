@@ -28,10 +28,11 @@ export const dynamic = "force-dynamic";
 export default async function MyRoutePage() {
   // Somebody's own saved route — signed-in only, at the owner's word.
   await requireSignedIn("/my-route");
+  const itineraries = (await currentBrand()) === "itineraries";
   const crossings = await allCrossings();
   return (
     <main className="min-h-screen bg-[var(--cream)]">
-      <Navbar />
+      <Navbar minimal={itineraries} />
       <MyRouteDashboard crossings={crossings} today={new Date().toISOString().slice(0, 10)} />
       <Footer />
     </main>
