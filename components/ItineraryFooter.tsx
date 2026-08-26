@@ -5,7 +5,7 @@ import Link from "next/link";
 import GloveMark from "@/components/GloveMark";
 import PromotionBanner from "@/components/PromotionBanner";
 import type { Promotion } from "@/lib/admin-content";
-import { brandForHost } from "@/lib/site-brand-core";
+import { brandForHost, configuredBrand } from "@/lib/site-brand-core";
 
 // The band at the bottom of an itinerary.
 //
@@ -24,7 +24,11 @@ import { brandForHost } from "@/lib/site-brand-core";
 // Activity to an ordinary browser tab, address bar and all, the moment
 // navigation leaves the verified domain).
 export default function ItineraryFooter({ promotion }: { promotion: Promotion | null }) {
-  const [itineraries, setItineraries] = useState(false);
+  // Start from the build's own brand so the itineraries deployment renders the
+  // itineraries button at SSR — no pre-hydration flash of the /cemeteries link
+  // (which would 307 to the kosher domain if tapped in that window). The effect
+  // then corrects to the host, for a build that serves both.
+  const [itineraries, setItineraries] = useState(() => configuredBrand() === "itineraries");
   useEffect(() => {
     if (typeof window !== "undefined") setItineraries(brandForHost(window.location.hostname) === "itineraries");
   }, []);

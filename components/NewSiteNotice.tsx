@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { type BetaNotice, DISMISS_KEY, readDismissed, shouldShow, SHOWN_KEY } from "@/lib/beta-notice";
 import { useFocusTrap } from "@/components/useFocusTrap";
+import { brandForHost, configuredBrand } from "@/lib/site-brand-core";
 
 /**
  * The site notice: one line, and two actions — Verification and Close.
@@ -61,6 +62,17 @@ function readSnapshot(snapshot: string): { dismissedVersion: string | null; show
 export default function NewSiteNotice({ notice }: { notice: BetaNotice }) {
   const path = usePathname() ?? "/";
   const titleId = useId();
+  // "Verification" is a kosher-guide page (/verification), a guide-only path
+  // that 307-redirects to the kosher domain — following it from inside the
+  // installed itineraries app breaks out of it. So the button is kosher-only.
+  // Resolved SSR-correct from the build's brand, corrected to the host after
+  // mount, the same way the footer and header settle theirs.
+  const built = configuredBrand();
+  const isItineraries = useSyncExternalStore(
+    () => () => {},
+    () => brandForHost(window.location.hostname) === "itineraries",
+    () => built === "itineraries",
+  );
   // Pressed, this visit. Separate from what is stored, so it goes at once
   // rather than waiting for a storage event that never comes in this tab.
   const [answered, setAnswered] = useState(false);
@@ -165,16 +177,18 @@ export default function NewSiteNotice({ notice }: { notice: BetaNotice }) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link
-            href="/verification"
-            // Following the link answers the notice; this component stays
-            // mounted across the navigation, so without this the dialog would
-            // still be open over the verification page it just linked to.
-            onClick={close}
-            className="inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-4 text-xs font-bold uppercase tracking-[0.1em] transition hover:bg-[var(--gold)] hover:text-white"
-          >
-            Verification
-          </Link>
+          {!isItineraries && (
+            <Link
+              href="/verification"
+              // Following the link answers the notice; this component stays
+              // mounted across the navigation, so without this the dialog would
+              // still be open over the verification page it just linked to.
+              onClick={close}
+              className="inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-4 text-xs font-bold uppercase tracking-[0.1em] transition hover:bg-[var(--gold)] hover:text-white"
+            >
+              Verification
+            </Link>
+          )}
           <button
             type="button"
             onClick={close}
