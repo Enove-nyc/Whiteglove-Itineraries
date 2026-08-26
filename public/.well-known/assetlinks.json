@@ -10,5 +10,16 @@
         "26:B4:E4:F9:93:F0:97:C8:30:F9:0B:6C:2A:19:E3:68:06:B9:6E:76:D4:92:F9:F0:87:22:19:7D:EB:DF:D5:5E"
       ]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.whitegloveadvisor.app",
+      "sha256_cert_fingerprints": [
+        "64:D3:76:B8:1C:AA:BF:16:CD:E4:82:2D:95:52:7E:2C:9B:D0:35:93:E8:85:9E:7B:CC:27:81:A2:EA:AC:2C:AB",
+        "54:3E:50:41:6B:1A:31:A8:D8:7B:86:BE:03:D1:0C:3F:0D:F9:BF:D4:FE:F1:60:9D:10:B2:8F:AD:63:41:7B:36"
+      ]
+    }
   }
 ]
