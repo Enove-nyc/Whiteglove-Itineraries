@@ -15,7 +15,7 @@ import {
   edgeSiteIsLocked,
 } from "@/lib/edge-lock";
 import { MIGRATION_LISTS, movedTo } from "@/lib/route-migration";
-import { BRAND_ORIGIN, brandFromRequestHeaders } from "@/lib/site-brand-core";
+import { BRAND_ORIGIN, brandFromRequestHeaders, configuredBrand } from "@/lib/site-brand-core";
 import { isAndroidAppHeaders } from "@/lib/android-app";
 
 /**
@@ -290,6 +290,43 @@ export async function middleware(request: NextRequest) {
   // guide prefixes, and the admin's own links out to them must reach the admin
   // routing below, not get bounced to the kosher site.
   if (!onAdminHost && isGuidePath(pathname) && brandFromRequestHeaders(request.headers) === "itineraries") {
+    return NextResponse.redirect(new URL(pathname + request.nextUrl.search, BRAND_ORIGIN.kosher), 307);
+  }
+
+  /**
+   * THERE IS ONE ADMIN, AND IT IS NOT THIS DEPLOYMENT'S.
+   *
+   * The owner's decision (AGENTS.md, "One admin dashboard runs both sides") and
+   * a live hole, in that order.
+   *
+   * THE HOLE. This service and the kosher one read the SAME private store —
+   * confirmed by the owner: UPSTASH_REDIS_REST_URL is set to the same value on
+   * both. So this admin was a second, full-strength door onto exactly the same
+   * data. And this deployment carries no second factor at all: no
+   * lib/admin-2fa-store, no two-factor route, no code field on the sign-in
+   * form. The kosher admin asks for six digits; this one asked for the password
+   * and nothing else. Anybody holding that password could walk past the
+   * authenticator entirely by coming here instead.
+   *
+   * Worse still if WHITE_GLOVE_SESSION_SECRET matches across the two services,
+   * which duplication makes likely: accessToken("admin") is a plain HMAC of the
+   * scope, so the cookie minted here is the same cookie the other site accepts.
+   * Not merely a second door onto the same data — the same key.
+   *
+   * BEFORE THE ADMIN-HOST BRANCH AND BEFORE THE GATE, deliberately, so nothing
+   * behind either is reachable on the way past. It covers every hostname this
+   * service answers on — the custom domains, the Railway host, and an
+   * ADMIN_HOST subdomain if one is ever pointed here.
+   *
+   * A redirect rather than a 404: the destination is the admin he actually
+   * uses, on the same data, so a bookmark or a mistyped host still lands
+   * somewhere useful instead of looking broken.
+   *
+   * GUARDED ON THE BUILD'S OWN BRAND, not on the request's. The kosher
+   * deployment leaves NEXT_PUBLIC_SITE_BRAND unset, so configuredBrand() is
+   * null there and its admin is untouched by this file.
+   */
+  if (configuredBrand() === "itineraries" && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
     return NextResponse.redirect(new URL(pathname + request.nextUrl.search, BRAND_ORIGIN.kosher), 307);
   }
 
