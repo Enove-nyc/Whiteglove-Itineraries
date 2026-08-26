@@ -47,7 +47,9 @@ type FormState = {
 };
 
 const field =
-  "mt-1 w-full rounded-md border border-[var(--gold-light)] bg-white px-3 py-2 text-sm text-[var(--navy)] outline-none focus:border-[var(--gold)]";
+  // min-w-0 so a native date input can shrink inside a two-up grid on a narrow
+  // phone instead of forcing the row wider than the screen.
+  "mt-1 w-full min-w-0 rounded-md border border-[var(--gold-light)] bg-white px-3 py-2 text-sm text-[var(--navy)] outline-none focus:border-[var(--gold)]";
 const label = "text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500";
 
 function blankLeg(key: string): LegDraft {
