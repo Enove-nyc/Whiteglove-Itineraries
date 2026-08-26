@@ -1694,6 +1694,10 @@ function LiveChat({
   // shown in place of the attach menu once Location is tapped, since a
   // device fix alone can never be where the hotel or the restaurant is.
   const [locationChoiceOpen, setLocationChoiceOpen] = useState(false);
+  // A place typed by hand — anywhere, not only where the phone is or a stop on
+  // this trip. Shared as an address, the same as a trip stop, so the other side
+  // opens it in Maps.
+  const [locSearch, setLocSearch] = useState("");
   // The `at` of a message being changed — while set, the composer holds that
   // message's words rather than a new message, and Send saves the change
   // instead of posting another one.
@@ -2746,6 +2750,22 @@ function LiveChat({
                         boxShadow: "0 10px 26px rgba(23,45,82,.16)",
                       }}
                     >
+                      {/* Any place, typed by hand — a hotel, a meeting point, an
+                          address that is neither where the phone is nor a stop
+                          already on the trip. */}
+                      <form
+                        onSubmit={(e) => { e.preventDefault(); const v = locSearch.trim(); if (!v) return; setLocationChoiceOpen(false); setLocSearch(""); setStagedLocation({ address: v, label: v }); }}
+                        style={{ display: "flex", gap: 6, padding: "10px 12px", borderBottom: "1px solid rgba(38,50,58,.08)" }}
+                      >
+                        <input
+                          value={locSearch}
+                          onChange={(e) => setLocSearch(e.target.value)}
+                          placeholder="Search a place or address"
+                          aria-label="Search a place or address to share"
+                          style={{ flex: 1, minWidth: 0, border: "1px solid rgba(38,50,58,.16)", borderRadius: 10, padding: "8px 10px", fontSize: 16, fontFamily: "Inter,sans-serif", color: "#26323a", outline: "none" }}
+                        />
+                        <button type="submit" disabled={!locSearch.trim()} className="wg-press" style={{ flex: "none", border: 0, background: GOLD, color: CREAM, borderRadius: 10, padding: "0 13px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", opacity: locSearch.trim() ? 1 : 0.5 }}>Share</button>
+                      </form>
                       <button role="menuitem" onClick={() => { setLocationChoiceOpen(false); pickLocation(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, borderBottom: places.length ? "1px solid rgba(38,50,58,.08)" : 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="map-pin" className="h-4 w-4" /> My current location
                       </button>
