@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { withReturnPath } from "@/lib/return-path";
 
 /**
  * Signs the user out after a period of inactivity. Any of the listed user
@@ -32,7 +33,12 @@ export default function IdleLogout({
     async function logout() {
       await fetch(endpoint, { method: "POST" }).catch(() => undefined);
       if (cancelled) return;
-      if (redirectTo) router.push(redirectTo);
+      if (redirectTo) {
+        // The page they were on, so signing back in returns them to it rather
+        // than to the admin front page. See lib/return-path.ts.
+        const here = typeof window === "undefined" ? null : window.location.pathname + window.location.search;
+        router.push(withReturnPath(redirectTo, here));
+      }
       router.refresh();
     }
 
