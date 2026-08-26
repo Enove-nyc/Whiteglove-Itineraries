@@ -59,7 +59,10 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 4,
+      // TWELVE HOURS, up from four. Four meant signing in three times over a
+      // working day even without ever going idle. The idle timeout in
+      // app/admin/layout.tsx is what actually protects an abandoned session.
+      maxAge: 60 * 60 * 12,
       path: "/",
     });
     return response;

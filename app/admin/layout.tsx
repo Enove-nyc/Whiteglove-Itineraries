@@ -58,7 +58,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           refusing itself is done by the gate inside each area's folder — this
           only decides what to draw. */}
       <AdminShell areas={areas}>{children}</AdminShell>
-      <IdleLogout minutes={20} endpoint="/api/admin/logout" redirectTo={loginHref} />
+      {/* TWO HOURS, up from twenty minutes.
+          Twenty was the single biggest reason the owner was signing in "too
+          many times a day": step away to answer the phone, come back, sign in
+          again. It is still the control that protects a session left open on a
+          machine he walked away from, which is the realistic risk here — that
+          does not need to fire in twenty minutes to work. The session cookie
+          caps it at twelve hours regardless (app/api/access/route.ts). */}
+      <IdleLogout minutes={120} endpoint="/api/admin/logout" redirectTo={loginHref} />
     </>
   );
 }
