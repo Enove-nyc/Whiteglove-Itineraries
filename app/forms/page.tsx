@@ -60,7 +60,7 @@ export default async function FormsPage() {
           />
         )}
       </section>
-      <Footer />
+      <Footer minimal />
     </main>
   );
 }

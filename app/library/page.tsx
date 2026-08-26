@@ -60,7 +60,7 @@ export default async function LibraryPage() {
           />
         )}
       </section>
-      <Footer />
+      <Footer minimal />
     </main>
   );
 }

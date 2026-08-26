@@ -69,7 +69,7 @@ export default async function PipelinePage() {
           />
         )}
       </section>
-      <Footer />
+      <Footer minimal />
     </main>
   );
 }

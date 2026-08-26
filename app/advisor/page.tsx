@@ -5,7 +5,7 @@ import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
 import { advisorPlacesFor } from "@/components/AccountMenu";
 import { requireSignedIn } from "@/lib/require-signed-in";
-import { accountCookieName, getAccountData, getCurrentAccountData, withTrips } from "@/lib/account-store";
+import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients, mayViewPipelineAnalytics } from "@/lib/account-limits";
 import { readChat, readMarkers } from "@/lib/companion-chat-store";
@@ -65,14 +65,18 @@ export default async function AdvisorDashboardPage() {
             ]}
           />
         </section>
-        <Footer />
+        <Footer minimal />
       </main>
     );
   }
 
   const showAnalytics = mayViewPipelineAnalytics(plan);
-  const data = await getAccountData(account.email);
-  const { trips } = withTrips(data);
+  // The account blob was already loaded by getCurrentAccountData above — reuse
+  // it. And read the REAL saved trips, not withTrips(), which synthesizes a
+  // blank "My trip" for an account that has none: that placeholder would show
+  // a new advisor a phantom "Active trips: 1" and never let the first-run state
+  // below appear.
+  const trips = account.data.trips?.filter((t) => t && t.id) ?? [];
   const today = new Date().toISOString().slice(0, 10);
 
   const rows = await Promise.all(
@@ -229,7 +233,7 @@ export default async function AdvisorDashboardPage() {
           </Link>
         </div>
       </section>
-      <Footer />
+      <Footer minimal />
     </main>
   );
 }
