@@ -81,6 +81,72 @@ type State = {
 
 const GOLD = "#b78a4a";
 const CREAM = "#f7f5f0";
+// Your own messages sit in a navy bubble (the messenger look), the other side's
+// in white — gold stays for accents and the read tick.
+const NAVY = "#14213d";
+
+/** A message time, "8:24 AM" — shown small under each bubble, like a messenger. */
+function msgTime(at: string): string {
+  const d = new Date(at);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/**
+ * A voice note played the way a messenger plays one — a gold play/pause button
+ * and a progress bar — rather than the browser's default audio strip. Play and
+ * pause are drawn as CSS shapes so it stays two-colour with no icon set to
+ * depend on. The MediaRecorder webm a phone produces often reports its duration
+ * as Infinity until it is played, so the bar fills only once a finite duration
+ * is known, and the readout leans on elapsed time, which is always reliable.
+ */
+function ChatVoiceNote({ mediaId, mine }: { mediaId: string; mine: boolean }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [cur, setCur] = useState(0);
+  const [dur, setDur] = useState(0);
+  const fmt = (s: number) => {
+    if (!Number.isFinite(s) || s < 0) return "0:00";
+    return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  };
+  const track = mine ? "rgba(255,255,255,.28)" : "rgba(20,33,61,.16)";
+  const fill = mine ? CREAM : NAVY;
+  const pct = Number.isFinite(dur) && dur > 0 ? Math.min(100, (cur / dur) * 100) : 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 190, padding: "2px 0" }}>
+      <button
+        type="button"
+        onClick={() => { const a = ref.current; if (!a) return; if (a.paused) void a.play(); else a.pause(); }}
+        aria-label={playing ? "Pause voice note" : "Play voice note"}
+        style={{ flex: "none", width: 34, height: 34, borderRadius: "50%", border: 0, cursor: "pointer", background: GOLD, display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
+        {playing ? (
+          <span style={{ display: "flex", gap: 3 }}>
+            <span style={{ width: 3.5, height: 13, background: NAVY, borderRadius: 1 }} />
+            <span style={{ width: 3.5, height: 13, background: NAVY, borderRadius: 1 }} />
+          </span>
+        ) : (
+          <span style={{ width: 0, height: 0, borderTop: "7px solid transparent", borderBottom: "7px solid transparent", borderLeft: `11px solid ${NAVY}`, marginLeft: 2 }} />
+        )}
+      </button>
+      <div style={{ flex: 1, minWidth: 50, height: 4, borderRadius: 2, background: track, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: fill, transition: "width .1s linear" }} />
+      </div>
+      <span style={{ fontSize: 11, opacity: 0.8, minWidth: 30, textAlign: "right" }}>{fmt(playing || cur ? cur : dur)}</span>
+      <audio
+        ref={ref}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => { setPlaying(false); setCur(0); }}
+        onTimeUpdate={(e) => setCur(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDur(d); }}
+        style={{ display: "none" }}
+      >
+        <source src={`/api/media?id=${encodeURIComponent(mediaId)}`} />
+      </audio>
+    </div>
+  );
+}
 
 /** A decorated timeline item — the palette folded in, ready to render. */
 type DecItem = CompanionItem & {
@@ -2288,7 +2354,7 @@ function LiveChat({
           const bubble: CSSProperties = {
             maxWidth: "80%",
             alignSelf: mine ? "flex-end" : "flex-start",
-            background: mine ? GOLD : "#ffffff",
+            background: mine ? NAVY : "#ffffff",
             color: mine ? CREAM : "#26323a",
             borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
             boxShadow: "0 1px 2px rgba(23,45,82,.08)",
@@ -2333,13 +2399,8 @@ function LiveChat({
             );
           } else if (m.kind === "audio" && m.mediaId) {
             content = (
-              <div style={{ ...bubble, padding: "10px 13px", display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ fontSize: 12.5, opacity: 0.85, display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <Icon name="microphone" className="h-[13px] w-[13px]" /> Voice note
-                </span>
-                <audio controls preload="metadata" style={{ width: 220, maxWidth: "100%", height: 32 }}>
-                  <source src={`/api/media?id=${encodeURIComponent(m.mediaId)}`} />
-                </audio>
+              <div style={{ ...bubble, padding: "8px 12px" }}>
+                <ChatVoiceNote mediaId={m.mediaId} mine={mine} />
               </div>
             );
           } else if (m.kind === "file" && m.mediaId) {
@@ -2534,11 +2595,17 @@ function LiveChat({
                   </div>
                 )}
               </div>
-              {/* A sent/read tick once, under the last message I sent — not
-                  repeated down the thread. */}
-              {mine && m.at === lastMineAt && (
-                <span style={{ display: "inline-flex", alignItems: "center", padding: "0 4px", color: seenRead ? GOLD : "#a8a29e" }}>
-                  <Icon name={seenRead ? "check-check" : "check"} className="h-3 w-3" />
+              {/* Time under every message, the way a messenger shows it — with
+                  the sent/read tick on the last one I sent (gold once it's been
+                  read), not repeated down the thread. */}
+              {!m.deletedAt && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "1px 5px 0", fontSize: 10.5, color: "#a8a29e" }}>
+                  {msgTime(m.at)}
+                  {mine && m.at === lastMineAt && (
+                    <span style={{ display: "inline-flex", color: seenRead ? GOLD : "#a8a29e" }}>
+                      <Icon name={seenRead ? "check-check" : "check"} className="h-3 w-3" />
+                    </span>
+                  )}
                 </span>
               )}
               </div>
