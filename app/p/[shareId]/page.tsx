@@ -32,7 +32,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ share
         <Navbar />
         <section className="mx-auto max-w-2xl px-5 py-20 text-center sm:px-8">
           <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">This proposal isn&apos;t available</h1>
-          <p className="mt-4 text-stone-600">The link may have been turned off, or the proposal hasn&apos;t been sent yet. Ask your travel adviser for a fresh link.</p>
+          <p className="mt-4 text-stone-600">The link may have been turned off, or the proposal hasn&apos;t been sent yet. Ask your travel advisor for a fresh link.</p>
           <Link href="/" className="mt-8 inline-block border border-[var(--navy)] bg-[var(--navy)] px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-white">Back to White Glove</Link>
         </section>
         <Footer />
@@ -56,7 +56,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ share
             {tripName || "Your trip"}
           </h1>
           <p className="mt-2 text-sm text-stone-600">
-            Prepared by {advisor || ownerName || "your travel adviser"}
+            Prepared by {advisor || ownerName || "your travel advisor"}
             {proposal.expiresAt && !expired ? ` · Open through ${proposal.expiresAt}` : ""}
           </p>
           <p className="mt-3 inline-block rounded-full border border-[var(--gold-light)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)]">

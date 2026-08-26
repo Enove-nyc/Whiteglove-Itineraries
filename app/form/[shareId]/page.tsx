@@ -13,7 +13,7 @@ export async function generateMetadata() {
   const itineraries = (await currentBrand()) === "itineraries";
   return pageMetadata({
     title: itineraries ? "Your travel form | White Glove Itineraries" : "Your travel form | White Glove Kosher Travel",
-    description: "A short pre-trip form your adviser asked for.",
+    description: "A short pre-trip form your advisor asked for.",
     path: "/form",
     noIndex: true,
   });
@@ -31,7 +31,7 @@ export default async function ClientFormPage({ params }: { params: Promise<{ sha
         <Navbar />
         <section className="mx-auto max-w-2xl px-5 py-20 text-center sm:px-8">
           <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">This form isn&apos;t available</h1>
-          <p className="mt-4 text-stone-600">The link may have been turned off. Ask your travel adviser for a fresh one.</p>
+          <p className="mt-4 text-stone-600">The link may have been turned off. Ask your travel advisor for a fresh one.</p>
           <Link href="/" className="mt-8 inline-block border border-[var(--navy)] bg-[var(--navy)] px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-white">Back to White Glove</Link>
         </section>
         <Footer />
@@ -50,7 +50,7 @@ export default async function ClientFormPage({ params }: { params: Promise<{ sha
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)] sm:text-3xl">
             {tripName || "Your trip"}
           </h1>
-          <p className="mt-2 text-sm text-stone-600">Requested by {advisor || "your travel adviser"}</p>
+          <p className="mt-2 text-sm text-stone-600">Requested by {advisor || "your travel advisor"}</p>
           {template.note && <p className="mt-3 text-sm text-stone-700">{template.note}</p>}
 
           <ClientFormFill shareId={shareId} template={template} />

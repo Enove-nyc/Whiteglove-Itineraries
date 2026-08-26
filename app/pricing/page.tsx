@@ -114,8 +114,8 @@ export default async function PricingPage() {
         <div className="mx-auto max-w-5xl">
           <h2 className="text-center text-2xl font-bold text-[var(--navy)]">Which one you need</h2>
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-6 text-stone-600">
-            One trip for yourself, or the tools to run clients. Everything on the site — the planner, the map, the
-            guides, sharing a trip with anybody you like — is the same on every plan.
+            One trip for yourself, or the tools to run clients. Everything on the site — the planner and
+            sharing a trip with anybody you like — is the same on every plan.
           </p>
 
           <div className="mt-10 grid gap-6 lg:grid-cols-3">

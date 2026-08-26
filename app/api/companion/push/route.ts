@@ -14,10 +14,37 @@ export const dynamic = "force-dynamic";
 // account and no sign-in here: the per-trip share token IS the credential,
 // the same as every other client-side action on a shared trip.
 
+// The hosts real browsers hand out push endpoints on. The server later POSTs
+// to whatever endpoint we store (web-push), so an endpoint is a URL we will
+// fetch — an attacker who could set it to an internal address would turn this
+// into a blind SSRF from the server's network. Pin it to https on a known
+// push service instead; a browser whose endpoint is elsewhere simply does not
+// register for push, which is far cheaper than the hole.
+const PUSH_HOSTS = [
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "push.services.mozilla.com",
+  "notify.windows.com",
+  "push.apple.com",
+];
+
+function isAllowedPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:") return false;
+  const host = url.hostname.toLowerCase();
+  return PUSH_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
 function isValidSubscription(v: unknown): v is { endpoint: string; keys: { p256dh: string; auth: string } } {
   if (!v || typeof v !== "object") return false;
   const s = v as { endpoint?: unknown; keys?: unknown };
   if (typeof s.endpoint !== "string" || !s.endpoint.trim()) return false;
+  if (!isAllowedPushEndpoint(s.endpoint)) return false;
   const keys = s.keys as { p256dh?: unknown; auth?: unknown } | undefined;
   return Boolean(keys && typeof keys.p256dh === "string" && typeof keys.auth === "string");
 }

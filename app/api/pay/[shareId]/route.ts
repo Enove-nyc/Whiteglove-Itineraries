@@ -83,6 +83,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const requested = typeof body?.amountCents === "number" && body.amountCents > 0 ? Math.round(body.amountCents) : remainingCents;
   const amountCents = Math.min(requested, remainingCents);
 
+  // Collapse a double-submit into one PaymentIntent. Both `amountCents` are
+  // clamped to `remaining` at read time, so two requests racing would each
+  // mint a full-remaining intent and, once both confirmed, settle past the
+  // balance. A short time-bucketed key means two clicks in the same window
+  // share one intent, while a genuine later payment — a retry, a second
+  // installment — falls in a new window and proceeds normally.
+  const idempotencyKey = `pay:${shareId}:${payKey}:${body?.scheduleItemId ?? "open"}:${amountCents}:${Math.floor(Date.now() / 10000)}`;
+
   const result = await createDestinationPaymentIntent({
     amountCents,
     currency: balance.currency,
@@ -91,6 +99,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     tripId: resolved.tripId,
     unitKey: payKey,
     scheduleItemId: body?.scheduleItemId,
+    idempotencyKey,
   });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 502 });
   return NextResponse.json({ clientSecret: result.clientSecret });

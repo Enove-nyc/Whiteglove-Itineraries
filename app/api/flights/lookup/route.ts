@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
 import { parseLocal, type LookupFlight } from "@/lib/flight-lookup";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,12 @@ export async function POST(request: Request) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ available: false, reason: "Choose the flight date first." });
   }
+
+  // Each valid lookup is a billable call to RapidAPI, and the route is public
+  // with no auth, so cap it by who is asking — generously, since one itinerary
+  // can hold several flights, but not unbounded.
+  const gate = await rateLimit(`flight-lookup:${requesterKey(request.headers)}`, { limit: 30, windowSeconds: 60 * 60 });
+  if (!gate.ok) return NextResponse.json({ available: false, reason: tooManyMessage(gate.retryAfter) }, { status: 429, headers: { "Retry-After": String(gate.retryAfter) } });
 
   try {
     const result = await lookupAeroDataBox(flightNumber, date);

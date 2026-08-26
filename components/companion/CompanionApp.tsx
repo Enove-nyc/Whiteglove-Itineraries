@@ -614,7 +614,7 @@ export default function CompanionApp({
   tabDefs.push(["wallet", "Wallet"], ["profile", "You"]);
   const tabs = tabDefs.map(([id, label]) => {
     const on = st.screen === id || (id === "home" && (st.screen === "day" || st.screen === "activity" || st.screen === "alerts"));
-    return { id, label, bg: on ? GOLD : "transparent", fg: on ? CREAM : "#57534e", badge: id === "messages" && unread && st.screen !== "messages" };
+    return { id, label, on, bg: on ? GOLD : "transparent", fg: on ? CREAM : "#57534e", badge: id === "messages" && unread && st.screen !== "messages" };
   });
 
   const quickReplies = (
@@ -1308,13 +1308,13 @@ export default function CompanionApp({
         </div>
       )}
       <div style={{ padding: 20, borderRadius: 20, background: "#f7eee0", border: "1px solid rgba(183,138,74,.25)", display: "flex", flexDirection: "column", gap: 11 }}>
-        {/* A client on a code from their adviser has no account — "signed in"
+        {/* A client on a code from their advisor has no account — "signed in"
             would simply be false for them, so this reads differently for the
             two people who can land on this screen. */}
         <span style={kicker("#765321")}>{liveChat?.side === "client" ? "Your trip" : "Signed in as"}</span>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: "#5c4322", textWrap: "pretty" }}>
           {liveChat?.side === "client"
-            ? "You opened this with the code your adviser sent you — no account needed."
+            ? "You opened this with the code your advisor sent you — no account needed."
             : st.role === "advisor"
               ? "The advisor side: the trips you are holding today, and the one that needs a decision from you."
               : "The trip is in your name. Two others can look at it; nobody but you can change it."}
@@ -1388,9 +1388,9 @@ export default function CompanionApp({
       {/* tabs */}
       <div style={{ flexShrink: 0, padding: "9px 12px", background: "#ece8df", borderTop: "1px solid rgba(38,50,58,.08)", display: "flex", gap: 5 }}>
         {tabs.map((t) => (
-          <button key={t.id} onClick={() => go(t.id)} style={{ position: "relative", flex: 1, border: 0, cursor: "pointer", background: t.bg, color: t.fg, font: `400 13px/1 ${serif}`, padding: "12px 6px", borderRadius: 14 }}>
+          <button key={t.id} onClick={() => go(t.id)} aria-current={t.on ? "page" : undefined} aria-label={t.badge ? `${t.label} (unread messages)` : t.label} style={{ position: "relative", flex: 1, border: 0, cursor: "pointer", background: t.bg, color: t.fg, font: `400 13px/1 ${serif}`, padding: "12px 6px", borderRadius: 14 }}>
             {t.label}
-            {t.badge && <span style={{ position: "absolute", top: 5, right: "22%", width: 8, height: 8, borderRadius: 14, background: GOLD, border: "2px solid #ece8df" }} />}
+            {t.badge && <span aria-hidden="true" style={{ position: "absolute", top: 5, right: "22%", width: 8, height: 8, borderRadius: 14, background: GOLD, border: "2px solid #ece8df" }} />}
           </button>
         ))}
       </div>

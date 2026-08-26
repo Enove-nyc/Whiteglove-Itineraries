@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sameOrigin } from "@/lib/secure-access";
+import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
 import { searchSite } from "@/lib/site-search";
 import { citedSources, stripFalseAttribution, type AssistantSource } from "@/lib/assistant-disclosure";
 import { NOT_ON_THE_SITE, saysNotOnTheSite, siteAssistantSystemFor } from "@/lib/site-assistant";
@@ -39,6 +40,11 @@ export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) {
     return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   }
+  // sameOrigin passes an Origin-less caller (a script, not a browser), and the
+  // route hands the question to a paid model — so cap it by who is asking, or
+  // that key sits inert against a scripted flood of the AI budget.
+  const gate = await rateLimit(`assistant-site:${requesterKey(request.headers)}`, { limit: 20, windowSeconds: 60 * 60 });
+  if (!gate.ok) return NextResponse.json({ error: tooManyMessage(gate.retryAfter) }, { status: 429, headers: { "Retry-After": String(gate.retryAfter) } });
   const system = siteAssistantSystemFor(brandFromRequestHeaders(request.headers));
 
   const body = (await request.json().catch(() => null)) as { question?: string } | null;

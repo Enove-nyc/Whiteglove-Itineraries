@@ -56,7 +56,7 @@ export default function ClientFormFill({ shareId, template }: { shareId: string;
     return (
       <div className="mt-6 rounded-2xl border border-emerald-300 bg-emerald-50 p-6 text-emerald-900">
         <p className="font-semibold">Sent — thank you.</p>
-        <p className="mt-1 text-sm">Your adviser has what they need. You can close this page.</p>
+        <p className="mt-1 text-sm">Your advisor has what they need. You can close this page.</p>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export default function ClientFormFill({ shareId, template }: { shareId: string;
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="mt-1 w-full rounded-lg border border-[var(--gold-light)] px-3 py-2.5 text-sm"
-          placeholder="So your adviser knows whose answers these are"
+          placeholder="So your advisor knows whose answers these are"
         />
       </div>
 
@@ -81,7 +81,7 @@ export default function ClientFormFill({ shareId, template }: { shareId: string;
           <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-[var(--gold-ink)]" htmlFor={`f-${field.id}`}>
             {fieldLabel(field)}
             {field.required && <span className="text-red-600">*</span>}
-            {fieldIsSensitive(field) && <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.06em] text-stone-500">private — seen only by your adviser</span>}
+            {fieldIsSensitive(field) && <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.06em] text-stone-500">private — seen only by your advisor</span>}
           </label>
           <input
             id={`f-${field.id}`}

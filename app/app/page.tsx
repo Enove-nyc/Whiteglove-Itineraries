@@ -62,8 +62,8 @@ export default async function AppPage({
   const account = await getCurrentAccountSummary(cookie);
   const sessionEmail = readSessionEmail(cookie);
   const who = account?.email || sessionEmail || "";
-  // Not signed in: the two doors. A client enters the code their adviser sent
-  // and opens their one trip with no account; an adviser or a Gold member logs
+  // Not signed in: the two doors. A client enters the code their advisor sent
+  // and opens their one trip with no account; an advisor or a Gold member logs
   // in to their own trips. This replaced a straight redirect to /login, which
   // left a client with a code nowhere to put it.
   if (!who) {
@@ -81,7 +81,7 @@ export default async function AppPage({
 
           <div className="rounded-2xl border border-[var(--gold)]/30 bg-white p-6">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
-              Have a code from your travel adviser?
+              Have a code from your travel advisor?
             </h2>
             <p className="mt-1 text-sm leading-6 text-stone-600">
               Enter it to open your trip. You do not need an account.
@@ -93,7 +93,7 @@ export default async function AppPage({
 
           <div className="rounded-2xl border border-[var(--gold-light)] bg-white p-6">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
-              Travel adviser or Gold member?
+              Travel advisor or member?
             </h2>
             <p className="mt-1 text-sm leading-6 text-stone-600">
               Log in to open your own trips in the app.
@@ -223,7 +223,7 @@ export default async function AppPage({
   // paid plan cleared the gate above). Say what it is, and point at One Trip,
   // the first and cheapest plan that includes it. It still takes a client's
   // code, since a client may have their own account and a code from their
-  // adviser at once. The itineraries "See the app" link can land here, so this
+  // advisor at once. The itineraries "See the app" link can land here, so this
   // is where that promise has to be true.
   return (
     <main className="min-h-screen bg-[var(--cream)]">
@@ -240,7 +240,7 @@ export default async function AppPage({
 
         <div className="rounded-2xl border border-[var(--gold)]/30 bg-white p-6">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
-            Have a code from your travel adviser?
+            Have a code from your travel advisor?
           </h2>
           <p className="mt-1 text-sm leading-6 text-stone-600">
             Enter it to open your trip — you do not need the app on your own account for that.
