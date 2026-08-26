@@ -46,7 +46,7 @@ export default async function AdvisorDashboardPage() {
   if (!account?.email || !allowed) {
     return (
       <main className="min-h-screen bg-[var(--cream)]">
-        <Navbar minimal />
+        <Navbar minimal homeHref="/advisor" />
         <section className="mx-auto max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Advisor</p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
@@ -135,7 +135,7 @@ export default async function AdvisorDashboardPage() {
 
   return (
     <main className="min-h-screen bg-[var(--cream)]">
-      <Navbar minimal />
+      <Navbar minimal homeHref="/advisor" />
       <section className="mx-auto max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Advisor</p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">

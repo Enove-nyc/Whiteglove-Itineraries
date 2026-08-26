@@ -37,7 +37,7 @@ import { useBookingLink } from "@/components/BookingLinkProvider";
 /** The hostname never changes, so subscribing is a no-op. */
 const NO_CHANGE = () => () => {};
 
-export default function Navbar({ brand: brandProp, minimal = false }: { brand?: "kosher" | "itineraries"; minimal?: boolean } = {}) {
+export default function Navbar({ brand: brandProp, minimal = false, homeHref }: { brand?: "kosher" | "itineraries"; minimal?: boolean; homeHref?: string } = {}) {
   /**
    * WHICH BRAND THIS IS, DECIDED AS EARLY AS IT CAN BE.
    *
@@ -67,6 +67,14 @@ export default function Navbar({ brand: brandProp, minimal = false }: { brand?: 
   );
   const brand = brandProp ?? built ?? fromHost;
   const isItineraries = brand === "itineraries";
+  // Where the logo goes. On the marketing site it is the home page. Inside the
+  // itineraries app (minimal chrome) the home page is a marketing page the app
+  // must not reach, so the logo points back into the app instead — /app by
+  // default, or whatever home the page passes (an advisor page passes
+  // /advisor). Kosher's app is the whole site, so its logo stays the home page
+  // even in minimal chrome. The app has no address bar, so a logo that never
+  // links out to marketing is what keeps marketing unreachable.
+  const logoHref = homeHref ?? (minimal && isItineraries ? "/app" : "/");
   const openSignIn = useOpenSignIn();
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
@@ -260,7 +268,7 @@ export default function Navbar({ brand: brandProp, minimal = false }: { brand?: 
         }`}
       >
         <div className={`mx-auto flex max-w-7xl items-center gap-2 px-5 transition-[min-height] sm:px-8 ${scrolled ? "min-h-16" : "min-h-20"}`}>
-          <Link href="/" className="relative z-10 mr-2 flex shrink-0 items-center gap-2.5 sm:mr-4" aria-label={isItineraries ? "White Glove Itineraries home" : "White Glove Kosher Travel home"}>
+          <Link href={logoHref} className="relative z-10 mr-2 flex shrink-0 items-center gap-2.5 sm:mr-4" aria-label={isItineraries ? "White Glove Itineraries home" : "White Glove Kosher Travel home"}>
             {/* The hand, drawn from the logo's alpha so its colour is CSS: navy
                 for everyone, gold for a paid member (see .header-glove). */}
             <span

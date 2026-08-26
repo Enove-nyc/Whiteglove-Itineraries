@@ -125,7 +125,7 @@ export default async function AccountPage() {
 
   return (
     <main className="min-h-screen bg-[var(--cream)]">
-      <Navbar />
+      <Navbar minimal={siteBrand === "itineraries"} />
       <section className="mx-auto max-w-5xl px-5 py-14 sm:px-8 sm:py-20">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>

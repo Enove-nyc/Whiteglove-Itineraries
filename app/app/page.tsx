@@ -69,7 +69,7 @@ export default async function AppPage({
   if (!who) {
     return (
       <main className="min-h-screen bg-[var(--cream)]">
-        <Navbar />
+        <Navbar minimal homeHref="/app" />
         <section className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-16 sm:px-8 sm:py-24">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">The White Glove app</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
@@ -180,7 +180,7 @@ export default async function AppPage({
     const dated = trips.filter((t) => t.startDate && t.endDate);
     return (
       <main className="min-h-screen bg-[var(--cream)]">
-        <Navbar />
+        <Navbar minimal homeHref="/app" />
         <section className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-16 sm:px-8 sm:py-24">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">The White Glove app</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
@@ -227,7 +227,7 @@ export default async function AppPage({
   // is where that promise has to be true.
   return (
     <main className="min-h-screen bg-[var(--cream)]">
-      <Navbar />
+      <Navbar minimal homeHref="/app" />
       <section className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-16 sm:px-8 sm:py-24">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">The White Glove app</p>
         <h1 className="font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
