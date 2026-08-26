@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
 import { readMessage } from "@/lib/contact-messages";
 import { saveContactMessage } from "@/lib/contact-store";
 import { sendContactMessage } from "@/lib/email";
@@ -36,6 +37,14 @@ export const dynamic = "force-dynamic";
  * it is in neither place is anybody asked to try again.
  */
 export async function POST(request: NextRequest) {
+  // Every accepted message saves a record, sends mail, opens a Trello card, and
+  // for a fault report opens a public GitHub issue. Unthrottled, that is a way
+  // to spam the repo and the inbox and to evict real waiting messages from the
+  // queue's cap. Gate by who is asking, before any of it happens — the sibling
+  // alerts route does the same.
+  const gate = await rateLimit(`contact:${requesterKey(request.headers)}`, { limit: 8, windowSeconds: 60 * 60 });
+  if (!gate.ok) return NextResponse.json({ error: tooManyMessage(gate.retryAfter) }, { status: 429, headers: { "Retry-After": String(gate.retryAfter) } });
+
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const read = readMessage(body ?? {});
   if ("problem" in read) return NextResponse.json({ error: read.problem }, { status: 400 });

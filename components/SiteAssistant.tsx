@@ -44,7 +44,7 @@ type Thread = { turns: AssistantTurn[]; signedIn: boolean; kept: boolean };
  * The White Glove app — the owner's own trip at /app, and a client's trip at
  * /i/<shareId>/app or /t/<shareId>/app. Every one of them fills the whole
  * screen with its own chrome (tabs, a travel wallet, the chat with the real
- * adviser) and none of the site's own. A corner launcher floating over it has
+ * advisor) and none of the site's own. A corner launcher floating over it has
  * nothing to do there and only sits in the way of the app's own buttons in
  * that same corner — the exact complaint the owner raised. So it is hidden on
  * all of them, not only the client-code links.

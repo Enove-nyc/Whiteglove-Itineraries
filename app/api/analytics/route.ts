@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, requesterKey } from "@/lib/rate-limit";
 import { trackDestinationOpen, trackPageView, trackSearch, trackSearchSelection } from "@/lib/site-analytics";
 import { recordPromotionEvent } from "@/lib/admin-content";
 
+// Longest string this endpoint will record. A real page path, search term,
+// slug or promotion id is well within this; anything longer is junk or abuse,
+// so it is cut rather than stored whole.
+const MAX_FIELD = 200;
+const clip = (value?: string) => (typeof value === "string" ? value.slice(0, MAX_FIELD) : value);
+
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null) as {
+  // Unauthenticated writes that feed the Featured ranking, so cap them per
+  // caller — generously, since ordinary browsing sends many page views, but
+  // not unbounded. A quiet 204 rather than a 429: analytics must never look
+  // like an error to the page that fired it.
+  const gate = await rateLimit(`analytics:${requesterKey(request.headers)}`, { limit: 600, windowSeconds: 60 * 60 });
+  if (!gate.ok) return new NextResponse(null, { status: 204 });
+
+  const raw = await request.json().catch(() => null) as {
     type?: string;
     value?: string;
     id?: string;
@@ -11,9 +25,10 @@ export async function POST(request: NextRequest) {
     kind?: string;
     slug?: string;
   } | null;
-  if (!body) {
+  if (!raw) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
+  const body = { ...raw, value: clip(raw.value), id: clip(raw.id), kind: clip(raw.kind), slug: clip(raw.slug) };
   if (body.type === "page_view" || body.type === "search") {
     if (typeof body.value !== "string") return NextResponse.json({ ok: false }, { status: 400 });
     if (body.type === "page_view") await trackPageView(body.value);

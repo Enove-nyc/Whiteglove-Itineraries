@@ -45,7 +45,7 @@ describe("the profile screen is honest about who is looking at it", () => {
   it("a client on a share code is never told they are 'signed in'", () => {
     const screen = APP.slice(APP.indexOf("const profileScreen"), APP.indexOf("let body: ReactNode"));
     assert.match(screen, /liveChat\?\.side === "client" \? "Your trip" : "Signed in as"/);
-    assert.match(screen, /You opened this with the code your adviser sent you/);
+    assert.match(screen, /You opened this with the code your advisor sent you/);
   });
 });
 

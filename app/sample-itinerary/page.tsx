@@ -209,7 +209,7 @@ export default async function SampleItineraryPage() {
             </div>
             <p className="mt-4 leading-7 text-stone-600">
               {itineraries
-                ? "The planner builds this document from the days you enter, and the same trip opens as an app on your client’s phone. A single trip is a one-off; an adviser plan is a subscription with no cap on how many."
+                ? "The planner builds this document from the days you enter, and the same trip opens as an app on your client’s phone. A single trip is a one-off; an advisor plan is a subscription with no cap on how many."
                 : "Build the same document yourself, for your own dates — or answer three short steps for destination ideas first. Sign in to start; it’s free."}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">

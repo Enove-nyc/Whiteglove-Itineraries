@@ -11,7 +11,7 @@ import {
 /**
  * A client's own side of a proposal — comparing options, picking one,
  * approving it or asking for changes, and a small comment thread with the
- * adviser. No account: everything here goes through the proposal's own
+ * advisor. No account: everything here goes through the proposal's own
  * public link (app/api/proposal/[shareId]/route.ts), the same way a shared
  * itinerary or flight document already works.
  */
@@ -142,7 +142,7 @@ export default function ProposalClientView({
     <div className="mt-6 space-y-6">
       {expired && !decided && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          This proposal has expired. Reach out to your adviser for a fresh one.
+          This proposal has expired. Reach out to your advisor for a fresh one.
         </div>
       )}
 
@@ -181,7 +181,7 @@ export default function ProposalClientView({
 
       {decided && (
         <p className="text-sm font-semibold text-emerald-700">
-          {proposal.status === "confirmed" ? "Confirmed — your itinerary is on its way." : "Approved — your adviser has been notified."}
+          {proposal.status === "confirmed" ? "Confirmed — your itinerary is on its way." : "Approved — your advisor has been notified."}
         </p>
       )}
 
@@ -222,7 +222,7 @@ export default function ProposalClientView({
           <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--gold-ink)]">Notes</p>
           {proposal.comments.map((c, i) => (
             <p key={i} className="text-sm text-stone-700">
-              <span className="font-semibold text-[var(--navy)]">{c.from === "planner" ? "Your adviser" : "You"}:</span> {c.text}
+              <span className="font-semibold text-[var(--navy)]">{c.from === "planner" ? "Your advisor" : "You"}:</span> {c.text}
             </p>
           ))}
         </div>
@@ -238,7 +238,7 @@ export default function ProposalClientView({
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             className="min-h-11 flex-1 rounded-lg border border-[var(--gold-light)] px-3 text-sm"
-            placeholder="Ask your adviser anything about this proposal"
+            placeholder="Ask your advisor anything about this proposal"
           />
           <button
             type="button"

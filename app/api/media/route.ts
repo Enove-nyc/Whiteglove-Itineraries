@@ -46,6 +46,11 @@ export async function GET(request: NextRequest) {
         "content-length": String(slice.length),
         "accept-ranges": "bytes",
         "cache-control": cacheControl,
+        // Serve exactly the stored type, never a browser's guess — so a file
+        // whose type ever slipped past upload cannot be sniffed into HTML and
+        // run on this origin. Shown inline (chat photos, PDFs), not downloaded.
+        "x-content-type-options": "nosniff",
+        "content-disposition": "inline",
       },
     });
   }
@@ -56,6 +61,9 @@ export async function GET(request: NextRequest) {
       "content-length": String(buffer.length),
       "accept-ranges": "bytes",
       "cache-control": cacheControl,
+      // See above: pin the stored type and refuse content sniffing.
+      "x-content-type-options": "nosniff",
+      "content-disposition": "inline",
     },
   });
 }
