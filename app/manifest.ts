@@ -19,7 +19,12 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     description: itineraries
       ? "The trip you plan, in your client's pocket — the itinerary a day at a time, a travel wallet for when there is no signal, and a line to their advisor."
       : "Thoughtfully planned kosher travel and Jewish heritage journeys — kevarim, kosher food, minyanim, and trip planning.",
-    start_url: "/",
+    // The itineraries app is the planner app, not the marketing site, so it
+    // launches straight into /app; the kosher app is the whole site and opens
+    // at the root. A rebuilt TWA bakes this in as its launch URL, which is the
+    // reliable way to land on /app — the middleware redirect only fires when
+    // the app announces itself with a header newer Chrome versions may drop.
+    start_url: itineraries ? "/app" : "/",
     display: "standalone",
     background_color: "#14213d",
     theme_color: "#14213d",
