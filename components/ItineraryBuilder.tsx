@@ -1067,7 +1067,12 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
               <a href={placeDirectionsUrl(a.address, a.coordinates)} target="_blank" rel="noreferrer" className="rounded-md border border-[var(--gold-light)] px-3 py-1.5 font-semibold text-[var(--navy)]">Navigate →</a>
             )}
             {a.phone && <a href={`tel:${a.phone.replace(/[^\d+]/g, "")}`} className="rounded-md border border-[var(--gold-light)] px-3 py-1.5 font-semibold text-[var(--navy)]">Call {a.phone}</a>}
-            {a.href && (a.href.startsWith("/") ? <Link href={a.href} className="rounded-md border border-[var(--gold-light)] px-3 py-1.5 font-semibold text-[var(--navy)]">Details →</Link> : <a href={a.href} target="_blank" rel="noreferrer" className="rounded-md border border-[var(--gold-light)] px-3 py-1.5 font-semibold text-[var(--navy)]">Open link →</a>)}
+            {/* An internal (/-prefixed) href on a stop only ever came from the
+                kosher "Nearby" feature (a /cemeteries/[slug] link), which
+                307-redirects to the kosher domain — so on itineraries a stale or
+                imported one is suppressed rather than rendered as a Details link
+                that would break the app. External booking links are unaffected. */}
+            {a.href && (a.href.startsWith("/") ? (!itineraries && <Link href={a.href} className="rounded-md border border-[var(--gold-light)] px-3 py-1.5 font-semibold text-[var(--navy)]">Details →</Link>) : <a href={a.href} target="_blank" rel="noreferrer" className="rounded-md border border-[var(--gold-light)] px-3 py-1.5 font-semibold text-[var(--navy)]">Open link →</a>)}
           </p>
         )}
         {a.notes && <p className="mt-3 break-words text-sm leading-6 text-stone-500">{a.notes}</p>}
@@ -1284,7 +1289,12 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
           <span className={`text-[11px] font-bold uppercase tracking-[0.1em] ${hasFreeTime ? "text-[var(--gold-ink)]" : "text-stone-400"}`}>
             {hasFreeTime ? `Free time — about ${day.freeHours} h` : "Free time"}
           </span>
-          {canSuggest && <button type="button" onClick={showNearby} className="border border-[var(--gold-light)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]">Nearby</button>}
+          {/* "Nearby" surfaces only cemeteries/kevarim (lib/nearby.ts), and each
+              suggestion links to /cemeteries/[slug] — a guide-only path that
+              307-redirects to the kosher domain and breaks the installed
+              itineraries app. So it is a kosher-brand feature: hidden here, the
+              same as the kosher-food-near-this-day block below. */}
+          {!itineraries && canSuggest && <button type="button" onClick={showNearby} className="border border-[var(--gold-light)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]">Nearby</button>}
           <button type="button" onClick={askAi} disabled={loadingAi} className="border border-[var(--gold-light)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)] disabled:opacity-60">{loadingAi ? "Getting ideas…" : "Ideas for free time"}</button>
         </div>
       )}
