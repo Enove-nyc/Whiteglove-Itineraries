@@ -39,6 +39,7 @@ export const ACCOUNT_PLACES = [
  * themselves check, so this list can never offer a door a plan doesn't open.
  */
 const ADVISOR_PLACES = [
+  { label: "Dashboard", href: "/advisor", need: "clients" },
   { label: "Trip pipeline", href: "/pipeline", need: "clients" },
   { label: "Proposals", href: "/proposal", need: "clients" },
   { label: "Content library", href: "/library", need: "clients" },
