@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import type { AccountPlan } from "@/lib/account-plans";
-import { mayBrandOwnItinerary, mayServeCompanionClients } from "@/lib/account-limits";
+import { ACCOUNT_PLACES, advisorPlacesFor } from "@/lib/account-places";
 
 /**
  * The four places an account has, one press away.
@@ -23,38 +23,6 @@ import { mayBrandOwnItinerary, mayServeCompanionClients } from "@/lib/account-li
  * SIGNED OUT THIS DOES NOT EXIST. The icon opens the sign-in dialog instead;
  * a menu of four things none of which can be opened is worse than a door.
  */
-
-export const ACCOUNT_PLACES = [
-  { label: "Itineraries", href: "/itinerary" },
-  { label: "Routes", href: "/my-route" },
-  { label: "Favorites", href: "/account#account-favorites" },
-  { label: "My info", href: "/account" },
-] as const;
-
-/**
- * The advisor tools — Pipeline, Proposal, Library, Forms, Payments, Agency —
- * had no home in navigation anywhere: a Starter or Pro advisor reached them
- * only by remembering the address or scrolling a long paragraph on /account.
- * Named here, gated by the same lib/account-limits functions the pages
- * themselves check, so this list can never offer a door a plan doesn't open.
- */
-const ADVISOR_PLACES = [
-  { label: "Dashboard", href: "/advisor", need: "clients" },
-  { label: "Trip pipeline", href: "/pipeline", need: "clients" },
-  { label: "Proposals", href: "/proposal", need: "clients" },
-  { label: "Content library", href: "/library", need: "clients" },
-  { label: "Client forms", href: "/forms", need: "clients" },
-  { label: "Payments", href: "/payments", need: "clients" },
-  { label: "Group trip", href: "/group", need: "clients" },
-  { label: "Agency", href: "/agency", need: "brand" },
-] as const;
-
-export function advisorPlacesFor(plan: AccountPlan | undefined) {
-  if (!plan) return [];
-  const clients = mayServeCompanionClients(plan);
-  const brand = mayBrandOwnItinerary(plan);
-  return ADVISOR_PLACES.filter((place) => (place.need === "brand" ? brand : clients));
-}
 
 export default function AccountMenu({ plan }: { plan?: AccountPlan } = {}) {
   const [open, setOpen] = useState(false);

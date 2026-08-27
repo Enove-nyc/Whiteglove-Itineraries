@@ -1,0 +1,56 @@
+import type { AccountPlan } from "@/lib/account-plans";
+import { mayBrandOwnItinerary, mayServeCompanionClients } from "@/lib/account-limits";
+
+/**
+ * Where an account can go, as data — deliberately not in a component file.
+ *
+ * THIS LIVED IN components/AccountMenu.tsx AND TOOK /advisor DOWN WITH IT.
+ * That file is "use client", and Next turns every export of a client module
+ * into a client reference: importing one on the server gives you a marker
+ * object, not the function. app/advisor/page.tsx is a server component and
+ * called `advisorPlacesFor(plan)`, so the page threw on every request —
+ *
+ *   Attempted to call advisorPlacesFor() from the server but
+ *   advisorPlacesFor is on the client.
+ *
+ * — and the advisor's own dashboard served the error page to anybody who had
+ * paid for it. Nothing about the function was ever client-only: no hooks, no
+ * browser, just a plan and a filter. It was in that file because that is where
+ * the menu using it happened to be.
+ *
+ * The build does not catch this. It is a runtime error on render, and the page
+ * is behind a login, so nothing that runs without an account will see it.
+ * tests/server-client-boundary.test.ts is what catches it now.
+ */
+
+export const ACCOUNT_PLACES = [
+  { label: "Itineraries", href: "/itinerary" },
+  { label: "Routes", href: "/my-route" },
+  { label: "Favorites", href: "/account#account-favorites" },
+  { label: "My info", href: "/account" },
+] as const;
+
+/**
+ * The advisor tools — Pipeline, Proposal, Library, Forms, Payments, Agency —
+ * had no home in navigation anywhere: a Starter or Pro advisor reached them
+ * only by remembering the address or scrolling a long paragraph on /account.
+ * Named here, gated by the same lib/account-limits functions the pages
+ * themselves check, so this list can never offer a door a plan doesn't open.
+ */
+const ADVISOR_PLACES = [
+  { label: "Dashboard", href: "/advisor", need: "clients" },
+  { label: "Trip pipeline", href: "/pipeline", need: "clients" },
+  { label: "Proposals", href: "/proposal", need: "clients" },
+  { label: "Content library", href: "/library", need: "clients" },
+  { label: "Client forms", href: "/forms", need: "clients" },
+  { label: "Payments", href: "/payments", need: "clients" },
+  { label: "Group trip", href: "/group", need: "clients" },
+  { label: "Agency", href: "/agency", need: "brand" },
+] as const;
+
+export function advisorPlacesFor(plan: AccountPlan | undefined) {
+  if (!plan) return [];
+  const clients = mayServeCompanionClients(plan);
+  const brand = mayBrandOwnItinerary(plan);
+  return ADVISOR_PLACES.filter((place) => (place.need === "brand" ? brand : clients));
+}

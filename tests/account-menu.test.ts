@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { ACCOUNT_PLACES, advisorPlacesFor } from "@/components/AccountMenu";
+import { ACCOUNT_PLACES, advisorPlacesFor } from "@/lib/account-places";
 
 /**
  * The four places an account has.
