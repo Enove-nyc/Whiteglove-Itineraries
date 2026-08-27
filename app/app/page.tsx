@@ -21,15 +21,33 @@ import { buildCompanionFromItinerary } from "@/lib/companion-build";
 import { readBrand } from "@/lib/business-brand-store";
 import { getAppPrefs } from "@/lib/app-prefs-store";
 import { pageMetadata } from "@/lib/seo";
+import { currentBrand } from "@/lib/site-brand";
 
 // One person's trip, on one person's phone. Nothing here belongs in a search
 // result, and the gate below means most visitors never see it at all.
-export const metadata = pageMetadata({
-  title: "The White Glove app",
-  description: "The trip in your pocket — a day at a time, with a travel wallet kept for when there is no signal.",
-  path: "/app",
-  noIndex: true,
-});
+/**
+ * THE TITLE HAS TO NAME THE RIGHT SITE, and a static one could not.
+ *
+ * pageMetadata settles the site name from the title itself, so a title naming
+ * neither brand fell back to Kosher Travel — and this page is served on the
+ * itineraries domain, where the interface says White Glove Itineraries and the
+ * browser tab said White Glove Kosher Travel. It is the tab, the bookmark and
+ * the preview card of every link a client is sent.
+ *
+ * The site's brand, not the adviser's: a white-labelled client app shows the
+ * adviser's name in the interface, but the page is still served by White
+ * Glove, and reading a per-trip brand here would put a business's name in a
+ * tab before anyone has established that this visitor may see that trip.
+ */
+export async function generateMetadata() {
+  const brand = await currentBrand();
+  return pageMetadata({
+    title: brand === "itineraries" ? "Your trip — White Glove Itineraries" : "The White Glove app",
+    description: "The trip in your pocket — a day at a time, with a travel wallet kept for when there is no signal.",
+    path: "/app",
+    noIndex: true,
+  });
+}
 
 // The plan and the trip are read fresh each time.
 export const dynamic = "force-dynamic";

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
@@ -164,31 +165,60 @@ describe("the itineraries domain's own pages never title themselves 'Kosher Trav
   // page the itineraries domain calls its own (/plan, /itinerary and its
   // print view, /my-route, /book, /f, /i) — each must now read the brand
   // before choosing a title, the same way app/page.tsx already does.
-  const pages = [
-    "app/login/page.tsx",
-    "app/account/page.tsx",
-    "app/plan/page.tsx",
-    "app/itinerary/page.tsx",
-    "app/itinerary/print/layout.tsx",
-    "app/my-route/page.tsx",
-    "app/book/page.tsx",
-    "app/f/[shareId]/page.tsx",
-    "app/i/[shareId]/page.tsx",
-    "app/proposal/page.tsx",
-    "app/p/[shareId]/page.tsx",
-    "app/library/page.tsx",
-    "app/forms/page.tsx",
-    "app/form/[shareId]/page.tsx",
-    "app/pipeline/page.tsx",
-    "app/payments/page.tsx",
-  ];
+  /**
+   * FOUND BY SCAN, NOT BY HAND, and that is the point.
+   *
+   * This was a list somebody typed, and it was written from the pages the
+   * MARKETING journey touches — so it covered /login, /account, /plan and the
+   * rest, and missed the three pages a CLIENT opens: /app and the two share
+   * links that render the trip app. An external audit found those still
+   * titled "White Glove Kosher Travel" on the itineraries domain, months
+   * after the ones on this list were fixed.
+   *
+   * So the list is now derived. Every page this domain serves has to settle
+   * its own brand; a guide path does not, because middleware redirects it to
+   * the kosher site before it can render, and /admin does not, because this
+   * domain sends that to the kosher host too.
+   */
+  const middleware = readFileSync("middleware.ts", "utf8");
+  const GUIDE_ONLY = middleware
+    .slice(middleware.indexOf("const GUIDE_ONLY_PREFIXES"))
+    .split("];")[0]
+    .match(/"\/[a-z-]+"/g)!
+    .map((quoted) => quoted.replace(/"/g, ""));
+
+  const routeOf = (file: string) =>
+    "/" + file.replace(/^app\//, "").replace(/\/page\.tsx$/, "").replace(/\/?\(.*?\)/g, "").replace(/^\/+/, "");
+
+  const pages = execSync("find app -name page.tsx", { encoding: "utf8" })
+    .trim()
+    .split("\n")
+    .filter((file) => {
+      const route = routeOf(file);
+      if (route.startsWith("/admin")) return false;
+      // The kosher city-guide catch-all (/uman, /lizensk…). Not a prefix the
+      // middleware can list, and this domain answers those with a redirect or
+      // a 404 rather than rendering them, so its title is the kosher one on
+      // purpose.
+      if (route === "/[city]") return false;
+      if (GUIDE_ONLY.some((prefix) => route === prefix || route.startsWith(`${prefix}/`))) return false;
+      // Only the ones that actually declare a title.
+      return /pageMetadata\(|generateMetadata/.test(readFileSync(file, "utf8"));
+    })
+    .sort();
 
   for (const path of pages) {
     it(`${path} reads the brand before choosing its title`, () => {
       const src = readFileSync(path, "utf8");
       assert.match(src, /export async function generateMetadata/, `${path} must compute its title, not export it statically`);
       assert.match(src, /currentBrand\(\)/, `${path} must read the real brand`);
-      assert.match(src, /White Glove Itineraries/, `${path} must have an itineraries-branded title`);
+      // Either spelling of the same thing: the literal, or BRAND_NAME keyed by
+      // the brand it just read. What matters is that the title comes FROM the
+      // brand rather than being typed once and shipped to both domains.
+      assert.ok(
+        /White Glove Itineraries/.test(src) || /BRAND_NAME[.[]/.test(src),
+        `${path} must build its title from the brand`,
+      );
     });
   }
 });

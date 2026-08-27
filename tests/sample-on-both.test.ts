@@ -107,7 +107,7 @@ describe("the printed sample carries the brand of the site showing it", () => {
   const source = readFileSync("app/sample-itinerary/page.tsx", "utf8");
 
   it("passes the brand rather than taking the default", () => {
-    assert.match(source, /<PrintableItinerary[^>]*siteBrand=\{brand\}/s);
+    assert.match(source, /<PrintableItinerary[^>]*siteBrand=\{brand\}/);
   });
 
   it("every caller that prints a document names its brand", () => {
