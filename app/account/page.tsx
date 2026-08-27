@@ -124,7 +124,7 @@ export default async function AccountPage() {
     account?.name || (isPhoneIdentity(identity) ? describeIdentity(identity) : identity.split("@")[0]) || "Traveler";
 
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal={siteBrand === "itineraries"} />
       <section className="mx-auto max-w-5xl px-5 py-14 sm:px-8 sm:py-20">
         <div className="flex flex-wrap items-start justify-between gap-5">
