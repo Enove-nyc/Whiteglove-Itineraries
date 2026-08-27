@@ -113,9 +113,17 @@ export default async function PricingPage() {
       <section className="border-t border-[var(--gold-light)] bg-white px-5 py-12 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-5xl">
           <h2 className="text-center text-2xl font-bold text-[var(--navy)]">Which one you need</h2>
+          {/* WHAT "SHARING" MEANT HERE WAS NOT WHAT IT MEANS BELOW. This line
+              said sharing a trip with anybody you like is the same on every
+              plan, and four rows down the table says handing a client their
+              own app needs an advisor plan. Both were describing real things —
+              a share link, and companionClients — under one word, so the
+              sentence read as a promise the table then took back. It says the
+              planner now, which genuinely is the same on every plan, and
+              leaves clients to the row that gates them. */}
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-6 text-stone-600">
-            One trip for yourself, or the tools to run clients. Everything on the site — the planner and
-            sharing a trip with anybody you like — is the same on every plan.
+            One trip for yourself, or the tools to run clients. The planner, the map and the guides are the
+            same on every plan; what changes is how many trips you keep and what you can hand a client.
           </p>
 
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
