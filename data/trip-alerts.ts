@@ -22,12 +22,22 @@ export type FlightStatusSnapshot = {
   checkedAt: string; // ISO timestamp
 };
 
-export type TripAlertKind = "flight_delay" | "flight_cancelled" | "flight_diverted" | "gate_change" | "terminal_change";
+export type TripAlertKind =
+  | "flight_delay"
+  | "flight_cancelled"
+  | "flight_diverted"
+  | "gate_change"
+  | "terminal_change"
+  /** The advisor changed the plan itself — a flight, a stay, a day. Not a
+   *  live-status reading like the others; see data/trip-changes.ts. */
+  | "itinerary_update";
 
 export type TripAlert = {
   id: string;
   kind: TripAlertKind;
-  flightId: string;
+  /** The flight a live-status alert is about. Absent on itinerary_update,
+   *  which is about the plan rather than any one flight. */
+  flightId?: string;
   title: string;
   note: string;
   createdAt: string; // ISO timestamp

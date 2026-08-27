@@ -42,6 +42,7 @@ import {
   type CompanionTrip,
   type CompanionWalletRow,
 } from "@/data/companion-demo";
+import type { TripAlert } from "@/data/trip-alerts";
 import { Icon } from "@/components/icons/Icon";
 import PaymentCheckout from "@/components/companion/PaymentCheckout";
 import { useDeviceClock } from "@/components/TripProgressStrip";
@@ -595,7 +596,67 @@ export default function CompanionApp({
   // trip's badge/pill lights up for these without touching any of the
   // demo-only swap logic that already reads `open`.
   const liveAlerts = trip.liveAlerts ?? [];
-  const unacknowledgedAlerts = liveAlerts.filter((a) => !a.acknowledged);
+  // READ / UNREAD on the Changes screen. The owner (a signed-in account) has
+  // the server's own `acknowledged` flag; a client on a per-trip code has no
+  // account and is never asked to manage anything server-side, so their read
+  // state lives in their own browser. `readNow` folds both together, plus
+  // whatever was marked read this session, so opening the screen clears the
+  // badge at once rather than waiting for a reload.
+  const alertKey = trip.tripId ?? liveChat?.shareId ?? null;
+  const [readNow, setReadNow] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!isClientViewer || !alertKey) return;
+    try {
+      const raw = localStorage.getItem(`wg-alerts-read:${alertKey}`);
+      if (raw) setReadNow(new Set(JSON.parse(raw) as string[]));
+    } catch {
+      /* storage blocked — everything reads as unread, which is the safe end */
+    }
+  }, [isClientViewer, alertKey]);
+  // A client's read state is theirs alone (readNow, from their browser). The
+  // server's `acknowledged` is the OWNER's own read flag — folding it into the
+  // client's view would let the advisor's reading quietly mark the client's
+  // alerts seen, which they were not.
+  const isAlertRead = useCallback(
+    (a: TripAlert) => readNow.has(a.id) || (!isClientViewer && a.acknowledged),
+    [readNow, isClientViewer],
+  );
+  const unreadAlerts = liveAlerts.filter((a) => !isAlertRead(a));
+  // Frozen the moment the Changes screen opens, so the cards being read now
+  // stay marked new even as opening the screen records them read (clearing the
+  // badge and, next time, the highlight). Opening is the read action — there is
+  // no separate dismiss to press.
+  const [seenOnOpen, setSeenOnOpen] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (st.screen !== "alerts") {
+      setSeenOnOpen(null);
+      return;
+    }
+    const unreadIds = liveAlerts.filter((a) => !isAlertRead(a)).map((a) => a.id);
+    setSeenOnOpen(new Set(unreadIds));
+    if (unreadIds.length === 0) return;
+    setReadNow((prev) => {
+      const merged = new Set(prev);
+      unreadIds.forEach((id) => merged.add(id));
+      if (isClientViewer && alertKey) {
+        try {
+          localStorage.setItem(`wg-alerts-read:${alertKey}`, JSON.stringify([...merged]));
+        } catch {
+          /* storage blocked — clears for this session only, which is fine */
+        }
+      }
+      return merged;
+    });
+    if (!isClientViewer && trip.tripId) {
+      void fetch("/api/account/alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tripId: trip.tripId, all: true }),
+      });
+    }
+    // Deliberately snapshot once per open, not re-taken as state settles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st.screen]);
   const advisorTrips = trip.advisorTrips ?? [];
   const advisorHome = hasConcierge && st.role === "advisor" && st.screen === "home";
 
@@ -616,7 +677,7 @@ export default function CompanionApp({
     activity: sel.name,
     chat: hasConcierge || usesRealChat ? "Your advisor" : "On your own",
     messages: advisorInbox ? "Your clients" : liveChat?.side === "advisor" ? "Their trip, and yours to move" : "Your advisor · replies when they can",
-    alerts: open ? "One needs you" : unacknowledgedAlerts.length > 0 ? `${unacknowledgedAlerts.length} to see` : settled ? "All settled" : "Nothing right now",
+    alerts: open ? "One needs you" : unreadAlerts.length > 0 ? `${unreadAlerts.length} to see` : settled ? "All settled" : "Nothing right now",
     wallet: "Kept offline",
     profile: hasConcierge ? "The trip is in your name" : "This trip, and you",
     pay: trip.payment?.label ?? "",
@@ -1076,28 +1137,22 @@ export default function CompanionApp({
       {/* Real flight-status alerts — never present on the demo. Newest
           first, each with a Dismiss control on the advisor's own side only;
           a client sees the same alert with nothing to manage. */}
-      {[...liveAlerts].reverse().map((a) => (
-        <div key={a.id} style={{ padding: "18px 18px", borderRadius: 20, background: a.acknowledged ? "#ffffff" : "#f7eee0", border: `1px solid ${a.acknowledged ? "rgba(38,50,58,.08)" : "rgba(183,138,74,.28)"}`, display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={kicker(a.acknowledged ? "#78716c" : "#765321")}>{new Date(a.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
-          <div style={{ font: `400 20px/1.15 ${serif}`, color: a.acknowledged ? "#26323a" : "#4a3016" }}>{a.title}</div>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: a.acknowledged ? "#57534e" : "#5c4322", textWrap: "pretty" }}>{a.note}</p>
-          {!isClientViewer && !a.acknowledged && trip.tripId && (
-            <button
-              onClick={() => {
-                void fetch("/api/account/alerts", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ tripId: trip.tripId, alertId: a.id }),
-                }).then(() => router.refresh());
-              }}
-              className="wg-press"
-              style={{ alignSelf: "flex-start", border: "1px solid rgba(183,138,74,.4)", background: "none", cursor: "pointer", font: `400 13px/1 ${serif}`, padding: "10px 16px", borderRadius: 14, color: "#765321" }}
-            >
-              Dismiss
-            </button>
-          )}
-        </div>
-      ))}
+      {[...liveAlerts].reverse().map((a) => {
+        // New until this view opened, then plain — the "did I already see this?"
+        // the traveler asked for. Held to the open-time snapshot so a card does
+        // not fade out from under them while they are still reading it.
+        const unread = seenOnOpen ? seenOnOpen.has(a.id) : !isAlertRead(a);
+        return (
+          <div key={a.id} style={{ padding: "18px 18px", borderRadius: 20, background: unread ? "#f7eee0" : "#ffffff", border: `1px solid ${unread ? "rgba(183,138,74,.28)" : "rgba(38,50,58,.08)"}`, display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={kicker(unread ? "#765321" : "#78716c")}>{new Date(a.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+              {unread && <span aria-label="New" style={{ width: 7, height: 7, borderRadius: 14, background: GOLD }} />}
+            </span>
+            <div style={{ font: `400 20px/1.15 ${serif}`, color: unread ? "#4a3016" : "#26323a" }}>{a.title}</div>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: unread ? "#5c4322" : "#57534e", textWrap: "pretty" }}>{a.note}</p>
+          </div>
+        );
+      })}
       {open && (
         <div style={{ padding: "20px 18px", borderRadius: 20, background: "#f7eee0", border: "1px solid rgba(183,138,74,.28)", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1444,9 +1499,12 @@ export default function CompanionApp({
           <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#a8a29e" }}>{kickers[st.screen]}</div>
           <div style={{ font: `400 19px/1.15 ${serif}`, letterSpacing: "-.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{titles[st.screen]}</div>
         </div>
-        <button onClick={() => go("alerts")} className="wg-fade" style={{ position: "relative", border: "1px solid rgba(38,50,58,.14)", background: "#ffffff", height: 34, padding: "0 13px", borderRadius: 14, cursor: "pointer", font: "600 11.5px/1 Inter,sans-serif", color: "#57534e" }}>
-          Changes
-          {(open || unacknowledgedAlerts.length > 0) && <span style={{ position: "absolute", top: -3, right: -3, width: 11, height: 11, borderRadius: 14, background: GOLD, border: `2px solid ${CREAM}` }} />}
+        <button onClick={() => go("alerts")} aria-label="Changes" title="Changes" className="wg-fade" style={{ position: "relative", border: "1px solid rgba(38,50,58,.14)", background: "#ffffff", width: 34, height: 34, borderRadius: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, color: NAVY }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+          </svg>
+          {(open || unreadAlerts.length > 0) && <span style={{ position: "absolute", top: -3, right: -3, width: 11, height: 11, borderRadius: 14, background: GOLD, border: `2px solid ${CREAM}` }} />}
         </button>
       </div>
       {/* content */}
