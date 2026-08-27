@@ -30,7 +30,10 @@ export type TripAlertKind =
   | "terminal_change"
   /** The advisor changed the plan itself — a flight, a stay, a day. Not a
    *  live-status reading like the others; see data/trip-changes.ts. */
-  | "itinerary_update";
+  | "itinerary_update"
+  /** Something the advisor sent the traveler by hand — "your driver is running
+   *  twenty minutes late" — that no data feed would ever produce on its own. */
+  | "advisor_alert";
 
 export type TripAlert = {
   id: string;
@@ -46,6 +49,25 @@ export type TripAlert = {
 
 /** Below this, a delay is not worth an alert — see the file note above. */
 const SIGNIFICANT_DELAY_MINUTES = 30;
+
+const RECHECK_RELAXED_MS = 3 * 60 * 60 * 1000;
+const RECHECK_IMMINENT_MS = 20 * 60 * 1000;
+/** Within a day of departure, a flight earns the tighter cadence. */
+const IMMINENT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * How long to leave a flight's status alone before reading it again, given how
+ * close it is to departure. A flight leaving within a day is worth a fresh look
+ * every twenty minutes — that is the window an airline actually moves a gate or
+ * calls a delay in. One still days out does not need more than a few times a
+ * day, which keeps the paid status lookups down to what matters. `flightDate`
+ * is a YYYY-MM-DD departure date; `now` is epoch ms.
+ */
+export function flightRecheckMs(flightDate: string, now: number): number {
+  const depart = Date.parse(`${flightDate}T00:00:00Z`);
+  if (Number.isNaN(depart)) return RECHECK_RELAXED_MS;
+  return depart - now <= IMMINENT_WINDOW_MS ? RECHECK_IMMINENT_MS : RECHECK_RELAXED_MS;
+}
 
 /**
  * What changed between two readings of the same flight's status, worth

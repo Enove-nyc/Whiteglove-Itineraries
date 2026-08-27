@@ -103,7 +103,7 @@ describe("the live-travel-information wiring keeps the same fences everything el
 
   it("a flight check is throttled — it does not re-query a flight checked recently", () => {
     const fn = STORE.slice(STORE.indexOf("export async function checkTripFlightStatus"), STORE.indexOf("export async function getTripAlerts"));
-    assert.match(fn, /FLIGHT_RECHECK_MS/);
+    assert.match(fn, /flightRecheckMs/);
   });
 
   it("only checks flights departing soon, not the whole itinerary regardless of date", () => {

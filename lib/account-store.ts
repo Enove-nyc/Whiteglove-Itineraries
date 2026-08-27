@@ -5,7 +5,7 @@ import { emptyItinerary, type Itinerary } from "@/data/itinerary";
 import { proposalOptionToItinerary, type Proposal } from "@/data/proposal";
 import type { ManualTripStage } from "@/data/trip-pipeline";
 import type { PaymentRecord, TripBalance } from "@/data/trip-payments";
-import { alertsFromStatusChange, type FlightStatusSnapshot, type TripAlert } from "@/data/trip-alerts";
+import { alertsFromStatusChange, flightRecheckMs, type FlightStatusSnapshot, type TripAlert } from "@/data/trip-alerts";
 import { summarizeItineraryChange, type ItineraryChange } from "@/data/trip-changes";
 import { checkFlightStatus } from "@/lib/flight-status";
 import type { LibraryItem, LibraryPack } from "@/data/library";
@@ -1466,8 +1466,6 @@ function tripAlertId() {
   return randomBytes(6).toString("base64url");
 }
 
-/** Re-check status if the last real reading is older than this. */
-const FLIGHT_RECHECK_MS = 3 * 60 * 60 * 1000;
 /** Only bother checking a flight departing this soon — no use querying a flight six months out. */
 const FLIGHT_CHECK_WINDOW_DAYS = 3;
 
@@ -1496,7 +1494,7 @@ export async function checkTripFlightStatus(email: string, tripId: string): Prom
 
   for (const flight of candidates) {
     const previous = statuses[flight.id];
-    if (previous && Date.now() - Date.parse(previous.checkedAt) < FLIGHT_RECHECK_MS) continue;
+    if (previous && Date.now() - Date.parse(previous.checkedAt) < flightRecheckMs(flight.date, Date.now())) continue;
     const next = await checkFlightStatus(flight.id, flight.flightNo!.trim(), flight.date);
     if (!next) continue;
     checkedAny = true;
@@ -1595,6 +1593,50 @@ export async function acknowledgeAllAlerts(email: string, tripId: string): Promi
       : t,
   );
   return Boolean(await writeTrips(normalized, nextTrips, activeId));
+}
+
+/** Longest a hand-sent advisor alert may be — a line or two, not an essay. */
+export const ADVISOR_ALERT_MAX = 280;
+
+/**
+ * A note the advisor sends the traveler by hand — "your driver is running
+ * twenty minutes late", "the museum opens an hour later than we thought". It
+ * lands on the same Changes feed as everything else and, like a flight change,
+ * is pushed straight to any device following the trip. Nothing a data feed
+ * would ever produce; this is the one alert a person types.
+ *
+ * Returns the created alert, or null if it could not be stored (no trip, no
+ * storage) — the caller reports that rather than pretending it was sent.
+ */
+export async function sendAdvisorAlert(email: string, tripId: string, text: string): Promise<TripAlert | null> {
+  if (!hasAccountStorage()) return null;
+  const clean = text.trim().slice(0, ADVISOR_ALERT_MAX);
+  if (!clean) return null;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return null;
+
+  const alert: TripAlert = {
+    id: tripAlertId(),
+    kind: "advisor_alert",
+    title: "From your travel advisor",
+    note: clean,
+    createdAt: new Date().toISOString(),
+    acknowledged: false,
+  };
+  const nextTrips = trips.map((t) =>
+    t.id === tripId ? { ...t, alerts: [...(t.alerts ?? []), alert], updatedAt: new Date().toISOString() } : t,
+  );
+  if (!(await writeTrips(normalized, nextTrips, activeId))) return null;
+
+  if (trip.pushSubscriptions?.length) {
+    await notifySubscribers(normalized, tripId, trip.pushSubscriptions, trip.shareId, [alert]).catch((error) =>
+      console.error("[account-store] advisor alert push failed:", error),
+    );
+  }
+  return alert;
 }
 
 /** The proposal's public link — created once, reused after. */
