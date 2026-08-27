@@ -20,11 +20,23 @@
  *
  *   • It is served only to the account that uploaded it, checked against the
  *     stored owner — never "the id is unguessable, so it is private".
- *   • It is never in a share link, never in the print, never in a search
- *     result, and never cached by anything in between.
+ *   • It is never in the print, never in a search result, and never cached by
+ *     anything in between.
  *   • Uploading needs an account. Without one there is nowhere to put it that
  *     is not the visitor's own browser, and a 600KB pass in localStorage
  *     breaks the trip it was meant to help.
+ *
+ * ONE EXCEPTION, AND THE ADVISER MAKES IT FILE BY FILE. The rule used to be
+ * that a pass never left the account at all — which was safe, and meant the
+ * person actually boarding could not open their own boarding pass. An adviser
+ * plans the trip; the client flies it. So an attachment can now be marked
+ * `shared`, and only then does the traveler holding that trip's code see it,
+ * through a route scoped to that one trip (app/api/trip-file/[shareId]).
+ *
+ * ABSENT MEANS NO. Nothing already uploaded became visible, and nothing
+ * becomes visible by accident: the adviser turns each file on deliberately.
+ * A boarding pass is for the person boarding; a supplier invoice with the
+ * commission on it is not, and both live in the same list.
  */
 
 export const ATTACHMENT_KINDS = ["boarding-pass", "ticket", "booking", "other"] as const;
@@ -178,6 +190,58 @@ export function withoutAttachments<T extends { flights?: unknown[]; lodging?: un
     ...(itinerary.lodging ? { lodging: strip(itinerary.lodging) } : {}),
     ...(itinerary.activities ? { activities: strip(itinerary.activities) } : {}),
   };
+}
+
+/**
+ * The itinerary as the traveler may see it: every attachment they were not
+ * given is gone, rather than present and refused.
+ *
+ * NOT A FILTER ON THE SERVING ROUTE, though that checks too. A reference left
+ * in the payload would tell the person holding the link that a document exists
+ * and is being withheld, which is a worse answer than silence — and it is the
+ * mistake withoutAttachments was written to avoid. Same reasoning, one step
+ * finer: what was shared stays, what was not is not mentioned.
+ */
+export function travelerAttachments<
+  T extends { flights?: unknown[]; lodging?: unknown[]; activities?: unknown[] },
+>(itinerary: T): T {
+  const keep = <R,>(rows: R[] | undefined): R[] | undefined =>
+    rows?.map((row) => {
+      if (!row || typeof row !== "object" || !("attachments" in row)) return row;
+      const rest = { ...(row as Record<string, unknown>) };
+      const shared = Array.isArray(rest.attachments)
+        ? (rest.attachments as Array<{ shared?: boolean }>).filter((a) => a?.shared === true)
+        : [];
+      if (shared.length) rest.attachments = shared;
+      else delete rest.attachments;
+      return rest as R;
+    });
+
+  return {
+    ...itinerary,
+    ...(itinerary.flights ? { flights: keep(itinerary.flights) } : {}),
+    ...(itinerary.lodging ? { lodging: keep(itinerary.lodging) } : {}),
+    ...(itinerary.activities ? { activities: keep(itinerary.activities) } : {}),
+  };
+}
+
+/** Every attachment id on a trip that the traveler was given. */
+type RowWithFiles = { id?: string; attachments?: Array<{ id?: string; shared?: boolean }> };
+
+export function sharedAttachmentIds(itinerary: {
+  flights?: RowWithFiles[];
+  lodging?: RowWithFiles[];
+  activities?: RowWithFiles[];
+}): Set<string> {
+  const ids = new Set<string>();
+  for (const rows of [itinerary.flights, itinerary.lodging, itinerary.activities]) {
+    for (const row of rows ?? []) {
+      for (const attachment of row?.attachments ?? []) {
+        if (attachment?.shared === true && typeof attachment.id === "string") ids.add(attachment.id);
+      }
+    }
+  }
+  return ids;
 }
 
 /** How many things the whole trip has attached, for a one-line summary. */

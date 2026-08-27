@@ -45,6 +45,7 @@ const ADVISOR_PLACES = [
   { label: "Content library", href: "/library", need: "clients" },
   { label: "Client forms", href: "/forms", need: "clients" },
   { label: "Payments", href: "/payments", need: "clients" },
+  { label: "Group trip", href: "/group", need: "clients" },
   { label: "Agency", href: "/agency", need: "brand" },
 ] as const;
 

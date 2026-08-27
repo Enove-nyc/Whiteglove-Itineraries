@@ -93,6 +93,7 @@ describe("the advisor tools have a home in the menu too", () => {
     assert.ok(labels.includes("Content library"));
     assert.ok(labels.includes("Client forms"));
     assert.ok(labels.includes("Payments"));
+    assert.ok(labels.includes("Group trip"));
     assert.ok(!labels.includes("Agency"));
   });
 
@@ -100,7 +101,7 @@ describe("the advisor tools have a home in the menu too", () => {
     const labels = advisorPlacesFor("pro").map((place) => place.label);
     assert.ok(labels.includes("Dashboard"));
     assert.ok(labels.includes("Agency"));
-    assert.equal(labels.length, 7);
+    assert.equal(labels.length, 8);
   });
 
   it("only shows the extra section, with a caption, once there is something to show", () => {

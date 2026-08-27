@@ -1,6 +1,6 @@
 import { createHmac, pbkdf2Sync, randomBytes } from "crypto";
 import { type AccountPlan, planOf } from "@/lib/account-plans";
-import { withoutAttachments } from "@/lib/attachments";
+import { travelerAttachments, withoutAttachments } from "@/lib/attachments";
 import { emptyItinerary, type Itinerary } from "@/data/itinerary";
 import { proposalOptionToItinerary, type Proposal } from "@/data/proposal";
 import type { ManualTripStage } from "@/data/trip-pipeline";
@@ -2121,12 +2121,19 @@ export async function getSharedItineraryByShareId(shareId: string) {
   // to know the itinerary is theirs.
   const client = trip?.client?.trim() ?? "";
   const advisor = trip?.advisor?.trim() ?? "";
-  // Boarding passes and tickets do not leave the account they were uploaded
-  // to. Serving one already checks the owner, so the reference alone would
-  // fetch nothing — but stripping it here means the person holding the link is
-  // not even told a pass exists. Two answers to the same question, because
-  // this is the one that costs somebody their flight if it is wrong.
-  return { itinerary: withoutAttachments(itinerary), ownerName: record?.name, ownerEmail, client, advisor, tripId: trip?.id };
+  // Boarding passes and tickets leave the account only where the adviser has
+  // said so, file by file (see lib/attachments.ts). Anything not shared is
+  // gone from what the client is handed rather than present and refused: a
+  // reference left behind would tell them a document exists and is being
+  // withheld, which is a worse answer than silence.
+  return {
+    itinerary: travelerAttachments(itinerary),
+    ownerName: record?.name,
+    ownerEmail,
+    client,
+    advisor,
+    tripId: trip?.id,
+  };
 }
 
 /* ---- per-trip sharing: one link, locked to one itinerary ---------------- */
