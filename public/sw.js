@@ -8,7 +8,7 @@
 // styles are therefore network-first: the newest version always wins when
 // online, and the cache is only a fallback when offline. Only truly static
 // media (images, fonts) is cache-first.
-const CACHE = "wg-cache-v2";
+const CACHE = "wg-cache-v3";
 const PRECACHE = ["/", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -27,8 +27,25 @@ self.addEventListener("activate", (event) => {
 });
 
 // Network-first: use the network when we can, fall back to the cache offline.
+//
+// `cache: "no-cache"` is the crucial part, not a detail. The app's JS under
+// /_next/static keeps STABLE filenames across releases but is served
+// `Cache-Control: immutable, max-age=1y`, so a plain fetch() is answered from
+// the browser's own HTTP cache — the same frozen copy — and the network is
+// never really reached. New releases then never arrive, however "network-first"
+// this looks. `no-cache` forces a revalidation against the server (a cheap 304
+// when nothing changed, the new file when it did), which is what actually lets
+// a deploy reach an already-open app.
 function networkFirst(req) {
-  return fetch(req)
+  // A navigation Request cannot be rebuilt through `new Request(req, init)`
+  // (the constructor rejects a navigate-mode request with a non-empty init),
+  // so those revalidate by URL; everything else keeps the original request but
+  // with the cache mode overridden.
+  const fresh =
+    req.mode === "navigate"
+      ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" })
+      : fetch(new Request(req, { cache: "no-cache" }));
+  return fresh
     .then((res) => {
       if (res && res.ok) {
         const copy = res.clone();
