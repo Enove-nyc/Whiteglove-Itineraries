@@ -31,9 +31,12 @@ describe("flightRecheckMs", () => {
 
 describe("the notification wiring keeps the same fences everything else does", () => {
   const CRON = readFileSync("app/api/cron/flight-status/route.ts", "utf8");
+  const TASKS = readFileSync("lib/cron-tasks.ts", "utf8");
+  const SCHED = readFileSync("lib/cron-scheduler.ts", "utf8");
+  const INSTR = readFileSync("instrumentation.ts", "utf8");
   const SEND = readFileSync("app/api/account/alerts/send/route.ts", "utf8");
 
-  it("the background flight check is locked to Vercel's own cron secret", () => {
+  it("the manual flight-check endpoint is locked behind the cron secret", () => {
     assert.match(CRON, /CRON_SECRET/);
     assert.match(CRON, /Not authorized/);
     // Refuses when the secret is not configured, rather than running open.
@@ -41,7 +44,14 @@ describe("the notification wiring keeps the same fences everything else does", (
   });
 
   it("only checks trips someone is actually following", () => {
-    assert.match(CRON, /pushSubscriptions\?\.length/);
+    assert.match(TASKS, /pushSubscriptions\?\.length/);
+  });
+
+  it("the scheduler runs in-process, only on the Node server and only in production", () => {
+    assert.match(INSTR, /NEXT_RUNTIME.*nodejs/);
+    assert.match(SCHED, /NODE_ENV.*production/);
+    // Idempotent so a second register() call cannot start a second timer.
+    assert.match(SCHED, /if \(started\) return/);
   });
 
   it("a hand-sent advisor alert is same-origin, signed-in, and Advisor-plan only", () => {
