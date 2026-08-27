@@ -126,3 +126,40 @@ describe("the sample itinerary", () => {
     assert.match(ITINERARY, /href="\/sample-itinerary"/, "no way to the sample from the itinerary planner");
   });
 });
+
+describe("the document a phone is shown is the whole document", () => {
+  const PRINTABLE = readFileSync("components/PrintableItinerary.tsx", "utf8");
+
+  /**
+   * FOUND LIVE, AND MEASURED. Every sheet in here is 8.5in — 816px — and at a
+   * 390px viewport it neither shrank nor scrolled: the right-hand third was
+   * simply cut off, taking the corner arc, the right edge of the times column
+   * and part of every day's header with it. Confirmed at 390x844 and
+   * 768x1024, where the sheets ran to x=849 and x=873 inside content areas of
+   * 375 and 753.
+   *
+   * That is the one public piece of evidence for what this product produces,
+   * on the site that sells it, and an advisor deciding on a phone saw two
+   * thirds of it.
+   *
+   * Not solved by scaling: 46% of an 8.5px foot is 4px, which is complete and
+   * unreadable. Below 900px the sheet stops being a sheet.
+   */
+  it("stops laying out a letter-size sheet below 900px", () => {
+    assert.match(PRINTABLE, /@media screen and \(max-width: 900px\)/);
+    const narrow = PRINTABLE.slice(PRINTABLE.indexOf("@media screen and (max-width: 900px)"));
+    assert.match(narrow, /\.wg-page \{[^}]*width: auto/, "the sheet keeps its 8.5in width on a phone");
+    assert.match(narrow, /\.wg-frame, \.wg-arc \{ display: none; \}/, "paper decorations still crop");
+    assert.match(narrow, /\.wg-timeline li \{ grid-template-columns: 1fr/, "the inch-measured timeline still cannot fit");
+  });
+
+  it("leaves the printed page alone", () => {
+    // The two never apply together — one is screen, one is print — and the
+    // printed PDF is the actual deliverable. If this ever stops restoring the
+    // sheet for print, the document being sold stops being letter-size.
+    assert.match(PRINTABLE, /@media print \{[\s\S]*?\.wg-page \{ margin: 0; box-shadow: none; width: auto/);
+    assert.match(PRINTABLE, /@page \{ size: letter/);
+    // And the desktop sheet is still a sheet.
+    assert.match(PRINTABLE, /width: 8\.5in; min-height: 11in/);
+  });
+});
