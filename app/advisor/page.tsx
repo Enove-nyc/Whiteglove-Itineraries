@@ -5,7 +5,7 @@ import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
 import { advisorPlacesFor } from "@/components/AccountMenu";
 import { requireSignedIn } from "@/lib/require-signed-in";
-import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
+import { accountCookieName, getCurrentAccountData, tripIsStarted, withTrips } from "@/lib/account-store";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients, mayViewPipelineAnalytics } from "@/lib/account-limits";
 import { readChat, readMarkers } from "@/lib/companion-chat-store";
@@ -72,11 +72,16 @@ export default async function AdvisorDashboardPage() {
 
   const showAnalytics = mayViewPipelineAnalytics(plan);
   // The account blob was already loaded by getCurrentAccountData above — reuse
-  // it. And read the REAL saved trips, not withTrips(), which synthesizes a
-  // blank "My trip" for an account that has none: that placeholder would show
-  // a new advisor a phantom "Active trips: 1" and never let the first-run state
-  // below appear.
-  const trips = account.data.trips?.filter((t) => t && t.id) ?? [];
+  // it. Read it through withTrips like every other screen does, then drop what
+  // has nothing in it.
+  //
+  // THIS USED TO READ data.trips DIRECTLY, to dodge the blank "My trip"
+  // withTrips synthesizes for an account with none — which would have shown a
+  // new advisor a phantom "Active trips: 1". It dodged the phantom and lost the
+  // real case with it: an account still on the old single-trip shape has an
+  // empty data.trips, so this screen said "Start your first trip" while the
+  // planner and the pipeline showed the trip. See tripIsStarted.
+  const trips = withTrips(account.data).trips.filter(tripIsStarted);
   const today = new Date().toISOString().slice(0, 10);
 
   const rows = await Promise.all(
