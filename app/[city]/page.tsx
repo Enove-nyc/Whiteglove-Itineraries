@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { configuredBrand } from "@/lib/site-brand-core";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import SubBrandBanner from "@/components/SubBrand";
@@ -81,6 +82,14 @@ function checkedOnFor(contact: unknown): string | null {
 
 export default async function CityGuidePage({ params }: { params: Promise<{ city: string }> }) {
   const { city } = await params;
+  // A kosher-guide page. /[city] is a catch-all, so it cannot go in the
+  // middleware's guide-only redirect list (that would bounce /plan, /book and
+  // every other top-level path too) — so the brand guard lives here: on the
+  // itineraries build a city slug is simply not found, rather than rendering
+  // the kosher city guide on the general-travel domain. `configuredBrand`
+  // (the build's own brand) rather than the per-request host, so the page
+  // stays statically rendered on the kosher build instead of going dynamic.
+  if (configuredBrand() === "itineraries") notFound();
   const guide = getCityGuide(city);
   if (!guide) notFound();
   const cemetery = getCemetery(guide.slug);

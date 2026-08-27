@@ -32,9 +32,11 @@ function flightChanged(a: ItinFlight, b: ItinFlight): boolean {
     a.from !== b.from ||
     a.to !== b.to ||
     a.date !== b.date ||
-    a.departTime !== b.departTime ||
-    a.arriveTime !== b.arriveTime ||
-    a.arriveDate !== b.arriveDate ||
+    // Optional fields normalized to "" so an undefined→"" flip from re-saved
+    // form state does not read as a real change and record a phantom alert.
+    (a.departTime ?? "") !== (b.departTime ?? "") ||
+    (a.arriveTime ?? "") !== (b.arriveTime ?? "") ||
+    (a.arriveDate ?? "") !== (b.arriveDate ?? "") ||
     (a.flightNo ?? "") !== (b.flightNo ?? "") ||
     (a.airline ?? "") !== (b.airline ?? "")
   );

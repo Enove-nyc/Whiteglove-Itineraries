@@ -14,13 +14,22 @@ import { SITE_HIT_KINDS, SITE_HIT_SECTIONS } from "@/lib/site-search-types";
 
 const SECTION_ORDER: SiteHitSection[] = [...SITE_HIT_SECTIONS];
 
-/** Where somebody goes when the search found nothing. */
+/** Where somebody goes when the search found nothing — the guide's own
+ *  sections, on the kosher brand. */
 const NO_RESULT_DOORS = [
   { label: "Destinations", href: "/destinations" },
   { label: "Where to stay", href: "/hotels" },
   { label: "Kosher food", href: "/kosher" },
   { label: "Things to do", href: "/things-to-do" },
   { label: "Map", href: "/map" },
+];
+/** The itineraries brand carries none of those guide pages — each redirects
+ *  off the domain — so a dead-end search there offers the planner instead,
+ *  exactly as the empty-query branch does. */
+const NO_RESULT_DOORS_ITINERARIES = [
+  { label: "Plan a trip", href: "/plan" },
+  { label: "Build the trip yourself", href: "/itinerary" },
+  { label: "Search booking partners", href: "/book" },
 ];
 const HERITAGE_FIRST: SiteHitSection[] = [
   "Heritage",
@@ -122,7 +131,7 @@ export default function SearchResults({
         </p>
         <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Try instead</p>
         <ul className="mt-3 flex flex-wrap gap-2">
-          {NO_RESULT_DOORS.map((door) => (
+          {(itineraries ? NO_RESULT_DOORS_ITINERARIES : NO_RESULT_DOORS).map((door) => (
             <li key={door.href}>
               <Link
                 href={door.href}

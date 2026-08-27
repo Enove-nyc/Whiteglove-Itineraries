@@ -26,6 +26,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const query = q.trim();
+  // "kever, shul" is kosher-guide wording; the itineraries brand gets a neutral line.
+  const itineraries = (await currentBrand()) === "itineraries";
   const response = query
     ? await searchSite(query, 60)
     : { results: [], query: "", heritageIntent: false, mode: "search" as const, interpretedAs: undefined };
@@ -47,7 +49,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
             Search
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">Find a destination, kever, shul or guide across the site.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{itineraries ? "Find a place or a guide across the site." : "Find a destination, kever, shul or guide across the site."}</p>
           <div className="mt-6"><DestinationSearch compact showChrome={false} id="search-page" /></div>
         </div>
       </section>

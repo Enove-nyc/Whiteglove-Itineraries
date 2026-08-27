@@ -92,6 +92,17 @@ function msgTime(at: string): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+// A currency code the payment carried empty or malformed used to throw a
+// RangeError out of Intl and crash the whole balance card, rather than the
+// amount simply rendering without a symbol. Falls back to USD on a bad code.
+function currencyFmt(currency: string): Intl.NumberFormat {
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD" });
+  } catch {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  }
+}
+
 /**
  * A voice note played the way a messenger plays one — a gold play/pause button
  * and a progress bar — rather than the browser's default audio strip. Play and
@@ -140,7 +151,12 @@ function ChatVoiceNote({ mediaId, mine }: { mediaId: string; mine: boolean }) {
         onPause={() => setPlaying(false)}
         onEnded={() => { setPlaying(false); setCur(0); }}
         onTimeUpdate={(e) => setCur(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDur(d); }}
+        onLoadedMetadata={(e) => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0) setDur(d); }}
+        // A MediaRecorder webm — what this app records — reports duration
+        // Infinity at loadedmetadata and only resolves it later, on
+        // durationchange. Without this the progress bar for every recorded
+        // voice note stayed frozen at zero for its whole life.
+        onDurationChange={(e) => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0) setDur(d); }}
         style={{ display: "none" }}
       >
         <source src={`/api/media?id=${encodeURIComponent(mediaId)}`} />
@@ -605,6 +621,14 @@ export default function CompanionApp({
     };
   }, [liveChat]);
 
+  // Opening the thread marks it read server-side (LiveChat's own fetch), but the
+  // 15s peek poll is what clears this badge — so without clearing it here the
+  // dot flashed back onto the Advisor tab for a few seconds after reading and
+  // navigating away. Clear it the moment the messages screen is entered.
+  useEffect(() => {
+    if (st.screen === "messages") setUnread(false);
+  }, [st.screen]);
+
   const advisor = trip.advisorName;
   const firstName = advisor.split(" ")[0];
   // The place, for the guide card — "The Cohens · Rome" → "Rome".
@@ -775,8 +799,13 @@ export default function CompanionApp({
     pay: trip.payment?.label ?? "",
   };
 
-  const act = days[st.actDay].items[st.actIdx] || days[st.actDay].items[0];
-  const actKind = COMPANION_KIND[act.kind] || COMPANION_KIND.rest;
+  // This runs every render, not only on the activity screen. A real builder
+  // trip always has a placeholder item on every day, but the CompanionTrip type
+  // permits a day index out of range or a day with no items, so fall back to a
+  // real day and guard the kind lookup rather than crash the whole app on mount.
+  const actDay = days[st.actDay] ?? days[trip.todayIndex] ?? days[0];
+  const act = actDay.items[st.actIdx] || actDay.items[0];
+  const actKind = (act ? COMPANION_KIND[act.kind] : undefined) || COMPANION_KIND.rest;
 
   const seg = <T extends string>(list: [T, string][], cur: T, set: (id: T) => void) =>
     list.map(([id, label]) => ({
@@ -976,7 +1005,7 @@ export default function CompanionApp({
         <div style={{ margin: "14px 14px 0", padding: "17px 18px", borderRadius: 20, background: "#f7eee0", border: "1px solid rgba(183,138,74,.28)", display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={kicker("#765321")}>Balance due</span>
           <div style={{ font: `400 22px/1.15 ${serif}`, color: "#4a3016" }}>
-            {new Intl.NumberFormat("en-US", { style: "currency", currency: trip.payment.currency }).format(
+            {currencyFmt(trip.payment.currency).format(
               (trip.payment.nextDue ? Math.min(trip.payment.nextDue.amountCents, trip.payment.remainingCents) : trip.payment.remainingCents) / 100,
             )}
             {trip.payment.nextDue?.dueDate && <span style={{ font: "600 13px/1 Inter,sans-serif", color: "#765321" }}> · Due {trip.payment.nextDue.dueDate}</span>}
@@ -1376,12 +1405,12 @@ export default function CompanionApp({
         >
           <span style={kicker("#78716c")}>Trip balance</span>
           <span style={{ font: `400 19px/1.2 ${serif}`, color: "#0b2437" }}>
-            {new Intl.NumberFormat("en-US", { style: "currency", currency: trip.payment.currency }).format(trip.payment.remainingCents / 100)}
+            {currencyFmt(trip.payment.currency).format(trip.payment.remainingCents / 100)}
             {trip.payment.remainingCents > 0 ? " remaining" : " — paid in full"}
           </span>
           <span style={{ fontSize: 12.5, color: "#78716c" }}>
-            {new Intl.NumberFormat("en-US", { style: "currency", currency: trip.payment.currency }).format(trip.payment.paidCents / 100)} paid so far
-            {trip.payment.totalCents ? ` of ${new Intl.NumberFormat("en-US", { style: "currency", currency: trip.payment.currency }).format(trip.payment.totalCents / 100)} total` : ""}
+            {currencyFmt(trip.payment.currency).format(trip.payment.paidCents / 100)} paid so far
+            {trip.payment.totalCents ? ` of ${currencyFmt(trip.payment.currency).format(trip.payment.totalCents / 100)} total` : ""}
           </span>
         </button>
       )}
@@ -2550,12 +2579,15 @@ function LiveChat({
 
   function sendStagedLocation() {
     if (!stagedLocation || sending) return;
+    // Cleared only once the send lands, like every other send path here — a
+    // failed post keeps the staged place so "try again" has something to send.
     void post(
       "address" in stagedLocation
         ? { address: stagedLocation.address, label: stagedLocation.label }
         : { lat: stagedLocation.lat, lng: stagedLocation.lng, label: stagedLocation.label },
-    );
-    setStagedLocation(null);
+    ).then((ok) => {
+      if (ok) setStagedLocation(null);
+    });
   }
 
   async function report(at: string) {

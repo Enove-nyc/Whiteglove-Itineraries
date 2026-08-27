@@ -1,4 +1,5 @@
 import { runFlightStatusSweep, runTripReminders } from "@/lib/cron-tasks";
+import { tryAcquireLease } from "@/lib/account-store";
 
 // The scheduler, for a persistent server.
 //
@@ -14,9 +15,18 @@ import { runFlightStatusSweep, runTripReminders } from "@/lib/cron-tasks";
 
 const EVERY_MS = 30 * 60 * 1000;
 const FIRST_RUN_DELAY_MS = 60 * 1000;
+// Held for less than the interval, so the next tick can re-acquire, but long
+// enough to cover one run — no instance starts a second run while another is
+// still going.
+const LEASE_MS = 25 * 60 * 1000;
 let started = false;
 
 async function tick(): Promise<void> {
+  // One instance per tick across every replica. Without this, each replica's
+  // own timer would run the same sweep — duplicate client reminders and the
+  // paid flight lookups multiplied by the replica count. A missed tick (storage
+  // briefly down → no lease) is the safe failure: the next tick tries again.
+  if (!(await tryAcquireLease("trip-scheduler", LEASE_MS))) return;
   try {
     await runFlightStatusSweep();
   } catch (error) {
@@ -43,10 +53,10 @@ export function startTripSchedulers(): void {
   started = true;
 
   // A moment after boot rather than during it, so startup is not racing a
-  // sweep, then every half hour.
-  setTimeout(() => void tick(), FIRST_RUN_DELAY_MS);
+  // sweep, then every half hour. Neither timer should hold the process open
+  // through an otherwise-idle shutdown — the HTTP server keeps it alive.
+  const first = setTimeout(() => void tick(), FIRST_RUN_DELAY_MS);
+  if (typeof first.unref === "function") first.unref();
   const timer = setInterval(() => void tick(), EVERY_MS);
-  // The HTTP server keeps the process alive; the timer must not hold it open
-  // through a shutdown.
   if (typeof timer.unref === "function") timer.unref();
 }
