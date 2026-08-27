@@ -60,3 +60,36 @@ describe("somebody can find it", () => {
     assert.match(readFileSync("lib/site-map.ts", "utf8"), /\{ path: "\/pricing"/);
   });
 });
+
+describe("the introduction does not promise what the table takes back", () => {
+  const PAGE = readFileSync("app/pricing/page.tsx", "utf8");
+
+  /**
+   * FOUND BY AN OUTSIDE AUDIT, and it was right. The paragraph above the three
+   * cards said everything on the site — "the planner and sharing a trip with
+   * anybody you like" — is the same on every plan. Four rows down, the feature
+   * table says handing a client their own app is an advisor plan.
+   *
+   * Both were describing something real: a share link, which every plan has,
+   * and companionClients, which One Trip does not. One word covered both, so a
+   * buyer read a promise and then found it withdrawn — the worst place on a
+   * site for a sentence to be loosely true, because it is the sentence they
+   * are deciding on.
+   */
+  it("does not say sharing a trip is the same on every plan", () => {
+    assert.doesNotMatch(
+      PAGE,
+      /sharing a trip[^.]*same on every plan/,
+      "One Trip cannot hand a client an app; companionClients is false for it",
+    );
+  });
+
+  it("still says what genuinely is the same on every plan", () => {
+    // The claim is worth making — it is true of the planner, and it is why
+    // One Trip is not a crippled tier. It just has to be the true version.
+    assert.match(PAGE, /same on every plan/);
+    const limits = readFileSync("lib/account-limits.ts", "utf8");
+    assert.match(limits, /one_trip: \{[^}]*companionClients: false/);
+    assert.match(limits, /starter: \{[^}]*companionClients: true/);
+  });
+});
