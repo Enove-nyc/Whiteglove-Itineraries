@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { coordinatesToPoint, placeMapUrl } from "@/data/route-utils";
-import { BRAND_ORIGIN, brandForHost } from "@/lib/site-brand-core";
+import { BRAND_ORIGIN } from "@/lib/site-brand-core";
+import { useIsItineraries } from "@/components/useSiteBrand";
 import type { ItinActivity } from "@/data/itinerary";
 import {
   curatedKosherPlacesNear,
@@ -86,10 +87,7 @@ export default function KosherNearby({
   // the visitor off-domain mid-build, which also breaks out of an installed
   // itineraries app entirely, so it opens the kosher site in a new tab there
   // instead of navigating away from the trip being built.
-  const [itineraries, setItineraries] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined") setItineraries(brandForHost(window.location.hostname) === "itineraries");
-  }, []);
+  const itineraries = useIsItineraries();
   const requireSignIn = useRequireSignIn();
   const places = useMemo<CuratedKosherPlaceNearby[]>(() => {
     if (query?.trim()) return searchCuratedKosherPlaces(query);

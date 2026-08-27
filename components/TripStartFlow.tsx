@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ACTION_BUTTON_CLASS } from "@/lib/action-button";
-import { BRAND_ORIGIN, brandForHost } from "@/lib/site-brand-core";
+import { BRAND_ORIGIN } from "@/lib/site-brand-core";
+import { useIsItineraries } from "@/components/useSiteBrand";
 import {
   ACCESSIBILITY_NEEDS,
   emptyAnswers,
@@ -136,10 +137,7 @@ export default function TripStartFlow({
   // out of an installed itineraries app (the Trusted Web Activity drops to an
   // ordinary browser tab, address bar and all, the moment it leaves the
   // verified domain). Detected client-side, the same way Navbar settles brand.
-  const [itineraries, setItineraries] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined") setItineraries(brandForHost(window.location.hostname) === "itineraries");
-  }, []);
+  const itineraries = useIsItineraries();
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   function update(patch: Partial<TripPlanAnswers>) {
@@ -170,7 +168,13 @@ export default function TripStartFlow({
 
   function choose(method: PlanningMethod) {
     update({ method });
-    if (method === "myself") router.push("/itinerary?from=plan");
+    // /destinations is a guide path and does not exist on the itineraries
+    // domain — reached there it bounces to the kosher site, which inside an
+    // installed app means the Trusted Web Activity losing its verified domain
+    // and dropping to an ordinary browser tab. The card that offers it is not
+    // rendered on this brand; this is the second lock on the same door, so a
+    // future caller cannot reopen it by accident.
+    if (method === "myself" || itineraries) router.push("/itinerary?from=plan");
     else router.push("/destinations");
   }
 
@@ -464,17 +468,25 @@ export default function TripStartFlow({
               <span className="mt-3 leading-7 text-slate-200">Your answers are already in it.</span>
             </button>
 
-            <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Not decided</p>
-              <p className="mt-2 leading-7 text-stone-600">Your answers stay in this browser.</p>
-              <button
-                type="button"
-                onClick={() => choose("unsure")}
-                className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-6 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]"
-              >
-                Browse destinations first
-              </button>
-            </div>
+            {/* THE GUIDE IS THE OTHER SITE'S. Browsing destinations means the
+                kosher travel guide, which this domain does not serve — the
+                same reason heritage is not offered as a kind of trip here. On
+                this brand the planner is the whole answer to "not decided
+                yet": a trip can be started with no destination in it and
+                filled in later. */}
+            {!itineraries && (
+              <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Not decided</p>
+                <p className="mt-2 leading-7 text-stone-600">Your answers stay in this browser.</p>
+                <button
+                  type="button"
+                  onClick={() => choose("unsure")}
+                  className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-6 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]"
+                >
+                  Browse destinations first
+                </button>
+              </div>
+            )}
 
             {/* ---- the optional half ------------------------------------------
                 CLOSED BY DEFAULT, AND AFTER THE CHOICE, not before it. These

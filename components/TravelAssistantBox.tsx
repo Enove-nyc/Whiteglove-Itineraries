@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { BRAND_ORIGIN } from "@/lib/site-brand-core";
+import { useIsItineraries } from "@/components/useSiteBrand";
 import AssistantAnswer from "@/components/AssistantAnswer";
 import { Icon } from "@/components/icons/Icon";
 import {
@@ -55,6 +57,9 @@ export default function TravelAssistantBox({
   labelledOutside?: boolean;
   initialAsk?: string;
 }) {
+  // Which site this is. One line, and right on the first paint — see
+  // components/useSiteBrand.ts.
+  const itineraries = useIsItineraries();
   const [open, setOpen] = useState(embedded || Boolean(initialAsk));
   const [question, setQuestion] = useState(initialAsk);
   const [answer, setAnswer] = useState<string | null>(null);
@@ -156,9 +161,25 @@ export default function TravelAssistantBox({
           )}
           <p className="mt-2 text-sm leading-6 text-stone-600">
             For White Glove&apos;s own checked listings, use the{" "}
-            <Link href="/kosher" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
-              kosher food finder
-            </Link>{" "}
+            {/* THE FINDER IS THE GUIDE'S. On the itineraries domain /kosher is
+                a guide-only path and a same-tab link there would bounce the
+                visitor off this site — and out of an installed app. Named
+                openly as the other site instead, in a new tab. Same treatment
+                KosherNearby gives it. */}
+            {itineraries ? (
+              <a
+                href={`${BRAND_ORIGIN.kosher}/kosher`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2"
+              >
+                kosher food finder
+              </a>
+            ) : (
+              <Link href="/kosher" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
+                kosher food finder
+              </Link>
+            )}{" "}
             or the{" "}
             <Link href="/search" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
               site search
