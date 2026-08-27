@@ -269,7 +269,12 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
         }`}
       >
         <div className={`mx-auto flex max-w-7xl items-center gap-2 px-5 transition-[min-height] sm:px-8 ${scrolled ? "min-h-16" : "min-h-20"}`}>
-          <Link href={logoHref} className="relative z-10 mr-2 flex shrink-0 items-center gap-2.5 sm:mr-4" aria-label={isItineraries ? "White Glove Itineraries home" : "White Glove Kosher Travel home"}>
+          {/* min-h-11 because it is a link, and the site's own name in the
+              header is one of the most-pressed things on any page. Without it
+              this measured 40px at every phone width and 36 at 320 — the
+              kosher repository has carried the minimum since its own tap-target
+              sweep and this copy never received it. */}
+          <Link href={logoHref} className="relative z-10 mr-2 flex min-h-11 shrink-0 items-center gap-2.5 sm:mr-4" aria-label={isItineraries ? "White Glove Itineraries home" : "White Glove Kosher Travel home"}>
             {/* The hand, drawn from the logo's alpha so its colour is CSS: navy
                 for everyone, gold for a paid member (see .header-glove). */}
             <span
