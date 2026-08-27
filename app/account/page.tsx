@@ -205,6 +205,10 @@ export default async function AccountPage() {
                       <Link href="/payments" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">Payments</Link>
                       <span className="text-stone-600"> — set a balance and collect it into your own Stripe account</span>
                     </li>
+                    <li>
+                      <Link href="/group" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">Group trip</Link>
+                      <span className="text-stone-600"> — every family on one trip, and what each still owes</span>
+                    </li>
                   </ul>
                   <p className="mt-3 text-sm leading-6 text-stone-600">
                     To hand a client their own trip, open it in the{" "}

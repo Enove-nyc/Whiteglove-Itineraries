@@ -20,6 +20,18 @@ export type ItinAttachment = {
   bytes: number;
   addedAt: string;
   note?: string;
+  /**
+   * Whether the traveler this trip was sent to may open it.
+   *
+   * ABSENT MEANS NO, and every file uploaded before this existed is therefore
+   * private, which is the only safe way round: a flag that defaulted to shared
+   * would have published a folder of documents nobody chose to publish.
+   *
+   * The adviser turns it on per file, one at a time. A boarding pass is for
+   * the person boarding; a supplier invoice with the commission on it is not,
+   * and both live in the same list. See lib/attachments.ts.
+   */
+  shared?: boolean;
 };
 
 export type LodgingType = "hotel" | "overnight-transit" | "other";

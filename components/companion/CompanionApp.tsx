@@ -176,6 +176,98 @@ const WALLET_ATTACH_KIND: Record<NonNullable<CompanionWalletRow["stopKind"]>, st
  * back, attaches the reference to the one stop this row came from, and saves.
  * The same read-modify-write /api/account/itinerary already supports.
  */
+/**
+ * "Send this one to the traveler" — one file at a time.
+ *
+ * WHY IT IS PER FILE AND NOT PER TRIP. The same list holds the boarding pass
+ * the client needs at the gate and the supplier confirmation with the
+ * commission on it. A single switch over the lot would either withhold the
+ * first or publish the second, so this is a decision taken once per document,
+ * by the person who knows which is which.
+ *
+ * OFF UNTIL PRESSED. Nothing uploaded before this existed became visible; see
+ * the note on ItinAttachment.shared.
+ */
+function WalletShareToggle({
+  tripId,
+  row,
+  attachment,
+  onSaved,
+}: {
+  tripId: string;
+  row: CompanionWalletRow;
+  attachment: { id: string; name: string; shared?: boolean };
+  onSaved: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const shared = attachment.shared === true;
+
+  async function flip() {
+    setBusy(true);
+    setError("");
+    try {
+      // The same read-modify-write WalletAttach does, against the one file.
+      const key = row.stopKind === "flight" ? "flights" : row.stopKind === "lodging" ? "lodging" : "activities";
+      const got = await fetch(`/api/account/itinerary?trip=${encodeURIComponent(tripId)}`, { cache: "no-store" });
+      const gotData = (await got.json().catch(() => null)) as { itinerary?: Record<string, unknown> } | null;
+      const itinerary = gotData?.itinerary;
+      const rows = itinerary?.[key];
+      if (!itinerary || !Array.isArray(rows)) {
+        setError("Could not find that stop.");
+        return;
+      }
+      const stop = (rows as Array<{ id: string; attachments?: Array<{ id: string; shared?: boolean }> }>).find(
+        (r) => r.id === row.id,
+      );
+      const file = stop?.attachments?.find((a) => a.id === attachment.id);
+      if (!file) {
+        setError("That file is no longer on the trip.");
+        return;
+      }
+      file.shared = !shared;
+
+      const saved = await fetch("/api/account/itinerary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itinerary, tripId }),
+      });
+      if (!saved.ok) {
+        setError("Could not save that.");
+        return;
+      }
+      onSaved();
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <button
+        type="button"
+        onClick={() => void flip()}
+        disabled={busy}
+        aria-pressed={shared}
+        style={{
+          cursor: busy ? "default" : "pointer",
+          border: "none",
+          background: "none",
+          padding: 0,
+          font: "600 11.5px/1 inherit",
+          color: busy ? "#a8a29e" : shared ? "#15803d" : "#78716c",
+          textDecoration: "underline",
+        }}
+      >
+        {busy ? "Saving…" : shared ? "Traveler can open this" : "Send to the traveler"}
+      </button>
+      {error && <span style={{ fontSize: 11.5, color: "#b42318" }}>{error}</span>}
+    </span>
+  );
+}
+
 function WalletAttach({
   tripId,
   row,
@@ -1325,21 +1417,35 @@ export default function CompanionApp({
                   )}
                 </div>
               )}
-              {/* Only to whoever is signed into the account that owns the
-                  file — a client on a code link could never open one, so
-                  showing the link there would just be a dead tap. */}
-              {!isClientViewer && r.attachments && r.attachments.length > 0 && (
+              {/* THE SAME LIST, TWO DOORS. Whoever owns the account opens a
+                  file through their own account; the client opens it through
+                  this trip's code, and only the files the adviser marked for
+                  them are in the payload at all. See app/api/trip-file. */}
+              {r.attachments && r.attachments.length > 0 && (!isClientViewer || liveChat?.shareId) && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 2 }}>
                   {r.attachments.map((att) => (
-                    <a
-                      key={att.id}
-                      href={`/api/account/attachments?id=${encodeURIComponent(att.id)}`}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      style={{ fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
-                    >
-                      📎 {att.name}
-                    </a>
+                    <span key={att.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                      <a
+                        href={
+                          isClientViewer
+                            ? `/api/trip-file/${encodeURIComponent(liveChat!.shareId)}?id=${encodeURIComponent(att.id)}`
+                            : `/api/account/attachments?id=${encodeURIComponent(att.id)}`
+                        }
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        style={{ fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
+                      >
+                        📎 {att.name}
+                      </a>
+                      {!isClientViewer && trip.tripId && r.id && r.stopKind && (
+                        <WalletShareToggle
+                          tripId={trip.tripId}
+                          row={r}
+                          attachment={att}
+                          onSaved={() => router.refresh()}
+                        />
+                      )}
+                    </span>
                   ))}
                 </div>
               )}
