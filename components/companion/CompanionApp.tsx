@@ -271,7 +271,7 @@ function WalletShareToggle({
           cursor: busy ? "default" : "pointer",
           border: "none",
           background: "none",
-          padding: 0,
+          ...TAP_INLINE,
           font: "600 11.5px/1 inherit",
           color: busy ? "#a8a29e" : shared ? "#15803d" : "#78716c",
           textDecoration: "underline",
@@ -458,7 +458,7 @@ function GuideNoteEdit({
           setText(note);
           setEditing(true);
         }}
-        style={{ alignSelf: "flex-start", border: 0, background: "none", cursor: "pointer", padding: 0, fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
+        style={{ alignSelf: "flex-start", border: 0, background: "none", cursor: "pointer", ...TAP_INLINE, fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
       >
         {note ? "Edit this note" : "+ Add a note for this day"}
       </button>
@@ -475,10 +475,10 @@ function GuideNoteEdit({
         style={{ border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", borderRadius: 10, padding: "10px 12px", fontFamily: "Inter,sans-serif", fontSize: 13.5, lineHeight: 1.5, color: "#26323a", outline: "none", resize: "vertical" }}
       />
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => void save()} disabled={busy} className="wg-press" style={{ border: 0, cursor: "pointer", background: GOLD, color: CREAM, borderRadius: 10, padding: "8px 14px", fontSize: 12.5, fontWeight: 700, opacity: busy ? 0.6 : 1 }}>
+        <button onClick={() => void save()} disabled={busy} className="wg-press" style={{ border: 0, cursor: "pointer", background: GOLD, color: CREAM, borderRadius: 10, minHeight: 44, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, opacity: busy ? 0.6 : 1 }}>
           {busy ? "Saving…" : "Save"}
         </button>
-        <button onClick={() => setEditing(false)} disabled={busy} style={{ border: "1px solid rgba(38,50,58,.16)", background: "none", cursor: "pointer", borderRadius: 10, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, color: "#57534e" }}>
+        <button onClick={() => setEditing(false)} disabled={busy} style={{ border: "1px solid rgba(38,50,58,.16)", background: "none", cursor: "pointer", borderRadius: 10, minHeight: 44, padding: "8px 16px", fontSize: 12.5, fontWeight: 600, color: "#57534e" }}>
           Cancel
         </button>
       </div>
@@ -954,7 +954,7 @@ export default function CompanionApp({
       <div style={{ margin: "22px 14px 0", padding: "20px 18px", borderRadius: 20, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
           <h3 style={{ margin: 0, font: `400 21px/1.1 ${serif}` }}>{sel.name}</h3>
-          <button onClick={() => go("day")} className="wg-link" style={{ border: 0, background: "none", cursor: "pointer", font: "600 12px/1 Inter,sans-serif", color: "#765321", padding: 0 }}>Full day →</button>
+          <button onClick={() => go("day")} className="wg-link" style={{ border: 0, background: "none", cursor: "pointer", font: "600 12px/1 Inter,sans-serif", color: "#765321", ...TAP_INLINE }}>Full day →</button>
         </div>
         {/* The one thing today that most needs finding fast: where the plan
             says the traveler should actually be right now, or what's next —
@@ -1360,7 +1360,7 @@ export default function CompanionApp({
       <div style={{ flexShrink: 0, position: "sticky", bottom: 0, background: CREAM, borderTop: "1px solid rgba(38,50,58,.08)", padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", gap: 7, overflowX: "auto", scrollbarWidth: "none" }}>
           {quickReplies.map((q, i) => (
-            <button key={i} onClick={() => send(q)} className="wg-warm" style={{ flex: "none", border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", cursor: "pointer", fontSize: 12.5, padding: "9px 14px", borderRadius: 14, color: "#26323a", whiteSpace: "nowrap" }}>{q}</button>
+            <button key={i} onClick={() => send(q)} className="wg-warm" style={{ flex: "none", border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", cursor: "pointer", fontSize: 12.5, minHeight: 44, padding: "9px 16px", borderRadius: 14, color: "#26323a", whiteSpace: "nowrap" }}>{q}</button>
           ))}
         </div>
         <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
@@ -3012,7 +3012,7 @@ function LiveChat({
           {editingAt && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5, color: "#78716c", padding: "0 2px" }}>
               <span>Editing your message</span>
-              <button onClick={cancelEdit} className="wg-link" style={{ border: 0, background: "none", cursor: "pointer", fontSize: 11.5, color: "#a8a29e" }}>Cancel</button>
+              <button onClick={cancelEdit} className="wg-link" style={{ border: 0, background: "none", cursor: "pointer", ...TAP_INLINE, fontSize: 11.5, color: "#a8a29e" }}>Cancel</button>
             </div>
           )}
           {replyingTo && !editingAt && (
@@ -3130,7 +3130,7 @@ function LiveChat({
                           aria-label="Search a place or address to share"
                           style={{ flex: 1, minWidth: 0, border: "1px solid rgba(38,50,58,.16)", borderRadius: 10, padding: "8px 10px", fontSize: 16, fontFamily: "Inter,sans-serif", color: "#26323a", outline: "none" }}
                         />
-                        <button type="submit" disabled={!locSearch.trim()} className="wg-press" style={{ flex: "none", border: 0, background: GOLD, color: CREAM, borderRadius: 10, padding: "0 13px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", opacity: locSearch.trim() ? 1 : 0.5 }}>Share</button>
+                        <button type="submit" disabled={!locSearch.trim()} className="wg-press" style={{ flex: "none", border: 0, background: GOLD, color: CREAM, borderRadius: 10, minHeight: 44, padding: "0 15px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", opacity: locSearch.trim() ? 1 : 0.5 }}>Share</button>
                       </form>
                       <button role="menuitem" onClick={() => { setLocationChoiceOpen(false); pickLocation(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, borderBottom: places.length ? "1px solid rgba(38,50,58,.08)" : 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="map-pin" className="h-4 w-4" /> My current location
@@ -3365,6 +3365,28 @@ function AdvisorInbox({
     </div>
   );
 }
+
+/**
+ * A 44-pixel hit area on a control that has to look like inline text.
+ *
+ * An outside audit measured the small controls in here — the document-sharing
+ * toggle, the day-note action, "Full day →", the chat's Cancel — as inline
+ * underlined buttons with no padding and 11.5 to 12.5 pixel text. On a phone
+ * those are roughly fifteen pixels tall. They are also some of the ones a
+ * traveller uses most, and one of them decides whether a document is visible
+ * to a client.
+ *
+ * Making them physically bigger was the wrong answer: they sit inline beside a
+ * heading or in a row of running text, and a 44px button there pushes the line
+ * apart. So the padding grows and an equal negative margin takes the space
+ * back — the control looks exactly as it did and the finger has 44 pixels to
+ * land on. That is the standard trick and it is worth naming once rather than
+ * writing out at six call sites.
+ *
+ * Where a control is already a block with its own padding, give it minHeight
+ * instead; this is only for the ones pretending to be text.
+ */
+const TAP_INLINE = { padding: "13px 8px", margin: "-13px -8px" } as const;
 
 const CSS = `
 @keyframes wgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
