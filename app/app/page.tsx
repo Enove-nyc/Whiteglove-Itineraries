@@ -107,6 +107,20 @@ export default async function AppPage({
             <div className="mt-4">
               <AppCodeEntry />
             </div>
+            {/* THE THIRD DOOR, and the only one for somebody who has not bought
+                this yet. The two above are both for people who already have
+                it, which meant the product three plans are sold on was
+                invisible to everybody deciding whether to pay for it. */}
+            <p className="mt-4 border-t border-[var(--gold-light)] pt-4 text-sm leading-6 text-stone-600">
+              Not sure what it looks like?{" "}
+              <Link
+                href="/app/preview"
+                className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
+              >
+                Open a sample trip
+              </Link>{" "}
+              — a made-up family&rsquo;s week, shown in full.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-[var(--gold-light)] bg-white p-6">
