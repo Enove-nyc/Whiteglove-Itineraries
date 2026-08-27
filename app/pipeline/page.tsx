@@ -41,7 +41,7 @@ export default async function PipelinePage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal homeHref="/advisor" />
       <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Trip pipeline</p>

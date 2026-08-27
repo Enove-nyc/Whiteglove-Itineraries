@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { coordinatesToPoint, placeMapUrl } from "@/data/route-utils";
-import { BRAND_ORIGIN, brandForHost } from "@/lib/site-brand-core";
+import { brandForHost } from "@/lib/site-brand-core";
 import type { ItinActivity } from "@/data/itinerary";
 import {
   curatedKosherPlacesNear,
@@ -108,14 +108,19 @@ export default function KosherNearby({
         <p className="mt-3 text-sm text-stone-500">
           {query?.trim()
             ? "No White Glove kosher listings match that search."
-            : `No White Glove kosher listings are within ${radiusKm} km of here.`}{" "}
-          <a
-            href={itineraries ? `${BRAND_ORIGIN.kosher}/kosher` : "/kosher"}
-            {...(itineraries ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            className="underline decoration-[var(--gold)] underline-offset-2"
-          >
-            Browse the kosher food finder.
-          </a>
+            : `No White Glove kosher listings are within ${radiusKm} km of here.`}
+          {/* The "browse the finder" fallback points at the kosher-guide
+              domain, so it is kosher-only — the itineraries side points nothing
+              there. The listings themselves (map, phone, website) carry no
+              cross-domain link, so the feature stays whole on both. */}
+          {!itineraries && (
+            <>
+              {" "}
+              <a href="/kosher" className="underline decoration-[var(--gold)] underline-offset-2">
+                Browse the kosher food finder.
+              </a>
+            </>
+          )}
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-[var(--gold-light)]">

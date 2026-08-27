@@ -156,6 +156,18 @@ export default function BookPartners({
     url.searchParams.set("type", next);
     window.history.replaceState(null, "", url);
   };
+
+  // Follow a real navigation that changes the tab from outside — the Travel
+  // menu's Flights / Hotels / Cars links all point at /book, so tapping one
+  // while already on /book re-renders the page with a new `initialKind` but
+  // does NOT remount this component; without this the form stayed on whatever
+  // tab it first mounted with (usually Flights) no matter which link was
+  // pressed. `initialKind` only changes on a real navigation — chooseKind
+  // updates the URL with replaceState, not the prop — so this never fights a
+  // tab the visitor picked here.
+  useEffect(() => {
+    setKind(initialKind);
+  }, [initialKind]);
   const [pending, setPending] = useState<PendingBooking | null>(null);
   const [live, setLive] = useState<PartnerLiveCapabilities>({ hotels: false, flights: false, cars: false });
 

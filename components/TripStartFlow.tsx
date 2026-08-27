@@ -170,8 +170,11 @@ export default function TripStartFlow({
 
   function choose(method: PlanningMethod) {
     update({ method });
+    // /destinations is a kosher-guide path that redirects off the itineraries
+    // domain — on that side "browse first" starts the builder instead, so the
+    // visitor is never thrown out to the kosher site.
     if (method === "myself") router.push("/itinerary?from=plan");
-    else router.push("/destinations");
+    else router.push(itineraries ? "/itinerary?from=plan" : "/destinations");
   }
 
   const current = STEPS[step - 1];

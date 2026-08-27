@@ -32,9 +32,9 @@ export default async function PaymentsPage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal homeHref="/advisor" />
-      <section className="mx-auto max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
+      <section className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:px-8 sm:py-14">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Payments</p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
           Trip payments

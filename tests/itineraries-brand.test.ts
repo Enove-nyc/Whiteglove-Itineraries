@@ -91,10 +91,16 @@ describe("a page body never hands out a bare guide link on the itineraries domai
     assert.match(branch, /href="\/cemeteries"/);
   });
 
-  it("KosherNearby only sends a visitor to /kosher on the domain that has one", () => {
+  it("KosherNearby offers its /kosher fallback link only on the kosher domain — never a path to it from itineraries", () => {
     const src = readFileSync("components/KosherNearby.tsx", "utf8");
     assert.match(src, /brandForHost\(window\.location\.hostname\)/);
-    assert.match(src, /itineraries \? `\$\{BRAND_ORIGIN\.kosher\}\/kosher` : "\/kosher"/);
+    // The "browse the finder" fallback is now kosher-only. The itineraries
+    // side points NOTHING at the kosher guide (it used to open an absolute
+    // kosher URL in a new tab; the owner asked for every such path gone). The
+    // listings themselves carry only map / phone / website links, so the
+    // feature stays whole on both domains.
+    assert.match(src, /!itineraries && \(/);
+    assert.doesNotMatch(src, /BRAND_ORIGIN\.kosher/);
   });
 
   it("TripStartFlow only sends a visitor to /heritage on the domain that has one", () => {
