@@ -32,7 +32,7 @@
  * to be.
  */
 
-import { Fragment, type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
 import {
@@ -48,6 +48,7 @@ import { Icon, type IconName } from "@/components/icons/Icon";
 import PaymentCheckout from "@/components/companion/PaymentCheckout";
 import { useDeviceClock } from "@/components/TripProgressStrip";
 import { followAlong, type FollowStop } from "@/lib/trip-progress";
+import { readDocumentOffline, saveDocumentOffline } from "@/lib/offline-trip-store";
 
 /** The blue the app already uses for its own accents — map notes, the
  * initials avatar, kickers. The chat toolbar's icons match it rather than
@@ -542,6 +543,65 @@ function PayScreen({ shareId }: { shareId: string }) {
   );
 }
 
+/**
+ * A wallet document — a boarding pass, a booking confirmation — that opens with
+ * no signal.
+ *
+ * Online it opens the served file exactly as a plain link would. Offline it
+ * opens the copy the background cache (lib/offline-trip-store) already put on
+ * the device when the trip was last online — the traveler never downloads
+ * anything by hand; the file is simply already in the wallet. Only the client's
+ * own files are cached (offlineCapable): the advisor opens theirs through their
+ * logged-in account, which is an online-only action anyway.
+ */
+function WalletDocLink({
+  url,
+  fileId,
+  name,
+  offlineCapable,
+}: {
+  url: string;
+  fileId: string;
+  name: string;
+  offlineCapable: boolean;
+}) {
+  const [note, setNote] = useState("");
+
+  async function open(e: ReactMouseEvent<HTMLAnchorElement>) {
+    // Online, or a file we don't cache (the advisor's): let the link do its
+    // normal thing — open the served URL in a new tab.
+    if (!offlineCapable) return;
+    if (typeof navigator !== "undefined" && navigator.onLine) return;
+    // No signal: serve the saved bytes instead of a request that would fail.
+    e.preventDefault();
+    setNote("");
+    const blob = await readDocumentOffline(fileId);
+    if (!blob) {
+      setNote("Not saved for offline yet — open it once with a connection.");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    window.open(objectUrl, "_blank", "noopener");
+    // Give the new tab time to take the URL before releasing it.
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  }
+
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer noopener"
+        onClick={(e) => void open(e)}
+        style={{ fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
+      >
+        📎 {name}
+      </a>
+      {note && <span style={{ fontSize: 11, color: "#b42318" }}>{note}</span>}
+    </span>
+  );
+}
+
 export default function CompanionApp({
   trip = COMPANION_DEMO_TRIP,
   chat,
@@ -621,6 +681,44 @@ export default function CompanionApp({
       clearInterval(t);
     };
   }, [liveChat]);
+
+  // KEEP THE WALLET DOCUMENTS ON THE DEVICE. A client who opens the trip with a
+  // connection gets every boarding pass and confirmation quietly saved into the
+  // wallet, so they open at the gate with no signal — no download step, the file
+  // is simply already there (WalletDocLink reads it back; lib/offline-trip-store
+  // holds it). Advisor files are login-gated and online-only, so this is the
+  // client side alone. Sequential and fail-soft: it stays well under the
+  // trip-file rate limit, skips anything already saved, and leaves anything it
+  // can't reach for the next online open.
+  useEffect(() => {
+    if (!isClientViewer) return;
+    const shareId = liveChat?.shareId;
+    if (!shareId) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    let cancelled = false;
+    void (async () => {
+      const files = trip.walletGroups.flatMap((g) => g.rows).flatMap((r) => r.attachments ?? []);
+      for (const file of files) {
+        if (cancelled) return;
+        try {
+          if (await readDocumentOffline(file.id)) continue;
+          const res = await fetch(
+            `/api/trip-file/${encodeURIComponent(shareId)}?id=${encodeURIComponent(file.id)}`,
+            { cache: "no-store" },
+          );
+          if (!res.ok) continue;
+          const blob = await res.blob();
+          if (cancelled) return;
+          await saveDocumentOffline(file.id, blob);
+        } catch {
+          /* leave it for the next online open */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isClientViewer, liveChat?.shareId, trip.walletGroups]);
 
   // Opening the thread marks it read server-side (LiveChat's own fetch), but the
   // 15s peek poll is what clears this badge — so without clearing it here the
@@ -1483,18 +1581,16 @@ export default function CompanionApp({
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 2 }}>
                   {r.attachments.map((att) => (
                     <span key={att.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-                      <a
-                        href={
+                      <WalletDocLink
+                        url={
                           isClientViewer
                             ? `/api/trip-file/${encodeURIComponent(liveChat!.shareId)}?id=${encodeURIComponent(att.id)}`
                             : `/api/account/attachments?id=${encodeURIComponent(att.id)}`
                         }
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        style={{ fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
-                      >
-                        📎 {att.name}
-                      </a>
+                        fileId={att.id}
+                        name={att.name}
+                        offlineCapable={isClientViewer}
+                      />
                       {!isClientViewer && trip.tripId && r.id && r.stopKind && (
                         <WalletShareToggle
                           tripId={trip.tripId}
