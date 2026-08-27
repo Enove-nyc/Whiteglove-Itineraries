@@ -32,7 +32,7 @@
  * to be.
  */
 
-import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
 import {
@@ -54,6 +54,21 @@ import { readDocumentOffline, saveDocumentOffline } from "@/lib/offline-trip-sto
  * initials avatar, kickers. The chat toolbar's icons match it rather than
  * showing as whatever color the device's native emoji happen to render in. */
 const ICON_BLUE = "#1f3f5c";
+
+// Whether the device is offline, as a subscription rather than an effect that
+// sets state — so it is correct on the first paint and never trips the
+// set-state-in-effect rule. SSR always reports online (no navigator), and the
+// first client paint reconciles to the real value.
+function subscribeOnline(callback: () => void): () => void {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+const getIsOffline = () => (typeof navigator !== "undefined" ? !navigator.onLine : false);
+const getIsOfflineServer = () => false;
 
 type Screen = "home" | "day" | "activity" | "chat" | "messages" | "alerts" | "wallet" | "profile" | "pay";
 type ChatSide = "client" | "advisor";
@@ -799,6 +814,7 @@ export default function CompanionApp({
    * day has no "now" on it.
    */
   const { nowMinutes } = useDeviceClock();
+  const offline = useSyncExternalStore(subscribeOnline, getIsOffline, getIsOfflineServer);
   const followStops: FollowStop[] = items.map((it, i) => ({ id: String(i), name: it.title, arrivalTime: it.time || undefined }));
   const follow = sel.today ? followAlong({ stops: followStops, nowMinutes }) : null;
   const nowIdx = follow?.now ? Number(follow.now.id) : null;
@@ -1770,6 +1786,16 @@ export default function CompanionApp({
           {(open || unreadAlerts.length > 0) && <span style={{ position: "absolute", top: -3, right: -3, width: 11, height: 11, borderRadius: 14, background: GOLD, border: `2px solid ${CREAM}` }} />}
         </button>
       </div>
+      {/* Offline, and working from the saved copy — say so plainly, so a blank
+          messages thread or a slow document reads as "no signal", not "broken".
+          The itinerary and wallet are all here; anything that needs the network
+          waits for it. */}
+      {offline && (
+        <div style={{ flexShrink: 0, padding: "7px 18px", background: "#fef6e7", borderBottom: "1px solid rgba(38,50,58,.08)", display: "flex", alignItems: "center", gap: 7, font: "600 11.5px/1.3 Inter,sans-serif", color: "#765321" }}>
+          <span aria-hidden="true">✈️</span>
+          Offline — showing your saved trip.
+        </div>
+      )}
       {/* content */}
       <div className="wg-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch" }}>{body}</div>
       {/* tabs — an icon over a label per tab, with one gold pill that slides to
