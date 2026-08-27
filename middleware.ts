@@ -45,6 +45,9 @@ const GUIDE_ONLY_PREFIXES = [
   "/travel-insurance",
   "/travel-gear",
   "/directory",
+  // The kevarim-towns directory. Guide content that was never on this list,
+  // so it answered 200 on the itineraries domain with a Kosher Travel title.
+  "/stops",
   "/esim",
   "/travel-guide",
   "/sources",
