@@ -65,7 +65,7 @@ describe("the empty guide does not promise content that will never come", () => 
 
 describe("the bottom-nav chat tab reads as White Glove's own, not a generic messaging app", () => {
   it("is labelled Advisor for a real trip, Messages only for the advisor's own inbox", () => {
-    assert.match(APP, /tabDefs\.push\(\["messages", advisorInbox \? "Messages" : "Advisor"\]\)/);
+    assert.match(APP, /tabDefs\.push\(\["messages", advisorInbox \? "Messages" : "Advisor", "chat"\]\)/);
   });
 });
 

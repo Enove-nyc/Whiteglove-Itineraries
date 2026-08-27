@@ -43,7 +43,7 @@ import {
   type CompanionWalletRow,
 } from "@/data/companion-demo";
 import type { TripAlert } from "@/data/trip-alerts";
-import { Icon } from "@/components/icons/Icon";
+import { Icon, type IconName } from "@/components/icons/Icon";
 import PaymentCheckout from "@/components/companion/PaymentCheckout";
 import { useDeviceClock } from "@/components/TripProgressStrip";
 import { followAlong, type FollowStop } from "@/lib/trip-progress";
@@ -735,13 +735,13 @@ export default function CompanionApp({
   // The bottom nav is capped at four on a real trip — Trip, Advisor, Wallet,
   // You — so a real trip's Guide notes live inside the You tab (see
   // guideSection below) rather than getting a tab of their own.
-  const tabDefs: [Screen, string][] = [["home", "Trip"]];
-  if (hasConcierge) tabDefs.push([conciergeTabScreen, isGuideMode ? "Guide" : "Concierge"]);
-  if (hasMessages && conciergeTabScreen !== "messages") tabDefs.push(["messages", advisorInbox ? "Messages" : "Advisor"]);
-  tabDefs.push(["wallet", "Wallet"], ["profile", "You"]);
-  const tabs = tabDefs.map(([id, label]) => {
+  const tabDefs: [Screen, string, IconName][] = [["home", "Trip", "home"]];
+  if (hasConcierge) tabDefs.push([conciergeTabScreen, isGuideMode ? "Guide" : "Concierge", "sparkle"]);
+  if (hasMessages && conciergeTabScreen !== "messages") tabDefs.push(["messages", advisorInbox ? "Messages" : "Advisor", "chat"]);
+  tabDefs.push(["wallet", "Wallet", "wallet"], ["profile", "You", "account"]);
+  const tabs = tabDefs.map(([id, label, icon]) => {
     const on = st.screen === id || (id === "home" && (st.screen === "day" || st.screen === "activity" || st.screen === "alerts"));
-    return { id, label, on, bg: on ? GOLD : "transparent", fg: on ? CREAM : "#57534e", badge: id === "messages" && unread && st.screen !== "messages" };
+    return { id, label, icon, on, badge: id === "messages" && unread && st.screen !== "messages" };
   });
 
   const quickReplies = (
@@ -1512,12 +1512,42 @@ export default function CompanionApp({
       </div>
       {/* content */}
       <div className="wg-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch" }}>{body}</div>
-      {/* tabs */}
-      <div style={{ flexShrink: 0, padding: "9px 12px", background: "#ece8df", borderTop: "1px solid rgba(38,50,58,.08)", display: "flex", gap: 5 }}>
+      {/* tabs — an icon over a label per tab, with one gold pill that slides to
+          the active one (the messenger/travel-app bottom bar). */}
+      <div style={{ flexShrink: 0, position: "relative", padding: "8px 10px", background: "#ece8df", borderTop: "1px solid rgba(38,50,58,.08)", display: "flex" }}>
+        {(() => {
+          const idx = tabs.findIndex((t) => t.on);
+          if (idx < 0) return null; // a screen with no tab of its own (pay) — no pill
+          return (
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: 8,
+                bottom: 8,
+                left: `calc(10px + ${idx} * (100% - 20px) / ${tabs.length})`,
+                width: `calc((100% - 20px) / ${tabs.length})`,
+                background: GOLD,
+                borderRadius: 16,
+                boxShadow: "0 3px 10px rgba(183,138,74,.34)",
+                transition: "left .28s cubic-bezier(.4,0,.2,1)",
+              }}
+            />
+          );
+        })()}
         {tabs.map((t) => (
-          <button key={t.id} onClick={() => go(t.id)} aria-current={t.on ? "page" : undefined} aria-label={t.badge ? `${t.label} (unread messages)` : t.label} style={{ position: "relative", flex: 1, border: 0, cursor: "pointer", background: t.bg, color: t.fg, font: `400 13px/1 ${serif}`, padding: "12px 6px", borderRadius: 14 }}>
-            {t.label}
-            {t.badge && <span aria-hidden="true" style={{ position: "absolute", top: 5, right: "22%", width: 8, height: 8, borderRadius: 14, background: GOLD, border: "2px solid #ece8df" }} />}
+          <button
+            key={t.id}
+            onClick={() => go(t.id)}
+            aria-current={t.on ? "page" : undefined}
+            aria-label={t.badge ? `${t.label} (unread messages)` : t.label}
+            style={{ position: "relative", zIndex: 1, flex: 1, border: 0, cursor: "pointer", background: "transparent", color: t.on ? CREAM : "#6b6b63", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "9px 4px 7px", transition: "color .2s ease" }}
+          >
+            <span style={{ position: "relative", display: "inline-flex" }}>
+              <Icon name={t.icon} className="h-5 w-5" strokeWidth={t.on ? 2.1 : 1.7} />
+              {t.badge && <span aria-hidden="true" style={{ position: "absolute", top: -2, right: -4, width: 8, height: 8, borderRadius: 14, background: t.on ? CREAM : GOLD, border: `2px solid ${t.on ? GOLD : "#ece8df"}` }} />}
+            </span>
+            <span style={{ font: `400 11px/1 ${serif}` }}>{t.label}</span>
           </button>
         ))}
       </div>
