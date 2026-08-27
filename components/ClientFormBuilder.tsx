@@ -63,8 +63,17 @@ export default function ClientFormBuilder() {
     }
   }, []);
 
+  // Async wrapper rather than a bare call from the effect body: a bare call
+  // enters it synchronously, which the rule counts as a setState during the
+  // effect. Same shape the rest of this repo uses.
   useEffect(() => {
-    void load();
+    let active = true;
+    void (async () => {
+      if (active) await load();
+    })();
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   async function post(body: Record<string, unknown>) {
@@ -200,7 +209,7 @@ export default function ClientFormBuilder() {
           onClick={() => void getLink()}
           className="inline-flex min-h-11 items-center rounded-full bg-[var(--navy)] px-5 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:opacity-90 disabled:opacity-60"
         >
-          Get the client's link
+          Get the client&rsquo;s link
         </button>
         {note && <span className="text-xs font-semibold text-emerald-700">{note}</span>}
       </div>

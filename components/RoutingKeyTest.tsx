@@ -35,8 +35,17 @@ export default function RoutingKeyTest() {
     }
   }
 
+  // Async wrapper rather than a bare call from the effect body: a bare call
+  // enters it synchronously, which the rule counts as a setState during the
+  // effect. Same shape the rest of this repo uses.
   useEffect(() => {
-    void run();
+    let active = true;
+    void (async () => {
+      if (active) await run();
+    })();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

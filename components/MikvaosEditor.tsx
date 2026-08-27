@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { useOnActionSuccess } from "@/components/useOnActionSuccess";
 import Link from "next/link";
 import { useFocusTrap } from "@/components/useFocusTrap";
 
@@ -62,9 +63,9 @@ export default function MikvaosEditor({
   const [query, setQuery] = useState("");
   const dialogRef = useFocusTrap<HTMLDivElement>(Boolean(editing), () => setEditing(null));
 
-  useEffect(() => {
-    if (saveState?.ok || removeState?.ok) setEditing(null);
-  }, [saveState, removeState]);
+  // During render, not after the commit: as an effect React paints once with
+  // the pop-up still open over a save that had already gone through.
+  useOnActionSuccess([saveState, removeState], () => setEditing(null));
 
   const shown = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("en");

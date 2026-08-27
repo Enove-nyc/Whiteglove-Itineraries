@@ -51,8 +51,14 @@ describe("a shared place waits for the advisor to pick a client, then lands in t
   });
 
   it("LiveChat puts a shared draft straight into the composer, then hands the callback back", () => {
-    const effect = APP.slice(APP.indexOf("A place shared in from outside, put straight"), APP.indexOf("A place shared in from outside, put straight") + 400);
+    // Widened, because staging the draft and handing the callback back are now
+    // two things: the first happens during render (so the composer is never
+    // painted empty for a frame after a share arrives), the second stays an
+    // effect because telling the parent is a side effect. Both still have to
+    // be here — a draft that stages without handing back restages itself every
+    // time the traveller navigates away and returns.
+    const effect = APP.slice(APP.indexOf("A place shared in from outside, put straight"), APP.indexOf("A place shared in from outside, put straight") + 700);
     assert.match(effect, /setDraft\(initialDraft\)/);
-    assert.match(effect, /onInitialDraftUsedRef\.current\?\.\(\)/);
+    assert.match(effect, /onInitialDraftUsed\?\.\(\)/);
   });
 });

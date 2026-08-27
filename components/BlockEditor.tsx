@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useOnActionSuccess } from "@/components/useOnActionSuccess";
 import { resetPageAction, savePageAction, type ActionResult } from "@/app/admin/pages/actions";
 import PageBlocks from "@/components/PageBlocks";
 import {
@@ -243,9 +244,10 @@ export default function BlockEditor({ page }: { page: Page }) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  useEffect(() => {
-    if (saveState?.ok) setDirty(false);
-  }, [saveState]);
+  // During render, not after the commit: as an effect the editor painted once
+  // still marked dirty after a save had already succeeded, and the unload
+  // warning below fired on a page with nothing left to lose.
+  useOnActionSuccess([saveState], () => setDirty(false));
 
   const change = (next: PageBlock[]) => {
     setBlocks(next);
