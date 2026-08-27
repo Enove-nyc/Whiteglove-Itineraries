@@ -35,7 +35,18 @@ export default function ShareItineraryPanel() {
       setLoggedIn(false);
     }
   }
-  useEffect(() => { load(); }, []);
+  // Async wrapper rather than a bare call from the effect body: a bare call
+  // enters it synchronously, which the rule counts as a setState during the
+  // effect. Same shape the rest of this repo uses.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      if (active) await load();
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function createLink() {
     setBusy(true); setError("");

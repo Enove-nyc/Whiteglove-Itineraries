@@ -89,7 +89,7 @@ export function toCanonicalAdminPath(pathname: string): string {
  */
 export function safeAdminNext(raw: string | null | undefined, fallback = "/admin"): string {
   if (!raw) return fallback;
-  let value = raw.trim();
+  const value = raw.trim();
   if (!value.startsWith("/") || value.startsWith("//")) return fallback;
   if (value.includes("://")) return fallback;
   const [path, query = ""] = value.split("?");

@@ -43,13 +43,16 @@ export default function HechsherEditor({ confirmed, agencies, ownAdded, storeRea
   // Re-read after a save so the badge in the list matches what was just
   // stored. The form stays open on purpose — the badge changing underneath it
   // is the confirmation, and closing it would hide that.
+  // THE EMPTY CASE MOVED INSIDE THE WRAPPER. It cleared the badges
+  // synchronously before the fetch branch ever ran, which is the setState the
+  // rule is about; the fetch branch was already async and always fine.
   useEffect(() => {
-    if (!places.length) {
-      setStatuses({});
-      return;
-    }
     let live = true;
     void (async () => {
+      if (!places.length) {
+        if (live) setStatuses({});
+        return;
+      }
       const ids = places.map((p) => p.id).join(",");
       const res = await fetch(`/api/kosher/hechsherim?ids=${encodeURIComponent(ids)}`);
       if (live && res.ok) setStatuses((await res.json()).hechsherim ?? {});

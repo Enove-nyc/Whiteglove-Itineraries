@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useOnValueChange } from "@/components/useOnValueChange";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { airportCode, describeSearch, searchProblem, type SearchShape } from "@/lib/kayak-search";
 import { hotelButtonLabel } from "@/lib/stay22";
@@ -165,9 +166,11 @@ export default function BookPartners({
   // pressed. `initialKind` only changes on a real navigation — chooseKind
   // updates the URL with replaceState, not the prop — so this never fights a
   // tab the visitor picked here.
-  useEffect(() => {
-    setKind(initialKind);
-  }, [initialKind]);
+  // During render, not after it: as an effect the page painted once on the old
+  // tab before switching, so tapping Hotels from the Travel menu showed a
+  // frame of Flights on the way. The semantics are the same — it runs when the
+  // prop's identity changes and never when chooseKind sets the tab here.
+  useOnValueChange(initialKind, () => setKind(initialKind));
   const [pending, setPending] = useState<PendingBooking | null>(null);
   const [live, setLive] = useState<PartnerLiveCapabilities>({ hotels: false, flights: false, cars: false });
 

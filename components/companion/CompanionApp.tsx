@@ -33,6 +33,7 @@
  */
 
 import { Fragment, type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
 import {
   COMPANION_DEMO_TRIP,
@@ -625,9 +626,11 @@ export default function CompanionApp({
   // 15s peek poll is what clears this badge — so without clearing it here the
   // dot flashed back onto the Advisor tab for a few seconds after reading and
   // navigating away. Clear it the moment the messages screen is entered.
-  useEffect(() => {
+  // During render, not after the commit: as an effect the Advisor tab painted
+  // once still carrying its dot after the screen had already opened.
+  useOnValueChange(st.screen, () => {
     if (st.screen === "messages") setUnread(false);
-  }, [st.screen]);
+  });
 
   const advisor = trip.advisorName;
   const firstName = advisor.split(" ")[0];
@@ -719,16 +722,27 @@ export default function CompanionApp({
   // whatever was marked read this session, so opening the screen clears the
   // badge at once rather than waiting for a reload.
   const alertKey = trip.tripId ?? liveChat?.shareId ?? null;
-  const [readNow, setReadNow] = useState<Set<string>>(() => new Set());
-  useEffect(() => {
-    if (!isClientViewer || !alertKey) return;
+  /**
+   * READ FROM STORAGE AS THE INITIAL VALUE, not in an effect afterwards.
+   *
+   * This ran as an effect, which is the setState the rule refuses — and it was
+   * also visibly wrong: the alerts list painted once with everything unread
+   * before the stored set arrived, so a client opening the screen saw their
+   * own already-read alerts flash as new. A lazy initialiser runs before the
+   * first paint instead.
+   *
+   * Storage blocked, or nothing stored, leaves the set empty — everything
+   * reads as unread, which is the safe end of the mistake.
+   */
+  const [readNow, setReadNow] = useState<Set<string>>(() => {
+    if (!isClientViewer || !alertKey || typeof window === "undefined") return new Set();
     try {
       const raw = localStorage.getItem(`wg-alerts-read:${alertKey}`);
-      if (raw) setReadNow(new Set(JSON.parse(raw) as string[]));
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
     } catch {
-      /* storage blocked — everything reads as unread, which is the safe end */
+      return new Set();
     }
-  }, [isClientViewer, alertKey]);
+  });
   // A client's read state is theirs alone (readNow, from their browser). The
   // server's `acknowledged` is the OWNER's own read flag — folding it into the
   // client's view would let the advisor's reading quietly mark the client's
@@ -743,36 +757,51 @@ export default function CompanionApp({
   // badge and, next time, the highlight). Opening is the read action — there is
   // no separate dismiss to press.
   const [seenOnOpen, setSeenOnOpen] = useState<Set<string> | null>(null);
-  useEffect(() => {
+  /**
+   * THE SNAPSHOT DURING RENDER, THE SIDE EFFECTS AFTER IT — which used to be
+   * one effect doing all three.
+   *
+   * Taking the snapshot in an effect meant the Changes screen painted once
+   * with seenOnOpen still null, so every card was drawn without its "new"
+   * highlight for a frame and then gained it. Adjusting during render is what
+   * this reaction actually is: the screen changed, freeze what was unread at
+   * that moment.
+   *
+   * Writing to storage and telling the server are genuine side effects and
+   * stay in effects below, where they belong and where React may safely run
+   * them once.
+   */
+  useOnValueChange(st.screen, () => {
     if (st.screen !== "alerts") {
       setSeenOnOpen(null);
       return;
     }
     const unreadIds = liveAlerts.filter((a) => !isAlertRead(a)).map((a) => a.id);
     setSeenOnOpen(new Set(unreadIds));
-    if (unreadIds.length === 0) return;
-    setReadNow((prev) => {
-      const merged = new Set(prev);
-      unreadIds.forEach((id) => merged.add(id));
-      if (isClientViewer && alertKey) {
-        try {
-          localStorage.setItem(`wg-alerts-read:${alertKey}`, JSON.stringify([...merged]));
-        } catch {
-          /* storage blocked — clears for this session only, which is fine */
-        }
-      }
-      return merged;
-    });
-    if (!isClientViewer && trip.tripId) {
-      void fetch("/api/account/alerts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tripId: trip.tripId, all: true }),
-      });
+    if (unreadIds.length > 0) setReadNow((prev) => new Set([...prev, ...unreadIds]));
+  });
+
+  // A client's read set is theirs alone and lives in their browser. Written
+  // whenever it changes rather than only when the screen opens, so the two can
+  // never drift apart.
+  useEffect(() => {
+    if (!isClientViewer || !alertKey) return;
+    try {
+      localStorage.setItem(`wg-alerts-read:${alertKey}`, JSON.stringify([...readNow]));
+    } catch {
+      /* storage blocked — clears for this session only, which is fine */
     }
-    // Deliberately snapshot once per open, not re-taken as state settles.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [st.screen]);
+  }, [readNow, isClientViewer, alertKey]);
+
+  // The owner's own read flag, server-side. Once per opening of the screen.
+  useEffect(() => {
+    if (st.screen !== "alerts" || isClientViewer || !trip.tripId) return;
+    void fetch("/api/account/alerts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tripId: trip.tripId, all: true }),
+    });
+  }, [st.screen, isClientViewer, trip.tripId]);
   const advisorTrips = trip.advisorTrips ?? [];
   const advisorHome = hasConcierge && st.role === "advisor" && st.screen === "home";
 
@@ -1782,11 +1811,18 @@ function NotifyControl({ shareId }: { shareId: string }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!publicKey || typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setStatus("unsupported");
-      return;
-    }
     let active = true;
+    // The unsupported branch used to run synchronously, before any of the
+    // asynchronous work below — which is the setState the rule refuses. It is
+    // the same answer either way; it just no longer arrives during the effect.
+    if (!publicKey || typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      void Promise.resolve().then(() => {
+        if (active) setStatus("unsupported");
+      });
+      return () => {
+        active = false;
+      };
+    }
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => {
@@ -2162,26 +2198,40 @@ function LiveChat({
     el.style.height = `${Math.min(el.scrollHeight, MAX_COMPOSER_PX)}px`;
   }, [draft]);
 
-  // Picked up once per "Ask about this" tap, then handed back so the parent
-  // clears it — otherwise navigating away and back would restage it over
-  // whatever the traveler had already set up to send.
-  const onSubjectUsedRef = useRef(onSubjectUsed);
-  onSubjectUsedRef.current = onSubjectUsed;
+  /**
+   * Picked up once per "Ask about this" tap, then handed back so the parent
+   * clears it — otherwise navigating away and back would restage it over
+   * whatever the traveler had already set up to send.
+   *
+   * THE REF IS GONE, AND IT WAS DOING TWO JOBS. It held the newest callback so
+   * the effect would not re-run when the parent re-rendered with a fresh
+   * function, and it was written during render, which React forbids: a render
+   * that gets thrown away would have left the ref pointing at a callback from
+   * a tree that never existed. Staging the subject is a value-change reaction,
+   * so it happens during render where it belongs — and the field is no longer
+   * painted empty for a frame after the tap. Telling the parent is a genuine
+   * side effect and stays in an effect, keyed on the subject alone, which is
+   * what the ref was really buying.
+   */
+  useOnValueChange(subject, () => {
+    if (subject) setItineraryRef(subject);
+  });
   useEffect(() => {
-    if (!subject) return;
-    setItineraryRef(subject);
-    onSubjectUsedRef.current?.();
+    if (subject) onSubjectUsed?.();
+    // The callback is deliberately not a dependency: this fires once per
+    // subject, not again because the parent re-rendered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject]);
 
-  // A place shared in from outside, put straight into the composer —
-  // picked up once, then handed back so the parent clears it, the same way
-  // "Ask about this" is.
-  const onInitialDraftUsedRef = useRef(onInitialDraftUsed);
-  onInitialDraftUsedRef.current = onInitialDraftUsed;
+  // A place shared in from outside, put straight into the composer — picked up
+  // once, then handed back so the parent clears it, the same way "Ask about
+  // this" is, and split for the same reason.
+  useOnValueChange(initialDraft, () => {
+    if (initialDraft) setDraft(initialDraft);
+  });
   useEffect(() => {
-    if (!initialDraft) return;
-    setDraft(initialDraft);
-    onInitialDraftUsedRef.current?.();
+    if (initialDraft) onInitialDraftUsed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDraft]);
 
   const load = useCallback(async () => {
@@ -2201,10 +2251,19 @@ function LiveChat({
     }
   }, [shareId]);
 
+  // Async wrapper rather than a bare call from the effect body: a bare call
+  // enters it synchronously, which the rule counts as a setState during the
+  // effect.
   useEffect(() => {
-    void load();
+    let active = true;
+    void (async () => {
+      if (active) await load();
+    })();
     const t = setInterval(() => void load(), 5000);
-    return () => clearInterval(t);
+    return () => {
+      active = false;
+      clearInterval(t);
+    };
   }, [load]);
 
   // Only follows new messages down when the reader was already at the
@@ -2616,7 +2675,12 @@ function LiveChat({
     window.setTimeout(() => setJumpFlashAt((cur) => (cur === at ? null : cur)), 1200);
   }
 
-  let lastRenderedDay = "";
+  // No mutable accumulator for the date dividers: whether one belongs above a
+  // message is a fact about that message and the one before it, so it is
+  // derived per row below. The variable this replaced was declared here and
+  // reassigned inside the map during render, which React forbids — a render
+  // that gets discarded would have left it holding a day from a tree that
+  // never reached the screen.
 
   // The one message a sent/read mark can attach to — the most recent one I
   // sent that is still standing. A tick under every message I have ever sent
@@ -2647,8 +2711,7 @@ function LiveChat({
         {messages.map((m, i) => {
           const mine = m.from === side;
           const day = new Date(m.at).toDateString();
-          const showDivider = day !== lastRenderedDay;
-          lastRenderedDay = day;
+          const showDivider = i === 0 || new Date(messages[i - 1].at).toDateString() !== day;
           const seenRead = Boolean(readAt[otherSide] && readAt[otherSide]! >= m.at);
           const bubble: CSSProperties = {
             maxWidth: "80%",
@@ -3298,10 +3361,19 @@ function AdvisorInbox({
     }
   }
 
+  // Async wrapper rather than a bare call from the effect body: a bare call
+  // enters it synchronously, which the rule counts as a setState during the
+  // effect.
   useEffect(() => {
-    void load();
+    let active = true;
+    void (async () => {
+      if (active) await load();
+    })();
     const t = setInterval(() => void load(), 8000);
-    return () => clearInterval(t);
+    return () => {
+      active = false;
+      clearInterval(t);
+    };
   }, [load]);
 
   if (open) {

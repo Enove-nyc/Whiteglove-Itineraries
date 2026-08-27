@@ -1,11 +1,12 @@
 "use client";
 
-import { type ReactNode, useActionState, useEffect, useState } from "react";
+import { type ReactNode, useActionState, useState } from "react";
+import { useOnActionSuccess } from "@/components/useOnActionSuccess";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import type { AddedAirport, AddedMetro } from "@/lib/airport-admin";
 import { describeMetro, isBuiltInMetro } from "@/lib/airport-admin";
 import type { Airport } from "@/data/airports";
-import { type ActionResult, removeAirportAction, saveAirportAction, saveMetroAction } from "@/app/admin/airports/actions";
+import { removeAirportAction, saveAirportAction, saveMetroAction } from "@/app/admin/airports/actions";
 
 /**
  * Adding, correcting and grouping airports — as a list you press into.
@@ -97,12 +98,10 @@ export default function AirportAdmin({
   const [airportModal, setAirportModal] = useState<AddedAirport | "new" | null>(null);
   const [metroModal, setMetroModal] = useState<AddedMetro | "new" | null>(null);
 
-  useEffect(() => {
-    if (airportState?.ok || removeState?.ok) setAirportModal(null);
-  }, [airportState, removeState]);
-  useEffect(() => {
-    if (metroState?.ok || removeState?.ok) setMetroModal(null);
-  }, [metroState, removeState]);
+  // During render, not after the commit: as an effect React paints once with
+  // the pop-up still open over a save that had already gone through.
+  useOnActionSuccess([airportState, removeState], () => setAirportModal(null));
+  useOnActionSuccess([metroState, removeState], () => setMetroModal(null));
 
   if (!storeReady) {
     return (

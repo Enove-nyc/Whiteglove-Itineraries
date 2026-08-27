@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useOnValueChange } from "@/components/useOnValueChange";
 import { anchoredStyle, measureAnchor, useAnchorTracking, type AnchorBox } from "@/lib/anchored-panel";
 import { AIRPORTS, type Airport } from "@/data/airports";
 import { foldAccents, metroMatches } from "@/lib/flight-endpoint";
@@ -78,8 +79,10 @@ export default function AirportAutocomplete({
     return () => { alive = false; };
   }, []);
 
-  // Sync when the value is set from outside (e.g. after a flight-number lookup).
-  useEffect(() => { setQuery(value); }, [value]);
+  // Sync when the value is set from outside (e.g. after a flight-number
+  // lookup). During render, not after it: as an effect the field showed the
+  // old code for one paint after it had already been filled in.
+  useOnValueChange(value, () => setQuery(value));
 
   // ONCE SOMETHING IS PICKED, SEARCH ON ITS CODE. The box then holds the whole
   // label — "New York — all airports (NYC)" — which matches nothing, so the

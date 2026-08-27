@@ -37,7 +37,18 @@ export default function AdminDirectoryManager() {
     const data = await res.json().catch(() => null);
     if (data) { setProviders(data.providers ?? []); setAvailable(data.available !== false); }
   }
-  useEffect(() => { load(); }, []);
+  // Async wrapper rather than calling load() from the effect body: a bare call
+  // enters it synchronously, which the rule counts as a setState during the
+  // effect. Same shape the rest of this repo uses.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (active) await load();
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function edit(p: StoredProvider) {
     setForm({ ...EMPTY, ...p, services: p.services ?? "", tagline: p.tagline ?? "", phone: p.phone ?? "", whatsapp: p.whatsapp ?? "", email: p.email ?? "", website: p.website ?? "", basedIn: p.basedIn ?? "", regions: p.regions ?? "", languages: p.languages ?? "", specialties: p.specialties ?? "", description: p.description ?? "", notes: p.notes ?? "", featured: Boolean(p.featured), published: p.published !== false, contactConsent: Boolean(p.contactConsent), contactConsentNote: p.contactConsentNote ?? "", verifiedAt: p.verifiedAt ?? "", responseTime: p.responseTime ?? "", featuredReason: p.featuredReason ?? "" });

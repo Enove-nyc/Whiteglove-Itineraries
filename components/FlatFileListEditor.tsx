@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useOnActionSuccess } from "@/components/useOnActionSuccess";
 import { useFocusTrap } from "@/components/useFocusTrap";
 
 /**
@@ -69,9 +70,9 @@ export default function FlatFileListEditor({
 
   // A save or a remove that went through closes the pop-up; the list refreshes
   // on its own from the action's revalidate.
-  useEffect(() => {
-    if (saveState?.ok || removeState?.ok) setEditing(null);
-  }, [saveState, removeState]);
+  // During render, not after the commit: as an effect React paints once with
+  // the pop-up still open over a save that had already gone through.
+  useOnActionSuccess([saveState, removeState], () => setEditing(null));
 
   const added = items.filter((i) => i.added);
   const builtIn = items.length - added.length;

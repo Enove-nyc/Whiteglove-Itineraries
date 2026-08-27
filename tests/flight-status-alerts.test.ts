@@ -130,12 +130,23 @@ describe("the live-travel-information wiring keeps the same fences everything el
     // Opening the Changes screen marks its alerts read. The owner (an account)
     // records that on the server; a client on a per-trip code keeps it in their
     // own browser, so the client app still asks the server to manage nothing.
-    const marker = APP.indexOf('if (st.screen !== "alerts")');
-    assert.ok(marker > 0, "expected the mark-read-on-open effect");
-    const block = APP.slice(marker, marker + 1400);
-    assert.match(block, /!isClientViewer && trip\.tripId/); // only the owner writes to the server
-    assert.match(block, /wg-alerts-read/); // the client's read state, kept in localStorage
-    assert.match(block, /localStorage\.setItem/);
+    /**
+     * READ AS TWO SEPARATE PIECES, because the mark-read work is now three:
+     * the snapshot happens during render, the browser write and the server
+     * post are their own effects. It used to be one effect and this read one
+     * window of it. The property being kept is unchanged — the server hears
+     * only from the owner, the client's read state stays in their browser.
+     */
+    const post = APP.indexOf('"/api/account/alerts"');
+    assert.ok(post > 0, "expected the server-side mark-read post");
+    const postGuard = APP.slice(post - 400, post);
+    assert.match(postGuard, /isClientViewer/, "the client's app posts read state to the server");
+    assert.match(postGuard, /trip\.tripId/);
+
+    const store = APP.indexOf("localStorage.setItem(`wg-alerts-read:");
+    assert.ok(store > 0, "expected the client's own read state in localStorage");
+    const storeGuard = APP.slice(store - 400, store);
+    assert.match(storeGuard, /!isClientViewer \|\| !alertKey/, "the owner's read state is being written to the client's browser");
   });
 
   it("still does not add a sixth tab for live alerts — they live on the existing Changes screen", () => {

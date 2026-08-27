@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useOnActionSuccess } from "@/components/useOnActionSuccess";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import type { CaseStudy } from "@/data/case-studies";
 import { caseStudyCompleteness, caseStudyIsPublic } from "@/data/case-studies";
@@ -102,9 +103,9 @@ export default function CaseStudiesForm({
 
   // A save that went through closes the pop-up; the list below refreshes on its
   // own from the server action's revalidate.
-  useEffect(() => {
-    if (saveState?.ok) setEditing(null);
-  }, [saveState]);
+  // During render, not after the commit: as an effect React paints once with
+  // the pop-up still open over a save that had already gone through.
+  useOnActionSuccess([saveState], () => setEditing(null));
 
   if (!storeReady) {
     return (

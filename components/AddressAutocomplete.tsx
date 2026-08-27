@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useOnValueChange } from "@/components/useOnValueChange";
 import { anchoredStyle, measureAnchor, useAnchorTracking, type AnchorBox } from "@/lib/anchored-panel";
 
 // Real-address autocomplete backed by Photon (OpenStreetMap) — free, no API
@@ -55,7 +56,17 @@ export default function AddressAutocomplete({
   required?: boolean;
 }) {
   const [query, setQuery] = useState(value);
-  const [results, setResults] = useState<Suggestion[]>([]);
+  /**
+   * The suggestions, kept with the query they answer.
+   *
+   * Clearing them at the top of the effect was the setState the lint rule
+   * refuses, and moving that clear behind the 280ms debounce would have left
+   * suggestions for a deleted query sitting under whatever was typed next.
+   * Holding the query alongside its own answer settles both: the list below is
+   * derived during render and can only ever show rows that answer what is in
+   * the box right now.
+   */
+  const [answered, setAnswered] = useState<{ query: string; rows: Suggestion[] }>({ query: "", rows: [] });
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   // Drawn against the viewport rather than inside the field, because the
@@ -68,18 +79,27 @@ export default function AddressAutocomplete({
   const remeasure = useCallback(() => setAnchor(measureAnchor(boxRef.current, 288, { preferBelow: true })), []);
   useAnchorTracking(open, remeasure);
 
+  const q = query.trim();
+  const tooShort = q.length < 3;
+  // Shown only when they answer what is in the box right now, so suggestions
+  // for a previous query cannot appear under a new one even for a frame.
+  const results = !tooShort && answered.query === q ? answered.rows : [];
+
   // Results arrive after a debounce. Remeasure once they land so the panel
   // tracks the field after any scroll-into-view the focus caused.
   useEffect(() => {
     if (open && results.length > 0) remeasure();
   }, [open, results.length, remeasure]);
 
-  // Sync when the value is set from outside (e.g. prefilled by the kever picker).
-  useEffect(() => { setQuery(value); }, [value]);
+  // Sync when the value is set from outside (e.g. prefilled by the kever
+  // picker). During render, not after it: as an effect the field showed the
+  // old text for one paint after it had already been filled in.
+  useOnValueChange(value, () => setQuery(value));
 
   useEffect(() => {
-    const q = query.trim();
-    if (q.length < 3) { setResults([]); return; }
+    // The short-query case has no effect to run at all now — it is answered by
+    // `results` above, so nothing here happens synchronously.
+    if (tooShort) return;
     let active = true;
     const timer = setTimeout(async () => {
       try {
@@ -90,13 +110,13 @@ export default function AddressAutocomplete({
         const mapped = (data.features ?? []).map((f) => toSuggestion(f, mode)).filter((s): s is Suggestion => s !== null);
         // De-duplicate identical labels (Photon can repeat).
         const seen = new Set<string>();
-        setResults(mapped.filter((s) => (seen.has(s.label) ? false : (seen.add(s.label), true))).slice(0, 6));
+        setAnswered({ query: q, rows: mapped.filter((s) => (seen.has(s.label) ? false : (seen.add(s.label), true))).slice(0, 6) });
       } catch {
-        if (active) setResults([]);
+        if (active) setAnswered({ query: q, rows: [] });
       }
     }, 280);
     return () => { active = false; clearTimeout(timer); };
-  }, [query, mode]);
+  }, [q, tooShort, mode]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
@@ -122,7 +142,7 @@ export default function AddressAutocomplete({
             <li key={`${s.label}-${i}`}>
               <button
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); setQuery(s.label); onChange?.(s.label, s.coordinates); setOpen(false); setResults([]); }}
+                onMouseDown={(e) => { e.preventDefault(); setQuery(s.label); onChange?.(s.label, s.coordinates); setOpen(false); }}
                 className="block w-full px-3 py-2 text-left text-sm font-normal normal-case tracking-normal text-stone-700 transition hover:bg-[var(--cream-deep)] hover:text-[var(--navy)]"
               >
                 {s.label}

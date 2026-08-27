@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useBookingLink } from "@/components/BookingLinkProvider";
 import { bookingHref } from "@/lib/booking-access";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useOnValueChange } from "@/components/useOnValueChange";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import AirportAutocomplete from "@/components/AirportAutocomplete";
 import AssistantAnswer from "@/components/AssistantAnswer";
@@ -1503,9 +1504,14 @@ function FlightForm({ startDate, initial, onAdd, onRemove, onCancel }: {
   const [legBusy, setLegBusy] = useState(false);
   const [legStatus, setLegStatus] = useState("");
 
-  useEffect(() => {
+  // The trip's start date, filled in when the form has no date of its own.
+  // The initial state above already covers the mount; this covers the case the
+  // effect was really for — the trip gaining a start date while this form is
+  // open — and does it during render, so the field is never painted empty
+  // after the date has arrived.
+  useOnValueChange(startDate, () => {
     if (startDate) setF((prev) => (prev.date ? prev : { ...prev, date: startDate }));
-  }, [startDate]);
+  });
 
   function updateFlight(patch: Partial<ItinFlight>) {
     setF((prev) => ({ ...prev, ...patch }));
@@ -1885,25 +1891,39 @@ function LodgingForm({ startDate, initial, onAdd, onRemove, onCancel }: {
 // Search-and-pick lodging from the site's researched accommodations.
 function LodgingPicker({ onPick }: { onPick: (g: LodgingResult) => void }) {
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<LodgingResult[]>([]);
+  /**
+   * The rows, kept with the query they answer — see LibraryManager for the
+   * same shape and the same reason. Clearing them at the top of the effect was
+   * the setState the lint rule refuses, and moving that clear behind the
+   * debounce would have left rows for a deleted query sitting under whatever
+   * was typed next.
+   */
+  const [answered, setAnswered] = useState<{ query: string; rows: LodgingResult[] }>({ query: "", rows: [] });
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  const query = q.trim();
+  const tooShort = query.length < 2;
+  // Shown only when they answer what is in the box right now, so rows for a
+  // previous query cannot appear under a new one even for a frame.
+  const results = !tooShort && answered.query === query ? answered.rows : [];
+
   useEffect(() => {
-    const query = q.trim();
-    if (query.length < 2) { setResults([]); return; }
+    // The short-query case has no effect to run at all now — it is answered by
+    // `results` above, so nothing here happens synchronously.
+    if (tooShort) return;
     let active = true;
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/lodging/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
-        if (active) setResults(data.results ?? []);
+        if (active) setAnswered({ query, rows: data.results ?? [] });
       } catch {
-        if (active) setResults([]);
+        if (active) setAnswered({ query, rows: [] });
       }
     }, 200);
     return () => { active = false; clearTimeout(timer); };
-  }, [q]);
+  }, [query, tooShort]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
@@ -1927,7 +1947,7 @@ function LodgingPicker({ onPick }: { onPick: (g: LodgingResult) => void }) {
             <li key={`${g.name}-${i}`}>
               <button
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); onPick(g); setQ(""); setResults([]); setOpen(false); }}
+                onMouseDown={(e) => { e.preventDefault(); onPick(g); setQ(""); setOpen(false); }}
                 className="block w-full px-3 py-2 text-left hover:bg-[var(--cream)]"
               >
                 <span className="text-sm font-semibold text-[var(--navy)]">{g.name}</span>
@@ -1945,29 +1965,43 @@ function LodgingPicker({ onPick }: { onPick: (g: LodgingResult) => void }) {
 // own researched list. See lib/hotel-places.ts.
 function HotelPlacePicker({ onPick }: { onPick: (p: PlaceLodgingResult) => void }) {
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<PlaceLodgingResult[]>([]);
+  /**
+   * The rows, kept with the query they answer, and `loading` derived from the
+   * same thing rather than tracked. Clearing the rows and raising the flag at
+   * the top of the effect was the setState the lint rule refuses; moving them
+   * behind the 350ms debounce would have left rows for a deleted query under
+   * whatever was typed next. "Looking…" is simply the state of not yet having
+   * the answer to what is in the box.
+   */
+  const [answered, setAnswered] = useState<{ query: string; rows: PlaceLodgingResult[] }>({ query: "", rows: [] });
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  const query = q.trim();
+  const tooShort = query.length < 3;
+  // Shown only when they answer what is in the box right now, so rows for a
+  // previous query cannot appear under a new one even for a frame.
+  const results = !tooShort && answered.query === query ? answered.rows : [];
+  const loading = !tooShort && answered.query !== query;
+
   useEffect(() => {
-    const query = q.trim();
-    if (query.length < 3) { setResults([]); setLoading(false); return; }
+    // The short-query case has no effect to run at all now — it is answered by
+    // `results` and `loading` above, so nothing here happens synchronously.
+    if (tooShort) return;
     let active = true;
-    setLoading(true);
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/lodging/places-search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
-        if (active) setResults(data.results ?? []);
+        if (active) setAnswered({ query, rows: data.results ?? [] });
       } catch {
-        if (active) setResults([]);
-      } finally {
-        if (active) setLoading(false);
+        // A failed lookup answers the query with nothing, rather than leaving
+        // "Looking…" on screen for ever with no way to clear it.
+        if (active) setAnswered({ query, rows: [] });
       }
     }, 350);
     return () => { active = false; clearTimeout(timer); };
-  }, [q]);
+  }, [query, tooShort]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
@@ -1996,7 +2030,7 @@ function HotelPlacePicker({ onPick }: { onPick: (p: PlaceLodgingResult) => void 
             <li key={`${p.name}-${i}`}>
               <button
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); onPick(p); setQ(""); setResults([]); setOpen(false); }}
+                onMouseDown={(e) => { e.preventDefault(); onPick(p); setQ(""); setOpen(false); }}
                 className="block w-full px-3 py-2 text-left hover:bg-[var(--cream)]"
               >
                 <span className="text-sm font-semibold text-[var(--navy)]">{p.name}</span>
@@ -2078,25 +2112,39 @@ function ActivityForm({ startDate, onAdd, itineraries = false }: { startDate: st
 // Search-and-pick a kever from the site's own directory; fills the whole form.
 function KeverPicker({ onPick }: { onPick: (k: KeverResult) => void }) {
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<KeverResult[]>([]);
+  /**
+   * The rows, kept with the query they answer — see LibraryManager for the
+   * same shape and the same reason. Clearing them at the top of the effect was
+   * the setState the lint rule refuses, and moving that clear behind the
+   * debounce would have left rows for a deleted query sitting under whatever
+   * was typed next.
+   */
+  const [answered, setAnswered] = useState<{ query: string; rows: KeverResult[] }>({ query: "", rows: [] });
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  const query = q.trim();
+  const tooShort = query.length < 2;
+  // Shown only when they answer what is in the box right now, so rows for a
+  // previous query cannot appear under a new one even for a frame.
+  const results = !tooShort && answered.query === query ? answered.rows : [];
+
   useEffect(() => {
-    const query = q.trim();
-    if (query.length < 2) { setResults([]); return; }
+    // The short-query case has no effect to run at all now — it is answered by
+    // `results` above, so nothing here happens synchronously.
+    if (tooShort) return;
     let active = true;
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/kevarim/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
-        if (active) setResults(data.results ?? []);
+        if (active) setAnswered({ query, rows: data.results ?? [] });
       } catch {
-        if (active) setResults([]);
+        if (active) setAnswered({ query, rows: [] });
       }
     }, 200);
     return () => { active = false; clearTimeout(timer); };
-  }, [q]);
+  }, [query, tooShort]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
@@ -2120,7 +2168,7 @@ function KeverPicker({ onPick }: { onPick: (k: KeverResult) => void }) {
             <li key={k.slug}>
               <button
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); onPick(k); setQ(""); setResults([]); setOpen(false); }}
+                onMouseDown={(e) => { e.preventDefault(); onPick(k); setQ(""); setOpen(false); }}
                 className="block w-full px-3 py-2 text-left hover:bg-[var(--cream)]"
               >
                 <span className="text-sm font-semibold text-[var(--navy)]">{k.name}</span>
@@ -2141,25 +2189,39 @@ function KeverPicker({ onPick }: { onPick: (k: KeverResult) => void }) {
 // single box searching both would bury one under the other.
 function AttractionPicker({ onPick }: { onPick: (x: AttractionResult) => void }) {
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<AttractionResult[]>([]);
+  /**
+   * The rows, kept with the query they answer — see LibraryManager for the
+   * same shape and the same reason. Clearing them at the top of the effect was
+   * the setState the lint rule refuses, and moving that clear behind the
+   * debounce would have left rows for a deleted query sitting under whatever
+   * was typed next.
+   */
+  const [answered, setAnswered] = useState<{ query: string; rows: AttractionResult[] }>({ query: "", rows: [] });
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  const query = q.trim();
+  const tooShort = query.length < 2;
+  // Shown only when they answer what is in the box right now, so rows for a
+  // previous query cannot appear under a new one even for a frame.
+  const results = !tooShort && answered.query === query ? answered.rows : [];
+
   useEffect(() => {
-    const query = q.trim();
-    if (query.length < 2) { setResults([]); return; }
+    // The short-query case has no effect to run at all now — it is answered by
+    // `results` above, so nothing here happens synchronously.
+    if (tooShort) return;
     let active = true;
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/attractions/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
-        if (active) setResults(data.results ?? []);
+        if (active) setAnswered({ query, rows: data.results ?? [] });
       } catch {
-        if (active) setResults([]);
+        if (active) setAnswered({ query, rows: [] });
       }
     }, 200);
     return () => { active = false; clearTimeout(timer); };
-  }, [q]);
+  }, [query, tooShort]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
@@ -2183,7 +2245,7 @@ function AttractionPicker({ onPick }: { onPick: (x: AttractionResult) => void })
             <li key={x.slug}>
               <button
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); onPick(x); setQ(""); setResults([]); setOpen(false); }}
+                onMouseDown={(e) => { e.preventDefault(); onPick(x); setQ(""); setOpen(false); }}
                 className="block w-full px-3 py-2 text-left hover:bg-[var(--cream)]"
               >
                 <span className="text-sm font-semibold text-[var(--navy)]">{x.name}</span>
