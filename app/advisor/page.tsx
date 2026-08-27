@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import Footer from "@/components/Footer";
 import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
-import { advisorPlacesFor } from "@/components/AccountMenu";
+import { advisorPlacesFor } from "@/lib/account-places";
 import { requireSignedIn } from "@/lib/require-signed-in";
 import { accountCookieName, getCurrentAccountData, tripIsStarted, withTrips } from "@/lib/account-store";
 import { getPlan } from "@/lib/account-plan-store";
