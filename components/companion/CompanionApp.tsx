@@ -999,7 +999,7 @@ export default function CompanionApp({
   // The bottom nav is capped at four on a real trip — Trip, Advisor, Wallet,
   // You — so a real trip's Guide notes live inside the You tab (see
   // guideSection below) rather than getting a tab of their own.
-  const tabDefs: [Screen, string, IconName][] = [["home", "Trip", "home"]];
+  const tabDefs: [Screen, string, IconName][] = [["home", "Trip", "map-pin"]];
   if (hasConcierge) tabDefs.push([conciergeTabScreen, isGuideMode ? "Guide" : "Concierge", "sparkle"]);
   if (hasMessages && conciergeTabScreen !== "messages") tabDefs.push(["messages", advisorInbox ? "Messages" : "Advisor", "chat"]);
   tabDefs.push(["wallet", "Wallet", "wallet"], ["profile", "You", "account"]);
@@ -1827,13 +1827,14 @@ export default function CompanionApp({
             onClick={() => go(t.id)}
             aria-current={t.on ? "page" : undefined}
             aria-label={t.badge ? `${t.label} (unread messages)` : t.label}
-            style={{ position: "relative", zIndex: 1, flex: 1, border: 0, cursor: "pointer", background: "transparent", color: t.on ? CREAM : "#6b6b63", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "9px 4px 7px", transition: "color .2s ease" }}
+            style={{ position: "relative", zIndex: 1, flex: 1, border: 0, cursor: "pointer", background: "transparent", color: t.on ? CREAM : "#6b6b63", display: "flex", alignItems: "center", justifyContent: "center", padding: "13px 4px", transition: "color .2s ease" }}
           >
+            {/* Icon-only bottom bar — the icon carries the meaning (the label
+                stays as the button's accessible name for screen readers). */}
             <span style={{ position: "relative", display: "inline-flex" }}>
-              <Icon name={t.icon} className="h-5 w-5" strokeWidth={t.on ? 2.1 : 1.7} />
-              {t.badge && <span aria-hidden="true" style={{ position: "absolute", top: -2, right: -4, width: 8, height: 8, borderRadius: 14, background: t.on ? CREAM : GOLD, border: `2px solid ${t.on ? GOLD : "#ece8df"}` }} />}
+              <Icon name={t.icon} className="h-6 w-6" strokeWidth={t.on ? 2.1 : 1.7} />
+              {t.badge && <span aria-hidden="true" style={{ position: "absolute", top: -3, right: -5, width: 8, height: 8, borderRadius: 14, background: t.on ? CREAM : GOLD, border: `2px solid ${t.on ? GOLD : "#ece8df"}` }} />}
             </span>
-            <span style={{ font: `400 11px/1 ${serif}` }}>{t.label}</span>
           </button>
         ))}
       </div>
@@ -2836,7 +2837,11 @@ function LiveChat({
           const showDivider = i === 0 || new Date(messages[i - 1].at).toDateString() !== day;
           const seenRead = Boolean(readAt[otherSide] && readAt[otherSide]! >= m.at);
           const bubble: CSSProperties = {
-            maxWidth: "80%",
+            // Width comes from the message row's own cap (below), not a percentage
+            // of this shrink-to-fit column — a percentage here collapsed a short
+            // message like "hi" to one letter per line.
+            maxWidth: "100%",
+            width: "fit-content",
             alignSelf: mine ? "flex-end" : "flex-start",
             background: mine ? NAVY : "#ffffff",
             color: mine ? CREAM : "#26323a",
@@ -2847,7 +2852,7 @@ function LiveChat({
           let content: ReactNode;
           if (m.deletedAt) {
             content = (
-              <div style={{ maxWidth: "80%", alignSelf: mine ? "flex-end" : "flex-start", padding: "10px 15px", borderRadius: 14, background: "rgba(38,50,58,.06)", fontSize: 13, fontStyle: "italic", color: "#78716c" }}>
+              <div style={{ maxWidth: "100%", width: "fit-content", alignSelf: mine ? "flex-end" : "flex-start", padding: "10px 15px", borderRadius: 14, background: "rgba(38,50,58,.06)", fontSize: 13, fontStyle: "italic", color: "#78716c" }}>
                 {mine ? "You deleted this message" : "This message was deleted"}
               </div>
             );
@@ -2977,6 +2982,11 @@ function LiveChat({
                 style={{
                   display: "flex",
                   flexDirection: "column",
+                  // The message block caps at ~82% of the thread width and sits on
+                  // its own side; the bubble inside sizes to its text against this
+                  // definite width, so short and long messages both look right.
+                  maxWidth: "82%",
+                  alignSelf: mine ? "flex-end" : "flex-start",
                   alignItems: mine ? "flex-end" : "flex-start",
                   gap: 2,
                   background: jumpFlashAt === m.at ? "rgba(183,138,74,.18)" : "transparent",
@@ -3226,16 +3236,15 @@ function LiveChat({
               </button>
             </div>
           )}
-          <div style={{ display: "flex", gap: 7, alignItems: "flex-end" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={(e) => { void pickImage(e.target.files?.[0]); e.target.value = ""; }} />
             <input ref={videoRef} type="file" accept="video/mp4,video/quicktime,video/webm" style={{ display: "none" }} onChange={(e) => { pickVideo(e.target.files?.[0]); e.target.value = ""; }} />
             <input ref={docRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => { pickDocument(e.target.files?.[0]); e.target.value = ""; }} />
-            {!editingAt && (
-              <>
-                {/* One "attach" button for photo, video and location, instead
-                    of four buttons crowding the row and squeezing the text
-                    field down to a sliver. Opens upward, since the composer
-                    sits at the very bottom of the screen. */}
+            {/* One rounded input bar — attach on the left, the growing field, a
+                camera on the right — with the round voice/send button beside it,
+                the WhatsApp / Signal shape. */}
+            <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", gap: 1, background: "#ffffff", border: "1px solid rgba(38,50,58,.16)", borderRadius: 23, padding: "2px 4px 2px 3px" }}>
+              {!editingAt && (
                 <div ref={attachMenuRef} style={{ position: "relative", flex: "none" }}>
                   <button
                     onClick={() => setAttachOpen((o) => !o)}
@@ -3243,10 +3252,9 @@ function LiveChat({
                     title="Attach"
                     aria-label="Attach a photo, video, document or location"
                     aria-expanded={attachOpen}
-                    className="wg-warm"
-                    style={{ border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", color: ICON_BLUE, cursor: "pointer", width: 40, height: 46, borderRadius: 14, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending || recording ? 0.6 : 1 }}
+                    style={{ border: 0, background: "none", color: ICON_BLUE, cursor: "pointer", width: 38, height: 42, borderRadius: 12, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending || recording ? 0.6 : 1 }}
                   >
-                    <Icon name="more" className="h-[19px] w-[19px]" />
+                    <Icon name="paperclip" className="h-[21px] w-[21px]" />
                   </button>
                   {attachOpen && (
                     <div
@@ -3339,48 +3347,47 @@ function LiveChat({
                     </div>
                   )}
                 </div>
+              )}
+              <textarea
+                ref={draftRef}
+                rows={1}
+                value={draft}
+                onChange={(e) => { setDraft(e.target.value); noteTyping(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                placeholder={editingAt ? "Edit your message…" : side === "advisor" ? "Reply to your client…" : `Message ${otherName}…`}
+                // 16px, not 14: iOS Safari auto-zooms the whole page into any
+                // text input under 16px the moment it is focused, which is
+                // exactly what reads as the screen "jumping" when the keyboard
+                // opens. Grows with what is typed (see the effect above),
+                // rather than staying squashed to one line.
+                style={{ flex: 1, minWidth: 0, resize: "none", overflow: "auto", border: 0, background: "none", borderRadius: 0, padding: "11px 6px 11px 8px", fontFamily: "Inter,sans-serif", fontSize: 16, lineHeight: 1.4, color: "#26323a", outline: "none" }}
+              />
+              {!editingAt && (
                 <button
-                  onClick={() => (recording ? stopRecording() : void startRecording())}
-                  disabled={sending}
-                  title={recording ? "Stop recording" : "Record a voice note"}
-                  aria-label={recording ? "Stop recording" : "Record a voice note"}
-                  className={recording ? "" : "wg-warm"}
-                  style={{
-                    flex: "none",
-                    border: recording ? "1px solid transparent" : "1px solid rgba(38,50,58,.16)",
-                    background: recording ? "#b5442e" : "#ffffff",
-                    color: recording ? "#fff" : ICON_BLUE,
-                    cursor: "pointer",
-                    width: 40,
-                    height: 46,
-                    borderRadius: 14,
-                    padding: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: sending ? 0.6 : 1,
-                    animation: recording ? "wgPulse 1.1s ease-in-out infinite" : undefined,
-                  }}
+                  onClick={() => fileRef.current?.click()}
+                  disabled={sending || recording}
+                  title="Camera"
+                  aria-label="Take or choose a photo"
+                  style={{ flex: "none", border: 0, background: "none", color: ICON_BLUE, cursor: "pointer", width: 38, height: 42, borderRadius: 12, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending || recording ? 0.6 : 1 }}
                 >
-                  <Icon name={recording ? "stop" : "microphone"} className="h-[19px] w-[19px]" />
+                  <Icon name="camera" className="h-[20px] w-[20px]" />
                 </button>
-              </>
+              )}
+            </div>
+            {/* One round button that morphs — the voice-note mic while the field
+                is empty, a red stop while recording, the send arrow the moment
+                there is something to send (or an edit to save). */}
+            {recording ? (
+              <button onClick={() => stopRecording()} title="Stop recording" aria-label="Stop recording" style={{ flex: "none", border: 0, cursor: "pointer", background: "#b5442e", color: "#fff", width: 46, height: 46, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", animation: "wgPulse 1.1s ease-in-out infinite" }}>
+                <Icon name="stop" className="h-[19px] w-[19px]" />
+              </button>
+            ) : draft.trim() || editingAt ? (
+              <button onClick={() => send()} disabled={sending} title="Send" aria-label="Send" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: "50%", fontSize: 19, fontWeight: 700, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}>{editingAt ? "✓" : "↑"}</button>
+            ) : (
+              <button onClick={() => void startRecording()} disabled={sending} title="Record a voice note" aria-label="Record a voice note" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}>
+                <Icon name="microphone" className="h-[20px] w-[20px]" />
+              </button>
             )}
-            <textarea
-              ref={draftRef}
-              rows={1}
-              value={draft}
-              onChange={(e) => { setDraft(e.target.value); noteTyping(); }}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder={editingAt ? "Edit your message…" : side === "advisor" ? "Reply to your client…" : `Message ${otherName}…`}
-              // 16px, not 14: iOS Safari auto-zooms the whole page into any
-              // text input under 16px the moment it is focused, which is
-              // exactly what reads as the screen "jumping" when the keyboard
-              // opens. Grows with what is typed (see the effect above),
-              // rather than staying squashed to one line.
-              style={{ flex: 1, minWidth: 0, resize: "none", overflow: "auto", border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", borderRadius: 14, padding: "13px 17px", fontFamily: "Inter,sans-serif", fontSize: 16, lineHeight: 1.4, color: "#26323a", outline: "none" }}
-            />
-            <button onClick={() => send()} disabled={sending || recording} title="Send" aria-label="Send" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: 14, fontSize: 17, padding: 0, opacity: sending || recording ? 0.6 : 1 }}>{editingAt ? "✓" : "↑"}</button>
           </div>
         </div>
       )}

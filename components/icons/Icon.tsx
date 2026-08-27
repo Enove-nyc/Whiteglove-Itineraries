@@ -49,7 +49,8 @@ export type IconName =
   | "trash"
   | "home"
   | "chat"
-  | "wallet";
+  | "wallet"
+  | "paperclip";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search: (
@@ -248,13 +249,19 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   chat: (
-    <path d="M20.5 11.5a7.5 7.5 0 0 1-10.8 6.7L4.5 20l1.3-4.7A7.5 7.5 0 1 1 20.5 11.5Z" />
+    <>
+      <path d="M20 4H4a2 2 0 0 0-2 2v8.5a2 2 0 0 0 2 2h3.2v3.2L11.6 16.5H20a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z" />
+      <path d="M7.5 9h9M7.5 12h5.5" />
+    </>
   ),
   wallet: (
     <>
       <rect x="3.5" y="6.5" width="17" height="12" rx="2.5" />
       <path d="M20.5 11.5h-4a1.75 1.75 0 0 0 0 3.5h4" />
     </>
+  ),
+  paperclip: (
+    <path d="M20.4 11.5 12 19.9a5 5 0 0 1-7-7l8-8a3.3 3.3 0 1 1 4.7 4.7l-8.1 8a1.6 1.6 0 0 1-2.3-2.3l7.4-7.3" />
   ),
 };
 
