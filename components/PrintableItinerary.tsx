@@ -446,4 +446,78 @@ const css = `
     .wg-toolbar { display: none; }
     .wg-page { margin: 0; box-shadow: none; width: auto; min-height: 100vh; }
   }
+
+  /* ---------------------------------------------------------------------
+     ON A PHONE THIS IS A PAGE, NOT A SHEET OF PAPER.
+
+     Everything above lays out a letter-size sheet: 8.5in wide, inch-based
+     padding, absolutely-placed frame and corner arc, columns measured in
+     inches. That is right, and it is why the printed PDF looks the way it
+     does — but the sheet is 816px, and this document is now the public
+     sample an advisor is shown before they buy. At 390px the sheet did not
+     shrink and did not scroll; it was simply cut off, losing the right-hand
+     third of every day including the times column's right edge and the whole
+     of the corner arc. The one piece of evidence for the product, with a
+     third of it missing.
+
+     Scaling the sheet down was the other option and is worse: 46% of an 8.5px
+     footer is 4px, so the document would be complete and unreadable. So below
+     900px the sheet stops being a sheet — full width, ordinary padding, the
+     paper decorations dropped, and the inch-measured columns collapsed into
+     stacked rows. Same content, same order, same words; a page instead of a
+     photograph of a page.
+
+     Print is untouched: @media print already restores width:auto, and it wins
+     because it comes first only in source order — these are separate media,
+     never both active. The desktop sheet above 900px is untouched too.
+     --------------------------------------------------------------------- */
+  @media screen and (max-width: 900px) {
+    .wg-page {
+      width: auto; max-width: 40rem; min-height: 0;
+      margin: 16px auto; padding: 28px 20px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+
+    /* The frame and the arc are paper: an inset border and a corner flourish
+       sized in inches. On a narrow page they only crop. */
+    .wg-frame, .wg-arc { display: none; }
+
+    /* The cover stops being a centred title page eleven inches tall and
+       becomes the top of the document. */
+    .wg-cover { text-align: left; align-items: stretch; }
+    .wg-cover-inner { align-items: flex-start; }
+    .wg-crest-name, .wg-cover-title, .wg-daytitle { max-width: none; }
+    .wg-crest-name { text-align: left; }
+    .wg-cover-title { font-size: 26px; }
+    .wg-cover-summary { max-width: none; }
+    .wg-cover-summary li { grid-template-columns: 1fr; gap: 2px; }
+    /* Pinned to the bottom of an eleven-inch sheet there is no bottom to pin
+       to any more, so it simply follows the summary. */
+    .wg-cover-foot { position: static; margin-top: 28px; }
+
+    .wg-titleblock { flex-direction: column; gap: 10px; }
+    .wg-daymeta { text-align: left; max-width: none; padding-top: 0; }
+    .wg-daytitle { font-size: 26px; }
+
+    /* 0.78in of right-aligned time, a dot, then the entry. The dot's rail is
+       a page ornament; the time reads better above what it belongs to. */
+    .wg-timeline li { grid-template-columns: 1fr; gap: 2px; padding-bottom: 22px; }
+    .wg-time { text-align: left; padding-top: 0; }
+    .wg-dot { display: none; }
+
+    .wg-foot { flex-direction: column; gap: 4px; margin-top: 28px; }
+
+    /* The type above is a print scale — 8px eyebrows and 8.5px feet are
+       ordinary on paper held at reading distance and are not on a phone.
+       The document keeps its proportions; the smallest labels stop being
+       the size they only ever were because ink is cheap. */
+    .wg-kind { font-size: 9.5px; }
+    .wg-time { font-size: 12px; }
+    .wg-secondary { font-size: 11px; }
+    .wg-detail { font-size: 12px; }
+    .wg-what { font-size: 16.5px; }
+    .wg-eyebrow, .wg-cover-eyebrow, .wg-sum-label { font-size: 10px; }
+    .wg-sum-value { font-size: 13px; }
+    .wg-foot, .wg-daytitle-en { font-size: 10.5px; }
+  }
 `;
