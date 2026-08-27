@@ -102,6 +102,10 @@ describe("the 'balance still due' reminder", () => {
 describe("automatic reminders stay behind the same fences as the rest of the client tools", () => {
   const TRIPS_ROUTE = readFileSync("app/api/account/trips/route.ts", "utf8");
   const CRON_ROUTE = readFileSync("app/api/cron/trip-reminders/route.ts", "utf8");
+  // The reminder loop moved out of the route and into a plain task function, so
+  // the same body runs from the in-process scheduler and from the manual
+  // endpoint alike (see lib/cron-scheduler.ts). The fences travelled with it.
+  const CRON_TASKS = readFileSync("lib/cron-tasks.ts", "utf8");
 
   it("turning them on or off is gated the same as naming a client at all", () => {
     const branch = TRIPS_ROUTE.slice(TRIPS_ROUTE.indexOf('case "auto-reminders"'), TRIPS_ROUTE.indexOf('case "commission"'));
@@ -115,7 +119,7 @@ describe("automatic reminders stay behind the same fences as the rest of the cli
   });
 
   it("re-checks the plan fresh per account, not just the scan's own snapshot", () => {
-    assert.match(CRON_ROUTE, /mayServeCompanionClients\(await getPlan\(account\.email\)\)/);
+    assert.match(CRON_TASKS, /mayServeCompanionClients\(await getPlan\(account\.email\)\)/);
   });
 
   it("never marks a reminder sent without confirming the message actually saved", () => {
@@ -125,10 +129,10 @@ describe("automatic reminders stay behind the same fences as the rest of the cli
     // message AND it never retries, forever. appendChat itself no-ops and
     // returns [] on failure rather than throwing, so the return value has to
     // be checked, not just awaited.
-    assert.match(CRON_ROUTE, /function wasDelivered/);
-    assert.match(CRON_ROUTE, /if \(await wasDelivered\(trip\.shareId, message\)\)/g);
+    assert.match(CRON_TASKS, /function wasDelivered/);
+    assert.match(CRON_TASKS, /if \(await wasDelivered\(trip\.shareId, message\)\)/g);
     assert.ok(
-      CRON_ROUTE.match(/if \(await wasDelivered\(trip\.shareId, message\)\)/g)?.length === 2,
+      CRON_TASKS.match(/if \(await wasDelivered\(trip\.shareId, message\)\)/g)?.length === 2,
       "both the departure and balance-due sends should check delivery before marking sent",
     );
   });

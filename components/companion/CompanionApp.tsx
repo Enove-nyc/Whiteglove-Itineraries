@@ -1134,9 +1134,12 @@ export default function CompanionApp({
           savePushSubscription in lib/account-store.ts), and neither the
           advisor's own view nor the scripted demo has one. */}
       {isClientViewer && liveChat?.shareId && <NotifyControl shareId={liveChat.shareId} />}
-      {/* Real flight-status alerts — never present on the demo. Newest
-          first, each with a Dismiss control on the advisor's own side only;
-          a client sees the same alert with nothing to manage. */}
+      {/* The advisor's own side of the trip: a way to send the traveler a line
+          by hand. Shown only where the account actually serves clients
+          (advisorInbox), never on a client's own view. */}
+      {!isClientViewer && advisorInbox && trip.tripId && <AdvisorAlertComposer tripId={trip.tripId} />}
+      {/* Real flight-status alerts and hand-sent notes — never present on the
+          demo. Newest first; unread until this screen is opened. */}
       {[...liveAlerts].reverse().map((a) => {
         // New until this view opened, then plain — the "did I already see this?"
         // the traveler asked for. Held to the open-time snapshot so a card does
@@ -1718,6 +1721,76 @@ function NotifyControl({ shareId }: { shareId: string }) {
           {status === "on" ? "Turn off" : "Turn on"}
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * The advisor's own control on the Changes screen: send the traveler a line by
+ * hand — "your driver is running twenty minutes late" — that lands on their
+ * Changes feed and is pushed to their phone. Shown only on the advisor's side,
+ * never a client's; the server checks the plan again (see the send route).
+ */
+function AdvisorAlertComposer({ tripId }: { tripId: string }) {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const serif = "Georgia,'Times New Roman',serif";
+  const clean = text.trim();
+
+  async function send() {
+    if (!clean || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/account/alerts/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tripId, text: clean }),
+      });
+      if (r.ok) {
+        setText("");
+        setSent(true);
+        setTimeout(() => setSent(false), 2500);
+        router.refresh();
+      } else {
+        const d = (await r.json().catch(() => null)) as { error?: string } | null;
+        setError(d?.error ?? "Could not send that.");
+      }
+    } catch {
+      setError("Could not send that. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ padding: "16px 18px", borderRadius: 20, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ fontSize: 14.5, fontWeight: 600 }}>Send the traveler an alert</span>
+        <span style={{ fontSize: 12, color: "#57534e" }}>A driver running late, a change of plan — it lands on their Changes and is pushed to their phone.</span>
+      </div>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value.slice(0, 280))}
+        placeholder="Your driver is running about 20 minutes late."
+        rows={2}
+        style={{ resize: "none", border: "1px solid rgba(38,50,58,.16)", borderRadius: 14, padding: "11px 13px", font: `400 14px/1.4 ${serif}`, color: "#26323a", outline: "none" }}
+      />
+      {error && <span style={{ fontSize: 12, color: "#b42318" }}>{error}</span>}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <span style={{ fontSize: 11.5, color: sent ? "#1f7a4d" : "#a8a29e" }}>{sent ? "Sent." : `${text.length}/280`}</span>
+        <button
+          onClick={() => void send()}
+          disabled={busy || !clean}
+          className="wg-press"
+          style={{ flex: "none", border: 0, background: GOLD, color: CREAM, cursor: clean && !busy ? "pointer" : "default", font: `400 13px/1 ${serif}`, padding: "11px 18px", borderRadius: 14, opacity: busy || !clean ? 0.5 : 1 }}
+        >
+          Send
+        </button>
+      </div>
     </div>
   );
 }
