@@ -65,15 +65,15 @@ export function GettingThere({
               <h3 className="mt-3 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{airport.name}</h3>
               {airport.km && <p className="mt-3 text-sm font-semibold text-[var(--navy)]">{airport.km} away, straight line</p>}
               <div className="mt-auto pt-6">
-                <a href={airport.directionsUrl} target="_blank" rel="noreferrer" className="block text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4 transition hover:text-[var(--gold-ink)]">Driving route from {airport.code} →</a>
-                <Link href={`/book?type=flights&to=${airport.code}`} className="mt-3 block text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4 transition hover:text-[var(--gold-ink)]">Search flights to {airport.code} →</Link>
+                <a href={airport.directionsUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4 transition hover:text-[var(--gold-ink)]">Driving route from {airport.code} →</a>
+                <Link href={`/book?type=flights&to=${airport.code}`} className="mt-3 inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4 transition hover:text-[var(--gold-ink)]">Search flights to {airport.code} →</Link>
               </div>
             </article>
           ))}
         </div>
         <div className="mt-8 flex flex-wrap gap-6">
-          <Link href="/book?type=cars" className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4">Search car hire →</Link>
-          <Link href={`/book?type=hotels&destination=${stayDestination}`} className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4">Search places to stay →</Link>
+          <Link href="/book?type=cars" className="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4">Search car hire →</Link>
+          <Link href={`/book?type=hotels&destination=${stayDestination}`} className="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4">Search places to stay →</Link>
         </div>
         <p className="mt-6 text-sm leading-7 text-stone-500">Searches open with a booking partner, who takes the booking and the payment. Nothing is booked on this site.</p>
       </div>
@@ -135,7 +135,7 @@ export function NearbyKevarim({ nearby }: { nearby: NearbyKever[] }) {
           </Link>
         ))}
       </div>
-      <Link href="/stops" className="mt-8 inline-block text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4">Browse every kever on the site →</Link>
+      <Link href="/stops" className="mt-8 inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-[0.15em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4">Browse every kever on the site →</Link>
     </section>
   );
 }
