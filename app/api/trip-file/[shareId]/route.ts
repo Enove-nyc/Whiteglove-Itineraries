@@ -60,7 +60,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Never cached by anything in between, and never left on a shared
       // phone's disk — the same handling the account's own route gives it.
       "cache-control": "private, no-store, max-age=0",
-      "content-disposition": `inline; filename="${file.name.replace(/["\\\r\n]/g, "")}"`,
+      // `attachment`, not `inline`: inside the installed app the WebView has no
+      // PDF renderer and no new-tab model, so an inline PDF opened as a blank
+      // page or nothing at all. As an attachment the OS hands it to the system
+      // viewer / download manager, which every phone has.
+      "content-disposition": `attachment; filename="${file.name.replace(/["\\\r\n]/g, "")}"`,
       "x-content-type-options": "nosniff",
       // A PDF that could run script would run it on this origin. Nothing in a
       // boarding pass needs to.
