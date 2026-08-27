@@ -15,6 +15,7 @@ import { readBookingLink } from "@/lib/booking-access-store";
 import { website } from "@/lib/structured-data";
 import { DEFAULT_PHOTO } from "@/lib/default-photo";
 import ItinerariesHome from "@/components/ItinerariesHome";
+import StandaloneAppRedirect from "@/components/StandaloneAppRedirect";
 import { BRAND_ORIGIN, brandFromRequestHeaders, currentBrand } from "@/lib/site-brand";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -100,7 +101,12 @@ export default async function Home() {
   // kosher site, unchanged. Read through the same helper generateMetadata uses,
   // so the proxy's brand header and the Host are honoured the one same way.
   if (brandFromRequestHeaders(requestHeaders) === "itineraries") {
-    return <ItinerariesHome />;
+    return (
+      <>
+        <StandaloneAppRedirect />
+        <ItinerariesHome />
+      </>
+    );
   }
   const userAgent = requestHeaders.get("user-agent") || "";
   const device = /Mobi|Android/i.test(userAgent) ? "mobile" : "desktop";

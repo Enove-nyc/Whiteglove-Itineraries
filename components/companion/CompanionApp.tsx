@@ -3464,6 +3464,10 @@ const CSS = `
 @keyframes wgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes wgPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .wg-app-root { min-height: 100dvh; background: #15324b; color: #26323a; }
+/* The app's own scroll region owns its overscroll: a pull past the top or
+ * bottom stays inside it and never chains to the document, so the fixed header
+ * and tab bar do not bounce. */
+.wg-scroll { overscroll-behavior: contain; }
 .wg-scroll::-webkit-scrollbar, .wg-toolbar::-webkit-scrollbar { display: none; }
 .wg-press:hover { filter: brightness(.95); }
 .wg-fade:hover { opacity: .72; }

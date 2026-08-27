@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ANDROID_APP_PACKAGE, isAndroidAppHeaders } from "@/lib/android-app";
+import { ANDROID_APP_PACKAGE, ANDROID_APP_PACKAGES, isAndroidAppHeaders } from "@/lib/android-app";
 
 /** Build a header accessor from a plain object, case-insensitive like Headers. */
 function headers(map: Record<string, string>): (name: string) => string | null {
@@ -10,6 +10,13 @@ function headers(map: Record<string, string>): (name: string) => string | null {
 
 test("the app's X-Requested-With package is recognised", () => {
   assert.equal(isAndroidAppHeaders(headers({ "X-Requested-With": ANDROID_APP_PACKAGE })), true);
+});
+
+test("the Advisor app's package is recognised too, by header and by referrer", () => {
+  const advisor = "com.whitegloveadvisor.app";
+  assert.ok((ANDROID_APP_PACKAGES as readonly string[]).includes(advisor));
+  assert.equal(isAndroidAppHeaders(headers({ "X-Requested-With": advisor })), true);
+  assert.equal(isAndroidAppHeaders(headers({ referer: `android-app://${advisor}/` })), true);
 });
 
 test("surrounding whitespace on the package name is tolerated", () => {

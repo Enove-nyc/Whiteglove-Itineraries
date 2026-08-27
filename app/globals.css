@@ -136,6 +136,18 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Installed as an app, the document must not rubber-band. A TWA/PWA sits at
+ * the top of the screen with no browser chrome, so a vertical overscroll bounces
+ * the whole page — the fixed header visibly springs up and down. Stopping the
+ * bounce at the document only in standalone keeps the browser's normal
+ * pull-to-refresh and elastic scroll for ordinary web visitors. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
 main,
 section,
 article,
