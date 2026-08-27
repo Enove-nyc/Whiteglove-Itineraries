@@ -364,6 +364,23 @@ async function writeJson(key: string, value: unknown) {
   return Boolean(response);
 }
 
+/**
+ * A best-effort distributed lease — SET NX PX. Succeeds for exactly one caller
+ * across every instance for `ms`, then auto-expires so a crashed holder never
+ * wedges it. Used to keep the in-process scheduler (lib/cron-scheduler.ts) from
+ * running the same tick on every replica: duplicate client reminders and
+ * multiplied paid flight lookups. Returns false when storage is unavailable —
+ * the scheduler treats that as "skip", which is the safe side (a missed tick,
+ * not a doubled send).
+ */
+export async function tryAcquireLease(name: string, ms: number): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const key = `white-glove:lease:${name}`;
+  const token = randomBytes(8).toString("base64url");
+  const res = await redis<string>(`set/${encodeURIComponent(key)}/${token}/NX/PX/${ms}`);
+  return res?.result === "OK";
+}
+
 export async function getAccountRecord(email: string) {
   const normalized = normalizeId(email);
   return readJson<AccountRecord>(accountKey(normalized));
@@ -1362,7 +1379,13 @@ function coalesceItineraryChange(
   const last = alerts[alerts.length - 1];
   const recent = last ? Date.parse(now) - Date.parse(last.createdAt) < CHANGE_COALESCE_MS : false;
   if (last && last.kind === "itinerary_update" && !last.acknowledged && recent) {
-    return [...alerts.slice(0, -1), { ...last, title: change.title, note: change.note, createdAt: now }];
+    // Fold in place so a burst of edits reads as one entry, but with a FRESH
+    // id. A client's read state is kept per alert id in their own browser (the
+    // owner's `acknowledged` flag never reaches them), so reusing the id would
+    // leave a change they made after the client already read the entry looking
+    // already-seen. A new id restores the unread signal; the feed still shows
+    // one line, since the old entry is dropped.
+    return [...alerts.slice(0, -1), { id: idFor(), kind: "itinerary_update", title: change.title, note: change.note, createdAt: now, acknowledged: false }];
   }
   return [
     ...alerts,
@@ -1529,7 +1552,7 @@ export async function checkTripFlightStatus(email: string, tripId: string): Prom
   if (!hasAccountStorage()) return [];
   const normalized = normalizeId(email);
   const data = await getAccountData(normalized);
-  const { trips, activeId } = withTrips(data);
+  const { trips } = withTrips(data);
   const trip = trips.find((t) => t.id === tripId);
   if (!trip) return [];
 
@@ -1538,35 +1561,52 @@ export async function checkTripFlightStatus(email: string, tripId: string): Prom
   const candidates = trip.itinerary.flights.filter((f) => f.flightNo?.trim() && f.date && f.date >= today && f.date <= cutoff);
   if (candidates.length === 0) return [];
 
-  const statuses = { ...(trip.flightStatus ?? {}) };
+  // Only the flights actually re-read this run — merged onto the freshest copy
+  // at write time, so a stale reading for a flight we did not check cannot
+  // overwrite a newer one.
+  const checkedStatuses: Record<string, FlightStatusSnapshot> = {};
   const newAlerts: TripAlert[] = [];
   let checkedAny = false;
 
   for (const flight of candidates) {
-    const previous = statuses[flight.id];
+    const previous = trip.flightStatus?.[flight.id];
     if (previous && Date.now() - Date.parse(previous.checkedAt) < flightRecheckMs(flight.date, Date.now())) continue;
     const next = await checkFlightStatus(flight.id, flight.flightNo!.trim(), flight.date);
     if (!next) continue;
     checkedAny = true;
     const label = [flight.airline, flight.flightNo].filter(Boolean).join(" ") || `${flight.from} → ${flight.to}`;
     newAlerts.push(...alertsFromStatusChange(label, previous, next, tripAlertId));
-    statuses[flight.id] = next;
+    checkedStatuses[flight.id] = next;
   }
   if (!checkedAny) return [];
 
-  const nextTrips = trips.map((t) =>
+  // Re-read immediately before writing. The status lookups above are slow
+  // network calls; a user edit (or another writer) can land on this account
+  // during them, and writeTrips rewrites the whole account. Merging the new
+  // statuses and alerts onto the freshest trip — not the stale snapshot read
+  // before the network round-trips — keeps a concurrent itinerary edit from
+  // being clobbered.
+  const fresh = withTrips(await getAccountData(normalized));
+  const target = fresh.trips.find((t) => t.id === tripId);
+  if (!target) return [];
+  const nextTrips = fresh.trips.map((t) =>
     t.id === tripId
-      ? { ...t, flightStatus: statuses, alerts: [...(t.alerts ?? []), ...newAlerts], updatedAt: new Date().toISOString() }
+      ? {
+          ...t,
+          flightStatus: { ...(t.flightStatus ?? {}), ...checkedStatuses },
+          alerts: [...(t.alerts ?? []), ...newAlerts],
+          updatedAt: new Date().toISOString(),
+        }
       : t,
   );
-  await writeTrips(normalized, nextTrips, activeId);
+  await writeTrips(normalized, nextTrips, fresh.activeId);
 
   // Told, not just recorded — a device subscribed to this trip (see
   // savePushSubscription) is pushed the moment there is something worth
   // knowing, rather than only finding out the next time the app happens to
   // be opened. Best-effort: nothing here is allowed to fail the check itself.
-  if (newAlerts.length && trip.pushSubscriptions?.length) {
-    await notifySubscribers(normalized, tripId, trip.pushSubscriptions, trip.shareId, newAlerts).catch((error) =>
+  if (newAlerts.length && target.pushSubscriptions?.length) {
+    await notifySubscribers(normalized, tripId, target.pushSubscriptions, target.shareId, newAlerts).catch((error) =>
       console.error("[account-store] push notify failed:", error),
     );
   }
