@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import GloveMark from "@/components/GloveMark";
 import PromotionBanner from "@/components/PromotionBanner";
 import type { Promotion } from "@/lib/admin-content";
-import { brandForHost, configuredBrand } from "@/lib/site-brand-core";
+import { useIsItineraries } from "@/components/useSiteBrand";
 
 // The band at the bottom of an itinerary.
 //
@@ -28,10 +27,7 @@ export default function ItineraryFooter({ promotion }: { promotion: Promotion | 
   // itineraries button at SSR — no pre-hydration flash of the /cemeteries link
   // (which would 307 to the kosher domain if tapped in that window). The effect
   // then corrects to the host, for a build that serves both.
-  const [itineraries, setItineraries] = useState(() => configuredBrand() === "itineraries");
-  useEffect(() => {
-    if (typeof window !== "undefined") setItineraries(brandForHost(window.location.hostname) === "itineraries");
-  }, []);
+  const itineraries = useIsItineraries();
 
   return (
     <div className="mt-14">

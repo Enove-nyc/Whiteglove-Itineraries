@@ -60,7 +60,7 @@ export default async function AboutPage() {
       <Navbar />
       <AboutProfileSection profile={profile} siteBrand={siteBrand} />
       <PageBlocks blocks={blocks} />
-      <CaseStudiesSection studies={studies} />
+      <CaseStudiesSection studies={studies} siteBrand={siteBrand} />
 
       <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
         <div className="rounded-2xl border border-[var(--navy)] bg-[var(--navy)] p-6 text-white sm:p-9">

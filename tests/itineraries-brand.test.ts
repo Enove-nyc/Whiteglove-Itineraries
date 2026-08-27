@@ -81,7 +81,7 @@ describe("a page body never hands out a bare guide link on the itineraries domai
 
   it("ItineraryFooter only signs the kosher brand, and only links kevarim, once it knows this is the kosher domain", () => {
     const src = readFileSync("components/ItineraryFooter.tsx", "utf8");
-    assert.match(src, /brandForHost\(window\.location\.hostname\)/);
+    assert.match(src, /useIsItineraries\(\)/);
     assert.match(src, /itineraries \? "White Glove Itineraries" : "White Glove Kosher Travel"/);
     // Both branches exist — the itineraries one links the app, the kosher
     // one still links kevarim — and the choice happens before either href is
@@ -93,14 +93,63 @@ describe("a page body never hands out a bare guide link on the itineraries domai
 
   it("KosherNearby only sends a visitor to /kosher on the domain that has one", () => {
     const src = readFileSync("components/KosherNearby.tsx", "utf8");
-    assert.match(src, /brandForHost\(window\.location\.hostname\)/);
+    assert.match(src, /useIsItineraries\(\)/);
     assert.match(src, /itineraries \? `\$\{BRAND_ORIGIN\.kosher\}\/kosher` : "\/kosher"/);
   });
 
   it("TripStartFlow only sends a visitor to /heritage on the domain that has one", () => {
     const src = readFileSync("components/TripStartFlow.tsx", "utf8");
-    assert.match(src, /brandForHost\(window\.location\.hostname\)/);
+    assert.match(src, /useIsItineraries\(\)/);
     assert.match(src, /\$\{BRAND_ORIGIN\.kosher\}\/heritage/);
+  });
+
+  it("TripStartFlow does not offer to browse destinations on a site with no directory", () => {
+    // The owner found this one on the live site: "Browse destinations first"
+    // pushed /destinations, which is guide-only, so the last step of the
+    // planning flow threw the visitor onto the kosher domain.
+    const src = readFileSync("components/TripStartFlow.tsx", "utf8");
+    const card = src.slice(src.indexOf("Not decided") - 400, src.indexOf("Browse destinations first") + 60);
+    assert.match(card, /\{!itineraries && \(/, "the card is offered on both brands");
+    // And the handler itself refuses, so re-adding the card cannot reopen it.
+    assert.match(src, /if \(method === "myself" \|\| itineraries\) router\.push\("\/itinerary\?from=plan"\)/);
+  });
+
+  it("SearchResults offers the planner, not the directory, when nothing is typed", () => {
+    const src = readFileSync("components/SearchResults.tsx", "utf8");
+    assert.match(src, /useIsItineraries\(\)/);
+    const empty = src.slice(src.indexOf("if (!query)"), src.indexOf("if (!query)") + 1200);
+    assert.match(empty, /itineraries \? \(/);
+    assert.match(empty, /href="\/itinerary"/);
+  });
+
+  it("TravelAssistantBox names the food finder as the other site rather than bouncing there", () => {
+    const src = readFileSync("components/TravelAssistantBox.tsx", "utf8");
+    assert.match(src, /useIsItineraries\(\)/);
+    assert.match(src, /\$\{BRAND_ORIGIN\.kosher\}\/kosher/);
+  });
+
+  it("CaseStudiesSection does not link a page that only the guide has", () => {
+    // /about is served on both domains and carries the strip; /case-studies
+    // is guide-only, so the link off the strip is a bounce on this one.
+    const src = readFileSync("components/CaseStudiesSection.tsx", "utf8");
+    assert.match(src, /siteBrand !== "itineraries" && caseStudiesPageShouldExist/);
+    assert.match(readFileSync("app/about/page.tsx", "utf8"), /<CaseStudiesSection studies=\{studies\} siteBrand=\{siteBrand\} \/>/);
+  });
+});
+
+describe("one place decides which site this is", () => {
+  it("reads the host without correcting itself after the first paint", () => {
+    // The five components above each hand-rolled a useState(false) plus an
+    // effect that fixed it on mount — a synchronous setState inside an effect,
+    // which React 19 refuses, and an extra render to learn something that
+    // cannot change. useSyncExternalStore is what that is for.
+    const hook = readFileSync("components/useSiteBrand.ts", "utf8");
+    assert.match(hook, /useSyncExternalStore\(subscribe, onThisHost, onThisBuild\)/);
+    // The CALL, not the word — the note above it explains what it replaced.
+    assert.doesNotMatch(hook, /useEffect\(/);
+    // The server snapshot is the build's own brand, so the itineraries
+    // deployment paints the right thing first rather than starting kosher.
+    assert.match(hook, /configuredBrand\(\) \?\? "kosher"/);
   });
 });
 

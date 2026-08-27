@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useIsItineraries } from "@/components/useSiteBrand";
 import { useMemo, useState, type ReactNode } from "react";
 import BilingualLabel from "@/components/BilingualLabel";
 import {
@@ -66,6 +67,10 @@ export default function SearchResults({
   interpretedAs?: string;
   heritageIntent: boolean;
 }) {
+  // Which site this is. One line, and right on the first paint — see
+  // components/useSiteBrand.ts.
+  const itineraries = useIsItineraries();
+
   // BY LABEL, NOT BY KIND. Two kinds read as "Where to stay" — a hotel and a
   // neighbourhood — so filtering by kind put the same word on two chips beside
   // each other, each hiding half the answer. One chip per word the visitor
@@ -84,11 +89,22 @@ export default function SearchResults({
     .filter((label, index, all) => all.indexOf(label) === index);
 
   if (!query) {
+    // NOTHING TYPED YET, AND THE OFFER DEPENDS ON WHICH SITE THIS IS. The
+    // destination directory is the guide's, and on the itineraries domain
+    // /destinations is a guide-only path that bounces to the kosher site —
+    // which, inside an installed app, means losing the verified domain. The
+    // planner is what this brand has instead.
     return (
       <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] px-6 py-10 text-center">
-        <Link href="/destinations" className="inline-block text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-4">
-          Browse vacation destinations
-        </Link>
+        {itineraries ? (
+          <Link href="/itinerary" className="inline-block text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-4">
+            Open the planner
+          </Link>
+        ) : (
+          <Link href="/destinations" className="inline-block text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-4">
+            Browse vacation destinations
+          </Link>
+        )}
       </div>
     );
   }

@@ -11,14 +11,24 @@ import { caseStudiesPageShouldExist } from "@/data/case-studies";
 export default function CaseStudiesSection({
   studies,
   variant = "embedded",
+  siteBrand = "kosher",
 }: {
   studies: CaseStudy[];
   /** Homepage / About strip vs full page listing. */
   variant?: "embedded" | "page";
+  /**
+   * Which site is rendering this. /case-studies is a guide-only path
+   * (middleware.ts): reached on the itineraries domain it redirects to the
+   * kosher site, so the link to it is not offered there. The strip itself
+   * still shows — the trips are real either way — it is only the door to a
+   * page that does not exist here that goes.
+   */
+  siteBrand?: "kosher" | "itineraries";
 }) {
   if (studies.length === 0) return null;
 
-  const showPageLink = variant === "embedded" && caseStudiesPageShouldExist(studies);
+  const showPageLink =
+    variant === "embedded" && siteBrand !== "itineraries" && caseStudiesPageShouldExist(studies);
 
   return (
     <section
