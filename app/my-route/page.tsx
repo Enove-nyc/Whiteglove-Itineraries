@@ -31,7 +31,7 @@ export default async function MyRoutePage() {
   const itineraries = (await currentBrand()) === "itineraries";
   const crossings = await allCrossings();
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal={itineraries} />
       <MyRouteDashboard crossings={crossings} today={new Date().toISOString().slice(0, 10)} />
       <Footer minimal={itineraries} />

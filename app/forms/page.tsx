@@ -32,7 +32,7 @@ export default async function FormsPage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal homeHref="/advisor" />
       <section className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-14">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Client forms</p>

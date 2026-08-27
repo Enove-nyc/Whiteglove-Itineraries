@@ -92,7 +92,9 @@ export default function NewSiteNotice({ notice }: { notice: BetaNotice }) {
   // Would it arm on this page? Off once this wording has been dismissed OR
   // already shown once — the second is what stops it returning on the next
   // page load when the visitor read it but did not press Close.
-  const eligibleHere = known && !answered && shouldShow(notice, { dismissedVersion, path });
+  // Never on itineraries: the wording is kosher-guide copy (confirm
+  // kashrus, hours, Shabbos) — the general-travel side points nothing there.
+  const eligibleHere = known && !answered && !isItineraries && shouldShow(notice, { dismissedVersion, path });
   // Off once this wording has already been shown once — the marker that stops
   // it returning on the next page load when the visitor read it but did not
   // press Close.

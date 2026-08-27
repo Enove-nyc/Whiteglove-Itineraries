@@ -53,7 +53,7 @@ export default async function ItineraryPage() {
   const templates = templatesFrom(await getVacationDestinations(), await loadVacationSources());
 
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal={itineraries} />
 
       <section className="border-b border-[var(--gold-light)] px-5 py-9 sm:px-8 sm:py-12">

@@ -68,7 +68,7 @@ export default async function AppPage({
   // left a client with a code nowhere to put it.
   if (!who) {
     return (
-      <main className="min-h-screen bg-[var(--cream)]">
+      <main className="flex min-h-screen flex-col bg-[var(--cream)]">
         <Navbar minimal homeHref="/app" />
         <section className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-16 sm:px-8 sm:py-24">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">The White Glove app</p>
@@ -179,7 +179,7 @@ export default async function AppPage({
     // offer the way to fix it, rather than pretending with a sample.
     const dated = trips.filter((t) => t.startDate && t.endDate);
     return (
-      <main className="min-h-screen bg-[var(--cream)]">
+      <main className="flex min-h-screen flex-col bg-[var(--cream)]">
         <Navbar minimal homeHref="/app" />
         <section className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-16 sm:px-8 sm:py-24">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">The White Glove app</p>
@@ -226,7 +226,7 @@ export default async function AppPage({
   // advisor at once. The itineraries "See the app" link can land here, so this
   // is where that promise has to be true.
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal homeHref="/app" />
       <section className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-16 sm:px-8 sm:py-24">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">The White Glove app</p>

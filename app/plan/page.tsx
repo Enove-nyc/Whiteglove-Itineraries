@@ -51,6 +51,11 @@ export default async function PlanPage({
   // field as though the visitor had typed it.
   const destination = slug ? await getVacationDestinationBySlug(slug) : undefined;
   const initialKind = (TRIP_KINDS.find((entry) => entry.value === kind)?.value ?? "") as TripKind | "";
+  // The itineraries side points NOTHING at the kosher guide. /destinations and
+  // /heritage are guide-only paths that redirect to the kosher domain, so the
+  // two CTAs below are kosher-only — on itineraries they would eject the
+  // visitor off the site entirely.
+  const itineraries = (await currentBrand()) === "itineraries";
 
   return (
     <main className="min-h-screen bg-[var(--cream)] text-[var(--ink)]">
@@ -76,24 +81,26 @@ export default async function PlanPage({
         <StartingPoints omit={["/plan"]} heading="Or start somewhere else" />
       </section>
 
-      <section className="border-t border-[var(--gold-light)] bg-[var(--cream-deep)] px-5 py-12 sm:px-8 sm:py-14">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-5">
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/destinations"
-              className={`inline-flex min-h-11 items-center ${ACTION_BUTTON_CLASS.primary}`}
-            >
-              Browse vacation ideas
-            </Link>
-            <Link
-              href="/heritage"
-              className={`inline-flex min-h-11 items-center ${ACTION_BUTTON_CLASS.secondary}`}
-            >
-              Planning a heritage journey
-            </Link>
+      {!itineraries && (
+        <section className="border-t border-[var(--gold-light)] bg-[var(--cream-deep)] px-5 py-12 sm:px-8 sm:py-14">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-5">
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/destinations"
+                className={`inline-flex min-h-11 items-center ${ACTION_BUTTON_CLASS.primary}`}
+              >
+                Browse vacation ideas
+              </Link>
+              <Link
+                href="/heritage"
+                className={`inline-flex min-h-11 items-center ${ACTION_BUTTON_CLASS.secondary}`}
+              >
+                Planning a heritage journey
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <Footer />
     </main>

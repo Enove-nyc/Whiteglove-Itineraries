@@ -76,7 +76,7 @@ export default function Footer({ brand: brandProp, minimal = false }: { brand?: 
   const links = minimal ? allLinks.filter((link) => !FOOTER_MARKETING.has(link.label)) : allLinks;
 
   return (
-    <footer id="contact" className="border-t border-[var(--gold-light)] bg-[var(--navy-deep)] text-[#f7f3eb]">
+    <footer id="contact" className="mt-auto border-t border-[var(--gold-light)] bg-[var(--navy-deep)] text-[#f7f3eb]">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         {/* THE MARK, AND THE NAME AS TEXT — the same lockup as the header. */}
         <div className="flex items-center gap-3">

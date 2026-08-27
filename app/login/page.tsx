@@ -41,7 +41,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const itineraries = (await currentBrand()) === "itineraries";
   const appHome = backPath.startsWith("/advisor") ? "/advisor" : "/app";
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal={itineraries} homeHref={itineraries ? appHome : undefined} />
       {/*
         THE FORM COMES FIRST, and on a phone that is the whole point.
