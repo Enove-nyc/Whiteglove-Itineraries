@@ -773,6 +773,56 @@ export function withTrips(data: AccountData): { trips: SavedTrip[]; activeId: st
   return { trips: [first], activeId: first.id };
 }
 
+/**
+ * Has this trip been started at all?
+ *
+ * WHY IT EXISTS. withTrips() answers "what trips does this account have",
+ * and for an account still on the old single-trip shape it answers by
+ * SYNTHESIZING one out of data.itinerary — which is right, because that
+ * itinerary is a real trip somebody planned. For an account with nothing at
+ * all it synthesizes an empty "My trip", which is also right for the planner
+ * (you have to open something) and wrong for anything that counts trips: a new
+ * advisor would be told they had one active trip before they had made any.
+ *
+ * The advisor dashboard tried to dodge that by reading data.trips directly and
+ * skipping withTrips entirely. That fixed the phantom and broke the real case:
+ * an account whose trip is still in the legacy slot has an empty data.trips, so
+ * the dashboard showed "Start your first trip" while the planner, the pipeline
+ * and every other screen showed the trip. Empty and wrong, on the one screen
+ * meant to say how the business is doing.
+ *
+ * So: take withTrips' answer, and drop what has nothing in it. A trip with a
+ * name somebody chose, a client, a date, a stop, a traveller, a proposal or a
+ * balance has been started. One with none of those is the placeholder, whether
+ * it was synthesized just now or saved empty months ago — and either way there
+ * is nothing on it to count.
+ */
+export function tripIsStarted(trip: SavedTrip): boolean {
+  const itinerary = trip.itinerary;
+  // The one string that means "nobody has named this". emptyItinerary() puts it
+  // on the title and withTrips falls back to it for the name, so a trip
+  // carrying it has not been named — it has been left alone.
+  const UNTITLED = "My trip";
+  const named = trip.name?.trim();
+  const titled = itinerary?.title?.trim();
+  return Boolean(
+    (named && named !== UNTITLED) ||
+      (titled && titled !== UNTITLED) ||
+      trip.client?.trim() ||
+      trip.advisor?.trim() ||
+      trip.proposal ||
+      trip.balance ||
+      trip.shareId ||
+      itinerary?.startDate ||
+      itinerary?.endDate ||
+      itinerary?.flights?.length ||
+      itinerary?.lodging?.length ||
+      itinerary?.activities?.length ||
+      itinerary?.travelers?.length ||
+      trip.route?.length,
+  );
+}
+
 export type TripSummary = {
   id: string;
   name: string;
