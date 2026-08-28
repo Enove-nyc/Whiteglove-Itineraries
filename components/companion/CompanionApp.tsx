@@ -1846,7 +1846,7 @@ export default function CompanionApp({
   const phone = (
     <div className="wg-phone" style={{ display: "flex", flexDirection: "column", background: CREAM, fontFamily: "Inter,system-ui,sans-serif", overflow: "hidden" }}>
       {/* header */}
-      <div style={{ flexShrink: 0, padding: "18px 18px 10px", display: "flex", alignItems: "center", gap: 10, background: CREAM, borderBottom: "1px solid rgba(38,50,58,.08)" }}>
+      <div style={{ flexShrink: 0, padding: "calc(20px + env(safe-area-inset-top)) 18px 10px", display: "flex", alignItems: "center", gap: 10, background: CREAM, borderBottom: "1px solid rgba(38,50,58,.08)" }}>
         {canBack && (
           <button onClick={back} aria-label="Back" className="wg-fade" style={{ border: "1px solid rgba(38,50,58,.14)", background: "#ffffff", width: 34, height: 34, borderRadius: 14, cursor: "pointer", fontSize: 15, color: "#57534e", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>
         )}
@@ -3691,7 +3691,7 @@ function LiveChat({
             {/* The one input that asks for the camera itself (capture), so the
                 menu's "Camera" takes a fresh photo while the bar's Photos button
                 and the menu's "Photo" open the gallery. */}
-            <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" style={{ display: "none" }} onChange={(e) => { void pickImage(e.target.files?.[0]); e.target.value = ""; }} />
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => { void pickImage(e.target.files?.[0]); e.target.value = ""; }} />
             <input ref={videoRef} type="file" accept="video/mp4,video/quicktime,video/webm" style={{ display: "none" }} onChange={(e) => { pickVideo(e.target.files?.[0]); e.target.value = ""; }} />
             <input ref={docRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => { pickDocument(e.target.files?.[0]); e.target.value = ""; }} />
             {/* One rounded input bar — attach on the left, the growing field, a
@@ -3935,6 +3935,28 @@ function AdvisorInbox({
   const [convos, setConvos] = useState<InboxConvo[] | null>(null);
   const [open, setOpen] = useState<InboxConvo | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  // Which conversation's "⋯" menu is open, and which are pinned to the top —
+  // pinning is a per-device convenience, kept in the browser like a read
+  // marker, not a shared setting.
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("wg-inbox-pinned") || "[]") as string[]); } catch { return new Set(); }
+  });
+  function togglePin(shareId: string) {
+    setPinned((prev) => {
+      const next = new Set(prev);
+      if (next.has(shareId)) next.delete(shareId); else next.add(shareId);
+      try { localStorage.setItem("wg-inbox-pinned", JSON.stringify([...next])); } catch { /* private mode */ }
+      return next;
+    });
+    setMenuFor(null);
+  }
+  useEffect(() => {
+    if (!menuFor) return;
+    const close = () => setMenuFor(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [menuFor]);
 
   const load = useCallback(async () => {
     try {
@@ -4017,29 +4039,52 @@ function AdvisorInbox({
           <span style={{ fontSize: 13.5, lineHeight: 1.5, color: "#57534e", textWrap: "pretty" }}>Create a client app link on a trip in the planner and share it. When the client opens it, your chat with them appears here.</span>
         </div>
       )}
-      {convos?.map((c) => {
+      {[...(convos ?? [])]
+        .sort((a, b) => {
+          const pa = pinned.has(a.shareId) ? 1 : 0;
+          const pb = pinned.has(b.shareId) ? 1 : 0;
+          if (pa !== pb) return pb - pa;
+          return (b.lastAt || "").localeCompare(a.lastAt || "");
+        })
+        .map((c) => {
         const preview = c.lastText ? `${c.lastFrom === "advisor" ? "You: " : ""}${c.lastText}` : "No messages yet";
+        const isPinned = pinned.has(c.shareId);
+        const menuOpen = menuFor === c.shareId;
         return (
-          <div key={c.shareId} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div key={c.shareId} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button onClick={() => setOpen(c)} className="wg-warm" style={{ flex: 1, minWidth: 0, textAlign: "left", cursor: "pointer", border: "1px solid rgba(38,50,58,.08)", background: "#ffffff", borderRadius: 16, padding: "15px 16px", display: "flex", alignItems: "center", gap: 13 }}>
               <span style={{ flex: "none", width: 42, height: 42, borderRadius: 12, background: "#e7edf1", display: "flex", alignItems: "center", justifyContent: "center", font: `400 18px/1 ${serif}`, color: "#1f3f5c" }}>{(c.client || c.name || "?").charAt(0).toUpperCase()}</span>
               <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.client || c.name}</span>
+                <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 6 }}>
+                  {isPinned && <Icon name="map-pin" className="h-3.5 w-3.5" aria-label="Pinned" />}
+                  {c.client || c.name}
+                </span>
                 <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{preview}</span>
               </span>
+              {c.count > 0 && <span aria-label={`${c.count} unread`} style={{ flex: "none", minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: GOLD, color: CREAM, fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.count}</span>}
             </button>
-            {c.count > 0 && (
+            <div style={{ position: "relative", flex: "none" }}>
               <button
-                onClick={() => void deleteConvo(c.shareId)}
-                disabled={deleting === c.shareId}
-                title="Delete this conversation"
-                aria-label={`Delete conversation with ${c.client || c.name}`}
+                onClick={(e) => { e.stopPropagation(); setMenuFor(menuOpen ? null : c.shareId); }}
+                title="More"
+                aria-label={`Options for ${c.client || c.name}`}
+                aria-expanded={menuOpen}
                 className="wg-warm"
-                style={{ flex: "none", border: "1px solid rgba(38,50,58,.12)", background: "#ffffff", cursor: "pointer", width: 42, height: 42, borderRadius: 12, fontSize: 15, color: "#a8544a", padding: 0, opacity: deleting === c.shareId ? 0.5 : 1 }}
+                style={{ border: "1px solid rgba(38,50,58,.1)", background: "#ffffff", cursor: "pointer", width: 42, height: 42, borderRadius: 12, padding: 0, color: "#78716c", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                🗑
+                <Icon name="more" className="h-4 w-4" />
               </button>
-            )}
+              {menuOpen && (
+                <div role="menu" onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 6, minWidth: 176, borderRadius: 12, border: "1px solid rgba(38,50,58,.12)", background: "#fff", boxShadow: "0 10px 26px rgba(23,45,82,.16)", overflow: "hidden" }}>
+                  <button role="menuitem" onClick={() => togglePin(c.shareId)} className="wg-warm" style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "12px 14px", fontSize: 13.5, color: "#26323a" }}>
+                    <Icon name="map-pin" className="h-4 w-4" /> {isPinned ? "Unpin" : "Pin to top"}
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuFor(null); void deleteConvo(c.shareId); }} disabled={deleting === c.shareId} className="wg-warm" style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, borderTop: "1px solid rgba(38,50,58,.07)", background: "none", cursor: "pointer", padding: "12px 14px", fontSize: 13.5, color: "#b5442e", opacity: deleting === c.shareId ? 0.5 : 1 }}>
+                    <Icon name="trash" className="h-4 w-4" /> Delete conversation
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         );
       })}
