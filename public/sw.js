@@ -8,7 +8,7 @@
 // styles are therefore network-first: the newest version always wins when
 // online, and the cache is only a fallback when offline. Only truly static
 // media (images, fonts) is cache-first.
-const CACHE = "wg-cache-v3";
+const CACHE = "wg-cache-v4";
 const PRECACHE = ["/", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -28,23 +28,26 @@ self.addEventListener("activate", (event) => {
 
 // Network-first: use the network when we can, fall back to the cache offline.
 //
-// `cache: "no-cache"` is the crucial part, not a detail. The app's JS under
-// /_next/static keeps STABLE filenames across releases but is served
-// `Cache-Control: immutable, max-age=1y`, so a plain fetch() is answered from
-// the browser's own HTTP cache — the same frozen copy — and the network is
-// never really reached. New releases then never arrive, however "network-first"
-// this looks. `no-cache` forces a revalidation against the server (a cheap 304
-// when nothing changed, the new file when it did), which is what actually lets
-// a deploy reach an already-open app.
+// `cache: "reload"` is the crucial part, not a detail — and it is stronger than
+// the `no-cache` this used to use. The app's JS under /_next/static keeps
+// STABLE filenames across releases but is served `Cache-Control: immutable,
+// max-age=1y`. `immutable` tells the browser never even to REVALIDATE for a
+// year, so an already-cached chunk is frozen: `no-cache` asks it to revalidate,
+// which an aggressive HTTP cache can still answer from its own frozen copy.
+// `reload` bypasses the HTTP cache for the request outright and repopulates it,
+// which is what actually forces a new deploy's code into an already-installed
+// app. (The proper server-side fix — not serving a stable filename as immutable
+// — rides in next.config alongside this; this is the belt to that suspenders,
+// and the only half that can un-freeze a copy already cached as immutable.)
 function networkFirst(req) {
   // A navigation Request cannot be rebuilt through `new Request(req, init)`
   // (the constructor rejects a navigate-mode request with a non-empty init),
-  // so those revalidate by URL; everything else keeps the original request but
+  // so those reload by URL; everything else keeps the original request but
   // with the cache mode overridden.
   const fresh =
     req.mode === "navigate"
-      ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" })
-      : fetch(new Request(req, { cache: "no-cache" }));
+      ? fetch(req.url, { cache: "reload", credentials: "same-origin" })
+      : fetch(new Request(req, { cache: "reload" }));
   return fresh
     .then((res) => {
       if (res && res.ok) {
@@ -63,9 +66,18 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return; // leave partner/API/cross-origin alone
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin") || url.pathname.startsWith("/access")) return;
 
-  // Pages and app code (scripts, styles): always prefer the network so a new
-  // release takes effect immediately.
-  if (req.mode === "navigate" || req.destination === "script" || req.destination === "style") {
+  // Pages and app code: always prefer the network so a new release takes effect
+  // immediately. Matched by PATH as well as request destination — in a
+  // WebView a dynamically-imported chunk or a preload can arrive with an empty
+  // `destination`, so keying only on `=== "script"` let exactly the frozen
+  // /_next/static chunks slip through to the immutable HTTP cache. The path
+  // check closes that.
+  if (
+    req.mode === "navigate" ||
+    req.destination === "script" ||
+    req.destination === "style" ||
+    url.pathname.startsWith("/_next/static/")
+  ) {
     event.respondWith(networkFirst(req));
     return;
   }

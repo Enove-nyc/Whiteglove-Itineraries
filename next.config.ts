@@ -56,6 +56,21 @@ const nextConfig: NextConfig = {
     const CSP_REPORT_PATH = "/api/csp-report";
     return [
       {
+        // STABLE FILENAMES MUST NOT BE IMMUTABLE. This build emits
+        // non-content-hashed names under /_next/static (e.g. the same
+        // chunks/3p4b78abroqgo.js across releases, with different contents each
+        // deploy). Next's default for that folder is `immutable, max-age=1y`,
+        // which is only ever safe when the name changes with the content — here
+        // it does not, so an installed app (the native companion shell above
+        // all) was told to freeze a chunk for a year and never saw a new
+        // release's code, only its HTML. Revalidate instead: a cheap 304 when
+        // the chunk is unchanged, the new bytes the moment it is not. The
+        // service worker's network-first is the belt to this suspenders; this
+        // is what keeps an ordinary browser (no service worker yet) correct.
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
