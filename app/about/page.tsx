@@ -11,6 +11,7 @@ import { resolvePage } from "@/lib/pages";
 import { readAboutProfile } from "@/lib/about-profile-store";
 import { readPublicCaseStudies } from "@/lib/case-studies-store";
 import { readWords } from "@/lib/site-words-store";
+import { ITINERARIES_ABOUT_BLOCKS } from "@/data/about-itineraries";
 import { currentBrand } from "@/lib/site-brand";
 import { BRAND_NAME } from "@/lib/site-brand-core";
 import { contactEmailFor } from "@/lib/site-words";
@@ -51,9 +52,24 @@ export default async function AboutPage() {
     currentBrand(),
   ]);
 
+  /**
+   * THE OTHER SITE'S ABOUT PAGE WAS THIS SITE'S ABOUT PAGE. data/pages.ts holds
+   * one, and both deployments rendered it, so a general-travel product for
+   * advisers introduced itself by explaining how to tell whether you can walk
+   * to a minyan from a hotel on Shabbos and listed refusing to give a hechsher
+   * among the things the business will not do.
+   *
+   * His own edit still wins, on either domain: he has one admin for two
+   * deployments, so a page he wrote is a page he meant. The substitution only
+   * happens for the built-in content, which was never a decision about this
+   * brand — it is simply what shipped.
+   */
+  const builtIn = siteBrand === "itineraries" && !page?.edited;
+  const source = builtIn ? ITINERARIES_ABOUT_BLOCKS : page?.blocks ?? [];
+
   // Hero is rendered by AboutProfileSection so empty personal fields can hide
   // cleanly; skip a duplicate hero block from the page editor.
-  const blocks = (page?.blocks ?? []).filter((block) => !(block.kind === "hero" && block.id === "about-hero"));
+  const blocks = source.filter((block) => !(block.kind === "hero" && block.id === "about-hero"));
 
   return (
     <main className="min-h-screen bg-[var(--cream)] text-[var(--ink)]">

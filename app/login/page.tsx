@@ -80,7 +80,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               column is the pitch beside it; two h1s gave the page two titles
               and made a screen reader announce a second start of document. */}
           <h2 className="mt-5 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl lg:text-6xl">Keep every journey in one place.</h2>
-          <p className="mt-7 max-w-xl text-lg leading-8 text-stone-600">Save kevarim, keep your travel notes together, and return to a personalized itinerary whenever you are ready to plan.</p>
+          {/* "Save kevarim" is the guide's promise, and this page is the front
+              door of a general-travel product on the other domain. */}
+          <p className="mt-7 max-w-xl text-lg leading-8 text-stone-600">
+            {itineraries
+              ? "Save the places you like, keep your travel notes together, and return to a trip you are part-way through whenever you are ready."
+              : "Save kevarim, keep your travel notes together, and return to a personalized itinerary whenever you are ready to plan."}
+          </p>
           <div className="mt-10 space-y-4 border-t border-[var(--gold-light)] pt-7 text-stone-700">
             <p>Save destinations and map links.</p>
             <p>Keep hotel, driver, and food notes in one private place.</p>

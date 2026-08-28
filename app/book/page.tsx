@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { wordsFor } from "@/lib/site-words";
 import { readWords } from "@/lib/site-words-store";
 import { readExtras } from "@/lib/travel-extras-store";
 import { essentialIsBookable, type EssentialServiceId } from "@/lib/travel-essentials";
@@ -119,7 +120,11 @@ export default async function BookPage({
   // has to type them a second time.
   const q = await searchParams;
   // The paragraph under the heading. /admin/settings/words.
-  const words = await readWords();
+  // Through wordsFor, so the built-in booking notice — which offered to search
+  // travel that fits "your destination, dates, and kosher needs" — does not
+  // describe a kosher product on the general-travel domain. Anything the owner
+  // typed himself is kept on both sites.
+  const words = wordsFor(await currentBrand(), await readWords());
   const extras = await readExtras();
   // The not-bookable list, minus anything that has since become bookable. See
   // the comment on NOT_YET: this is the reason it cannot be left behind again.

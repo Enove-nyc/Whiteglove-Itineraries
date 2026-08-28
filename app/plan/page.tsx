@@ -12,7 +12,8 @@ import { currentBrand } from "@/lib/site-brand";
 // Brand-aware: reachable on both domains, and its own title used to say
 // "kosher trip" outright — the itineraries domain plans trips of every kind.
 export async function generateMetadata() {
-  const itineraries = (await currentBrand()) === "itineraries";
+  const brand = await currentBrand();
+  const itineraries = brand === "itineraries";
   return pageMetadata({
     title: itineraries ? "Plan a trip — start here | White Glove Itineraries" : "Plan a kosher trip — start here | White Glove Kosher Travel",
     description: "Start a trip: the kind of holiday, where and when, and who is coming.",
@@ -55,7 +56,8 @@ export default async function PlanPage({
   // /heritage are guide-only paths that redirect to the kosher domain, so the
   // two CTAs below are kosher-only — on itineraries they would eject the
   // visitor off the site entirely.
-  const itineraries = (await currentBrand()) === "itineraries";
+  const brand = await currentBrand();
+  const itineraries = brand === "itineraries";
 
   return (
     <main className="min-h-screen bg-[var(--cream)] text-[var(--ink)]">
@@ -71,7 +73,7 @@ export default async function PlanPage({
       </section>
 
       <section className="mx-auto max-w-5xl px-5 py-12 sm:px-8 sm:py-16">
-        <TripStartFlow initialDestination={destination?.name ?? ""} initialKind={initialKind} />
+        <TripStartFlow initialDestination={destination?.name ?? ""} initialKind={initialKind} brand={brand} />
       </section>
 
       {/* The other three doors, for somebody who opened this one and would

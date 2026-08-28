@@ -88,6 +88,37 @@ export function contactEmailFor(brand: SiteBrand, words: SiteWords = BUILT_IN_WO
   return BRAND_CONTACT_EMAIL[brand];
 }
 
+/**
+ * The built-in wording that names the kosher product, said the other way for
+ * the other site.
+ *
+ * SAME RULE AS THE CONTACT ADDRESS ABOVE, and for the same reason. These are
+ * defaults that shipped, not decisions anybody made about either brand: the
+ * booking notice offered to "search the travel that fits your destination,
+ * dates, and kosher needs" on whitegloveitineraries.com, which is a general
+ * travel product, and the search box announced kosher food and kevarim on it.
+ *
+ * ANYTHING THE OWNER TYPED HIMSELF WINS ON BOTH SITES. He has one admin for
+ * two deployments, so a sentence he wrote is a sentence he meant; only the
+ * value that was never chosen moves with the brand.
+ */
+const ITINERARIES_WORDS: Partial<SiteWords> = {
+  searchPlaceholder: "Destinations, hotels, activities…",
+  bookingNotice:
+    "Search the travel that fits your destination and dates — with cash, or with your own miles and points.",
+};
+
+/** The wording this brand should show, with the owner's own edits kept. */
+export function wordsFor(brand: SiteBrand, words: SiteWords = BUILT_IN_WORDS): SiteWords {
+  const out: SiteWords = { ...words, contactEmail: contactEmailFor(brand, words) };
+  if (brand !== "itineraries") return out;
+  for (const [key, value] of Object.entries(ITINERARIES_WORDS) as [keyof SiteWords, string][]) {
+    // Untouched by the owner, so the built-in is only what shipped.
+    if (words[key] === BUILT_IN_WORDS[key]) out[key] = value;
+  }
+  return out;
+}
+
 /** Only what differs from the built-in set, so the store holds decisions. */
 export function onlyChangedWords(words: SiteWords): StoredWords {
   const out: StoredWords = {};

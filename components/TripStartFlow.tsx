@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { ACTION_BUTTON_CLASS } from "@/lib/action-button";
 import { BRAND_ORIGIN } from "@/lib/site-brand-core";
 import { useIsItineraries } from "@/components/useSiteBrand";
+import type { SiteBrand } from "@/lib/site-brand-core";
 import {
   ACCESSIBILITY_NEEDS,
   emptyAnswers,
@@ -119,10 +120,24 @@ function Toggles({
 export default function TripStartFlow({
   initialDestination = "",
   initialKind = "",
+  brand,
 }: {
   /** Arrived from a destination card: "Add Rome to a trip". */
   initialDestination?: string;
   initialKind?: TripKind | "";
+  /**
+   * Which site this is, settled on the server.
+   *
+   * WHY IT IS A PROP AND NOT THE HOOK ANY MORE. useIsItineraries falls back on
+   * the server to the build's configured brand, and that variable is not set
+   * on the itineraries deployment — so the HTML this page was SERVED with said
+   * kosher, and only corrected itself after hydration. Which meant the markup
+   * a crawler and a first paint actually got offered a group trip as "several
+   * families, a school, a shul or a simcha" and a Heritage category of kevarim
+   * and batei hachaim, on the general-travel domain. The server knows the
+   * brand for certain, from the request; Navbar has always taken it this way.
+   */
+  brand?: SiteBrand;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -136,8 +151,12 @@ export default function TripStartFlow({
   // that domain it silently redirects to the kosher site, which also breaks
   // out of an installed itineraries app (the Trusted Web Activity drops to an
   // ordinary browser tab, address bar and all, the moment it leaves the
-  // verified domain). Detected client-side, the same way Navbar settles brand.
-  const itineraries = useIsItineraries();
+  // verified domain).
+  //
+  // The server's answer when it gave one, because it read the request; the
+  // hook only as a fallback for a caller that has not been given one yet.
+  const fromHost = useIsItineraries();
+  const itineraries = brand ? brand === "itineraries" : fromHost;
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   function update(patch: Partial<TripPlanAnswers>) {
@@ -278,7 +297,7 @@ export default function TripStartFlow({
                     <span className={`font-[family-name:var(--font-display)] text-2xl leading-tight ${on ? "text-white" : "text-[var(--navy)]"}`}>
                       {kind.label}
                     </span>
-                    <span className={`mt-2 text-sm leading-6 ${on ? "text-slate-200" : "text-stone-600"}`}>{kind.blurb}</span>
+                    <span className={`mt-2 text-sm leading-6 ${on ? "text-slate-200" : "text-stone-600"}`}>{(itineraries && kind.itinerariesBlurb) || kind.blurb}</span>
                     {/* No sr-only "Selected" here: aria-pressed already says
                         so, and both together read as "Rome, selected, pressed". */}
                   </button>
