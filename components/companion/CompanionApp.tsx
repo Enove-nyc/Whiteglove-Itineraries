@@ -2360,7 +2360,17 @@ function LiveChat({
   const load = useCallback(async () => {
     try {
       const r = await fetch(`/api/companion/chat?share=${encodeURIComponent(shareId)}`, { cache: "no-store" });
-      if (!r.ok) return;
+      if (!r.ok) {
+        // Say why, and stop rendering a blank panel. A non-2xx here used to
+        // leave `loaded` false with no note, so the whole thread showed as an
+        // empty screen — which reads as broken and hides the real reason (a 404
+        // is the plan gate: the trip's owner is not on a plan that carries
+        // client messaging, or the link is stale). Surface it instead.
+        const d = await r.json().catch(() => null);
+        setNote((d && typeof d.error === "string" && d.error) || "Messages aren’t available on this trip right now.");
+        setLoaded(true);
+        return;
+      }
       const d = await r.json();
       setMessages(Array.isArray(d.messages) ? d.messages : []);
       setAvailable(d.available !== false);
@@ -2368,9 +2378,16 @@ function LiveChat({
       setOtherTyping(Boolean(d.typing));
       if (typeof d.imageLimit === "number" && d.imageLimit > 0) setImageLimit(d.imageLimit);
       if (typeof d.docLimit === "number" && d.docLimit > 0) setDocLimit(d.docLimit);
+      setNote("");
       setLoaded(true);
     } catch {
-      /* keep what we have; the next poll may reach it */
+      // Almost always no signal — messaging needs the network, while the
+      // itinerary and wallet are still here from the saved copy. Say so rather
+      // than showing nothing.
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setNote("You’re offline — your messages will load when you’re back online.");
+      }
+      setLoaded(true);
     }
   }, [shareId]);
 
@@ -2826,7 +2843,7 @@ function LiveChat({
             Messaging isn&apos;t connected yet.
           </div>
         )}
-        {available && loaded && messages.length === 0 && (
+        {available && loaded && messages.length === 0 && !note && (
           <div style={{ alignSelf: "center", maxWidth: "80%", textAlign: "center", font: "400 13px/1.6 Inter,sans-serif", color: "#78716c" }}>
             {side === "advisor" ? "No messages yet. Anything you send reaches your client on their app." : `No messages yet. Send a message, a photo, a video, a voice note or your location to ${advisorName}.`}
           </div>

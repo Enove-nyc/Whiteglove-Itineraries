@@ -57,6 +57,23 @@ async function launchChromium() {
 }
 
 
+/**
+ * IS THIS ACTUALLY ON THE SCREEN — which `offsetParent !== null` does not
+ * answer, and this audit had been trusting it to.
+ *
+ * A closed `<details>` does not use `display: none`; it hides its contents
+ * with `content-visibility`. So every link inside every collapsed fold kept an
+ * offsetParent and a bounding box, and the audit measured all of them. On one
+ * destination page that was 55 of the 95 controls it thought were visible —
+ * their tap targets, their contrast, and their place in the tab order, all
+ * reported from geometry nobody can see. It is the same mistake an outside
+ * scanner made against this site in the same week, reporting empty headings
+ * inside collapsed sections.
+ *
+ * checkVisibility answers it properly. The `sr-only` exception is deliberate
+ * and lives at the call sites that want it: text positioned off-screen for a
+ * screen reader is invisible on purpose and still has to be counted.
+ */
 const BASE = process.argv[2] ?? "http://127.0.0.1:3130";
 const WIDTHS = [
   [320, 568], [375, 667], [390, 844], [430, 932],
@@ -207,10 +224,14 @@ for (const [path, label] of PAGES) {
       if (width <= 430) {
         const small = await p.evaluate(() => {
           const out = [];
+          const visible = (el) =>
+            typeof el.checkVisibility === "function"
+              ? el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: false, visibilityProperty: true })
+              : el.offsetParent !== null;
           for (const el of document.querySelectorAll("a, button, summary, [role=button]")) {
             const r = el.getBoundingClientRect();
             if (r.width === 0 || r.height === 0) continue;
-            if (getComputedStyle(el).visibility === "hidden") continue;
+            if (!visible(el)) continue;
             // An inline link is a link inside a run of text, wherever that run
             // lives. Requiring a p/li/span ancestor as well missed inline map
             // control links inside a div and reported them as undersized targets.
@@ -229,19 +250,57 @@ for (const [path, label] of PAGES) {
 
       if (width === 390) {
         // 5. Tab order: the skip link first, and no long jumps back up the page.
+        /**
+         * NO GRID CAN PASS THE OLD VERSION OF THIS, and every grid on the site
+         * was failing it.
+         *
+         * It compared each tab stop against a RUNNING MAXIMUM — the lowest
+         * point reached so far — so once one card in a row was taller than its
+         * neighbours, every link in the next card counted as a jump backwards.
+         * On /destinations/rome that was "Compare every place to stay" at 2320
+         * followed by the next card's "Navigate →" at 2191: two cards in the
+         * same visual row, tabbed in the order somebody reads them. Nothing
+         * about it is out of order.
+         *
+         * It also measured elements inside `position: fixed` containers — the
+         * mobile bottom bar, the assistant button — whose document position is
+         * whatever the viewport happened to be showing. Those floated near the
+         * bottom of the first screen and so read as a jump back up from the
+         * footer.
+         *
+         * Between them they were the whole of this audit's remaining findings:
+         * nineteen, none of them real, on a report that is meant to be read.
+         *
+         * Comparing CONSECUTIVE stops instead makes a grid row what it is — a
+         * few dozen pixels either way — and leaves a genuine jump, which is a
+         * footer link followed by a header link, hundreds or thousands of
+         * pixels apart. Which is why one is now worth reporting: the tolerance
+         * of two was there to absorb the noise this used to generate.
+         */
         const order = await p.evaluate(() => {
+          const insideFixed = (el) => {
+            for (let node = el; node && node !== document.body; node = node.parentElement) {
+              if (getComputedStyle(node).position === "fixed") return true;
+            }
+            return false;
+          };
+          const visible = (el) =>
+            typeof el.checkVisibility === "function"
+              ? el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: false, visibilityProperty: true })
+              : el.offsetParent !== null;
           const items = [...document.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])')]
-            .filter((el) => el.offsetParent !== null);
-          let backwards = 0, prevTop = -Infinity;
+            .filter(visible);
+          let backwards = 0, previous = null;
           for (const el of items.slice(0, 40)) {
+            if (insideFixed(el)) continue;
             const top = Math.round(el.getBoundingClientRect().top + window.scrollY);
-            if (top < prevTop - 80) backwards += 1;
-            prevTop = Math.max(prevTop, top);
+            if (previous !== null && top < previous - 200) backwards += 1;
+            previous = top;
           }
           return { first: (items[0]?.textContent || "").trim().slice(0, 30), backwards };
         });
         if (order.first !== "Skip to content") note(label, "any", "tab-order", `first tab stop is "${order.first}", not the skip link`);
-        if (order.backwards > 2) note(label, "any", "tab-order", `${order.backwards} backward jumps in the first 40 tab stops`);
+        if (order.backwards > 0) note(label, "any", "tab-order", `${order.backwards} backward jumps in the first 40 tab stops`);
 
         // 6. Form controls with no accessible name.
         const unnamed = await p.evaluate(() => {
@@ -268,8 +327,12 @@ for (const [path, label] of PAGES) {
         // with no h1 has no name in that list, and a jump from h2 to h4 reads
         // as a missing section rather than a styling choice.
         const headings = await p.evaluate(() => {
+          const visible = (el) =>
+            typeof el.checkVisibility === "function"
+              ? el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: false, visibilityProperty: true })
+              : el.offsetParent !== null;
           const levels = [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")]
-            .filter((el) => el.offsetParent !== null || el.className.includes("sr-only"))
+            .filter((el) => visible(el) || el.className.includes("sr-only"))
             .map((el) => ({ level: Number(el.tagName[1]), text: (el.textContent || "").trim().slice(0, 40) }));
           const problems = [];
           const h1s = levels.filter((h) => h.level === 1);
@@ -289,6 +352,13 @@ for (const [path, label] of PAGES) {
         //    the navy section three components away, and only the real page
         //    knows which background a given line of text ended up on.
         const contrast = await p.evaluate(() => {
+          // Same predicate as the other checks: a closed <details> keeps its
+          // contents measurable, and contrast on text nobody can see is not a
+          // finding. See the touch-target block above.
+          const visible = (el) =>
+            typeof el.checkVisibility === "function"
+              ? el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: false, visibilityProperty: true })
+              : el.offsetParent !== null;
           const parse = (value) => {
             const match = /rgba?\(([^)]+)\)/.exec(value || "");
             if (!match) return null;
@@ -355,6 +425,7 @@ for (const [path, label] of PAGES) {
             if (rect.width < 2 || rect.height < 2) continue;
             const style = getComputedStyle(el);
             if (style.visibility === "hidden" || style.opacity === "0") continue;
+            if (!visible(el)) continue;
             if (el.closest(".sr-only") || el.className.toString().includes("sr-only")) continue;
             const ink = parse(style.color);
             if (!ink || ink.a < 0.5) continue;
