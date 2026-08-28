@@ -44,7 +44,7 @@ import {
   type CompanionWalletRow,
 } from "@/data/companion-demo";
 import type { TripAlert } from "@/data/trip-alerts";
-import { loadGoogleMaps, googleMaps, googleMapsAvailable, type GMap } from "@/lib/google-maps-loader";
+import { loadGoogleMaps, googleMaps, googleMapsAvailable, type GMap, type GPlacesApi, type GPlacePrediction } from "@/lib/google-maps-loader";
 import { Icon, type IconName } from "@/components/icons/Icon";
 import PaymentCheckout from "@/components/companion/PaymentCheckout";
 import { useDeviceClock } from "@/components/TripProgressStrip";
@@ -2347,12 +2347,53 @@ function LocationPicker({
   const mapRef = useRef<GMap | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(googleMapsAvailable() ? "loading" : "unavailable");
   const [locating, setLocating] = useState(false);
+  // Address search: the typed query, the dropdown of matches, and the Places
+  // services that produce them (created once the map is ready).
+  const [query, setQuery] = useState("");
+  const [predictions, setPredictions] = useState<GPlacePrediction[]>([]);
+  // Set once the Places autocomplete service is wired — a ref alone would not
+  // re-render the search bar into view when it becomes ready.
+  const [searchReady, setSearchReady] = useState(false);
+  const autoRef = useRef<InstanceType<GPlacesApi["AutocompleteService"]> | null>(null);
+  const placesRef = useRef<InstanceType<GPlacesApi["PlacesService"]> | null>(null);
+  const tokenRef = useRef<unknown>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Ask for address matches as you type, lightly debounced, once there is
+  // enough to search on. Fails quiet — no suggestions rather than an error — if
+  // the Places API isn't enabled on the key.
+  useEffect(() => {
+    const svc = autoRef.current;
+    if (!svc || query.trim().length < 3) { setPredictions([]); return; }
+    const t = window.setTimeout(() => {
+      try {
+        svc.getPlacePredictions({ input: query, sessionToken: tokenRef.current ?? undefined }, (preds) => setPredictions(preds ?? []));
+      } catch { setPredictions([]); }
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [query]);
+
+  function chooseAddress(p: GPlacePrediction) {
+    setQuery(p.description);
+    setPredictions([]);
+    const svc = placesRef.current;
+    if (!svc) return;
+    svc.getDetails({ placeId: p.place_id, fields: ["geometry"], sessionToken: tokenRef.current ?? undefined }, (place) => {
+      const loc = place?.geometry?.location;
+      if (loc && mapRef.current) {
+        mapRef.current.setCenter({ lat: loc.lat(), lng: loc.lng() });
+        mapRef.current.setZoom(17);
+      }
+      // A details call closes the billing session; start a fresh token.
+      const pl = googleMaps()?.places;
+      if (pl) tokenRef.current = new pl.AutocompleteSessionToken();
+    });
+  }
 
   const centreOnDevice = useCallback((first: boolean) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -2386,6 +2427,20 @@ function LocationPicker({
       });
       setStatus("ready");
       centreOnDevice(true);
+      // Wire address search, if the Places library is there. Best-effort: the
+      // map still works if the key has no Places access.
+      try {
+        if (maps.importLibrary) await maps.importLibrary("places");
+        const p = googleMaps()?.places;
+        if (p && mapDivRef.current) {
+          autoRef.current = new p.AutocompleteService();
+          placesRef.current = new p.PlacesService(mapDivRef.current);
+          tokenRef.current = new p.AutocompleteSessionToken();
+          if (!cancelled) setSearchReady(true);
+        }
+      } catch {
+        /* no autocomplete — the pin and current-location still work */
+      }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2419,6 +2474,40 @@ function LocationPicker({
           </div>
           {status === "loading" && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", font: "500 13px/1 Inter,sans-serif", color: "#78716c" }}>Loading map…</div>
+          )}
+          {/* Address search — type a street, pick from the dropdown, the map
+              jumps there and drops the pin; then nudge it to the exact door.
+              Floats over the map, top; the suggestions hang below it. Only
+              shown once the Places service is wired (autoRef set on ready). */}
+          {status === "ready" && searchReady && (
+            <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 2 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", borderRadius: 12, boxShadow: "0 4px 14px rgba(15,20,25,.18)", padding: "0 12px", height: 44 }}>
+                <Icon name="search" className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search an address"
+                  aria-label="Search an address"
+                  autoComplete="off"
+                  style={{ flex: 1, border: 0, outline: "none", background: "transparent", font: "500 15px/1 Inter,sans-serif", color: "#26323a", minWidth: 0 }}
+                />
+                {query && (
+                  <button onClick={() => { setQuery(""); setPredictions([]); }} aria-label="Clear" className="wg-fade" style={{ flex: "none", border: 0, background: "none", cursor: "pointer", color: "#a8a29e", display: "flex", padding: 0 }}>
+                    <Icon name="close" className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {predictions.length > 0 && (
+                <div style={{ marginTop: 6, background: "#fff", borderRadius: 12, boxShadow: "0 6px 18px rgba(15,20,25,.2)", overflow: "hidden" }}>
+                  {predictions.map((p) => (
+                    <button key={p.place_id} onClick={() => chooseAddress(p)} className="wg-warm" style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, borderTop: "1px solid rgba(38,50,58,.06)", background: "#fff", cursor: "pointer", padding: "10px 12px" }}>
+                      <Icon name="map-pin" className="h-4 w-4" strokeWidth={1.6} />
+                      <span style={{ fontSize: 13, color: "#26323a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           <button
             onClick={() => centreOnDevice(false)}

@@ -65,6 +65,27 @@ export type GInfoWindow = {
   close(): void;
 };
 
+/** A single address suggestion from the autocomplete service. */
+export type GPlacePrediction = { place_id: string; description: string };
+
+/** The slice of google.maps.places the location picker's search box uses. */
+export type GPlacesApi = {
+  AutocompleteService: new () => {
+    getPlacePredictions(
+      request: { input: string; sessionToken?: unknown },
+      callback: (predictions: GPlacePrediction[] | null, status: string) => void,
+    ): void;
+  };
+  PlacesService: new (attrContainer: HTMLElement) => {
+    getDetails(
+      request: { placeId: string; fields: string[]; sessionToken?: unknown },
+      callback: (place: { geometry?: { location?: { lat(): number; lng(): number } } } | null, status: string) => void,
+    ): void;
+  };
+  AutocompleteSessionToken: new () => unknown;
+  PlacesServiceStatus: { OK: string };
+};
+
 export type GoogleMapsApi = {
   Map: new (element: HTMLElement, options: Record<string, unknown>) => GMap;
   Marker: new (options: Record<string, unknown>) => GMarker;
@@ -74,6 +95,7 @@ export type GoogleMapsApi = {
   Size: new (width: number, height: number) => object;
   Point: new (x: number, y: number) => object;
   LatLngBounds: new () => GLatLngBounds;
+  places?: GPlacesApi;
   importLibrary?: (name: string) => Promise<unknown>;
 };
 
@@ -170,7 +192,9 @@ function ensureMapsScript(key: string): Promise<void> {
     script.async = true;
     // Official dynamic path. Do not use callback= here — that can fire before
     // Map exists. importLibrary("maps") is the ready signal.
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&v=weekly`;
+    // libraries=places so the location picker can offer address autocomplete;
+    // it loads alongside maps and does nothing until a picker asks for it.
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&v=weekly&libraries=places`;
     script.addEventListener("load", () => resolve(), { once: true });
     script.addEventListener("error", () => reject(new Error("maps script failed")), { once: true });
     document.head.appendChild(script);
