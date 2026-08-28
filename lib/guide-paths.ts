@@ -64,6 +64,60 @@ export const GUIDE_ONLY_PREFIXES = [
  */
 const CITY_GUIDE_PATHS = new Set(cityGuides.map(({ slug }) => `/${slug}`));
 
+/**
+ * WHAT THIS DOMAIN DOES WITH A PATH THAT IS NOT ITS OWN.
+ *
+ * It used to answer all of them with a 308 to whiteglovekoshertravel.com,
+ * which was right about the mechanism and wrong about the destination: this
+ * product must not direct its visitors to the kosher site, and a redirect is
+ * the most direct direction there is. Somebody who typed
+ * whitegloveitineraries.com/cemeteries was being handed to a different
+ * company.
+ *
+ * Three answers instead, and which one a path gets depends on whether this
+ * product has anything to offer in its place:
+ *
+ *   • A NEUTRAL EQUIVALENT — /travel-insurance is booking, and this site has a
+ *     booking page. A permanent redirect to it is useful rather than a
+ *     hand-off.
+ *   • NOTHING EQUIVALENT — /mikvaos, /tzaddikim, /hechsherim. This domain has
+ *     never served them and never will. 410 Gone says exactly that: not "look
+ *     over there", not "try again later", but "this address is not ours". A
+ *     crawler drops it and stops asking.
+ *   • ANYTHING ELSE — a real 404, which is what an unknown path already got.
+ *
+ * The one thing none of them is: a 200 with the homepage under the wrong
+ * address.
+ */
+export type GuideAnswer = { kind: "redirect"; to: string } | { kind: "gone" };
+
+/**
+ * The paths with a neutral home on this site.
+ *
+ * Deliberately short. A redirect is a promise that the destination answers the
+ * same question, and most of the guide's paths have no answer here at all —
+ * sending /tzaddikim to /itinerary would be a worse lie than a 410.
+ */
+const NEUTRAL_EQUIVALENT: Record<string, string> = {
+  // The kevarim-towns directory is a list of places to build a trip around.
+  // The planner is where this product builds a trip.
+  "/stops": "/itinerary",
+  // Booking, all four of them, and this site has a booking page.
+  "/travel-insurance": "/book",
+  "/transfers": "/book",
+  "/esim": "/book",
+  "/hotels": "/book",
+};
+
+/** What this domain should answer for a guide path, or null when it is ours. */
+export function guideAnswer(pathname: string): GuideAnswer | null {
+  if (!isGuidePath(pathname)) return null;
+  for (const [prefix, to] of Object.entries(NEUTRAL_EQUIVALENT)) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return { kind: "redirect", to };
+  }
+  return { kind: "gone" };
+}
+
 /** True when this path is the kosher guide's rather than the planner's. */
 export function isGuidePath(pathname: string): boolean {
   if (CITY_GUIDE_PATHS.has(pathname)) return true;

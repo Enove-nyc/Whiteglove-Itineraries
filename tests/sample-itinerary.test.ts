@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { attractions } from "@/data/attractions";
-import { buildDays, formatDateLong, travelersOf } from "@/data/itinerary";
+import { buildDays, travelersOf } from "@/data/itinerary";
 import { buildPrintTimeline } from "@/data/itinerary-print";
-import { kosherAreas } from "@/data/kosher-stays";
 import { SAMPLE_ITINERARY, SAMPLE_NOTICE, WHAT_IS_IN_IT } from "@/data/sample-itinerary";
 import { publicPaths } from "@/lib/site-map";
 
@@ -42,24 +40,30 @@ describe("the sample itinerary", () => {
     assert.ok(days.every((day) => buildPrintTimeline(day, {}).length > 0), "a day in the sample renders empty");
   });
 
-  it("NAMES ONLY PLACES THE SITE ALREADY PUBLISHES", () => {
-    // Every place on it is a record with a source behind it. A stop invented
-    // for the sample would be the one line on the document that was not true
-    // of anywhere.
-    const known = new Set<string>([
-      ...attractions.filter((entry) => entry.city === "Rome").map((entry) => entry.name),
-      ...kosherAreas.filter((entry) => entry.city === "Rome").map((entry) => entry.name),
-    ]);
+  it("NAMES ONLY REAL, CHECKABLE PLACES", () => {
+    /**
+     * ON THE KOSHER SITE THIS CHECKED THE DATABASE. Every place on that
+     * sample is a record it publishes with a source, and a stop invented for
+     * the sample would be the one line on the document that was not true of
+     * anywhere.
+     *
+     * This product has no such database, and must not borrow the other one's:
+     * that coupling is the thing being removed, not a check worth keeping. So
+     * the rule here is the part that still applies — every named place is a
+     * real Rome landmark anybody can verify, and nothing is named that would
+     * be a CLAIM. That second half is the test below, and it is the one that
+     * does the work.
+     */
     const placed = SAMPLE_ITINERARY.activities.filter((activity) => activity.coordinates);
-    assert.ok(placed.length >= 5);
+    assert.ok(placed.length >= 5, "the sample stopped placing its stops");
+    const LANDMARKS = /colosseum|forum|pantheon|trevi|vatican|borghese|trastevere|ostia/i;
     for (const activity of placed) {
-      const matchesRecord =
-        known.has(activity.name) ||
-        // The Ghetto quarter, referred to by its street rather than by the
-        // full record name. Same coordinate, which is what is checked.
-        kosherAreas.some((area) => area.city === "Rome" && area.coordinates === activity.coordinates) ||
-        attractions.some((entry) => entry.city === "Rome" && entry.coordinates === activity.coordinates);
-      assert.ok(matchesRecord, `${activity.name} is not a record this site holds`);
+      assert.match(activity.name, LANDMARKS, `${activity.name} is not a landmark anybody can check`);
+      // A coordinate that is not in Rome or its province is a made-up place
+      // with a real name on it.
+      const [lat, lng] = (activity.coordinates ?? "").split(",").map((part) => Number(part.trim()));
+      assert.ok(lat > 41.6 && lat < 42.1, `${activity.name} is not near Rome`);
+      assert.ok(lng > 12.2 && lng < 12.7, `${activity.name} is not near Rome`);
     }
   });
 
@@ -84,20 +88,34 @@ describe("the sample itinerary", () => {
   });
 
   it("shows the parts an ordinary itinerary gets wrong", () => {
-    const dates = SAMPLE_ITINERARY.activities.map((activity) => activity.date);
-    // A Friday that stops early, a Shabbos with nothing timed on it, and a day
-    // with nothing planned. Those three are the reason this sample exists.
-    const shabbos = SAMPLE_ITINERARY.activities.find((activity) => activity.date === "2026-10-31");
-    assert.ok(shabbos, "the sample has no Shabbos on it");
-    assert.equal(shabbos.startTime, undefined, "the Shabbos entry carries a time");
-    assert.ok(dates.includes("2026-10-30"), "no erev Shabbos");
+    /**
+     * THIS USED TO BE ABOUT SHABBOS, and on the kosher site it still is: a
+     * Friday that stops early and a Saturday with nothing timed on it are the
+     * reason that sample exists. On this domain the sample is neutral — the
+     * product sells trip-building to advisers with clients of every kind — so
+     * what it has to demonstrate instead is the ordinary planning judgement a
+     * generated week does not have.
+     *
+     * The day with nothing on it is the one that survives the change, and it
+     * is the best of the three anyway: a week with seven full days is a week
+     * somebody abandons on day three.
+     */
     assert.ok(
       SAMPLE_ITINERARY.activities.some((activity) => /unplanned/i.test(activity.name)),
       "every day on the sample is full",
     );
-    // The Friday really is a Friday.
-    assert.match(formatDateLong("2026-10-30"), /^Friday/);
-    assert.match(formatDateLong("2026-10-31"), /^Saturday/);
+    // A day out of the city, planned as the only thing on its day.
+    const dayOut = SAMPLE_ITINERARY.activities.find((activity) => /ostia/i.test(activity.name));
+    assert.ok(dayOut, "the sample has no day out of the city");
+    assert.ok((dayOut.durationMins ?? 0) >= 240, "the day out is squeezed in beside something else");
+    assert.equal(
+      SAMPLE_ITINERARY.activities.filter((activity) => activity.date === dayOut.date).length,
+      1,
+      "the day out shares its day",
+    );
+    // The first afternoon after a red-eye is left alone.
+    const arrival = SAMPLE_ITINERARY.activities.find((activity) => /settle in/i.test(activity.name));
+    assert.ok(arrival, "the sample schedules the arrival day like any other");
   });
 
   it("is a real family rather than one traveler", () => {
