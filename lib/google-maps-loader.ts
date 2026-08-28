@@ -48,6 +48,10 @@ export type GMap = {
   addListener?(event: string, handler: () => void): void;
   /** Frame a box. Used when the map opens on everything rather than a search. */
   fitBounds(bounds: GLatLngBounds, padding?: number): void;
+  /** Read the point the map is centred on — the pin the location picker sends. */
+  getCenter?(): { lat(): number; lng(): number } | null;
+  /** Slide the map to a point (used to jump to the device's own position). */
+  panTo?(position: LatLng): void;
 };
 
 export type GMarker = {

@@ -44,6 +44,7 @@ import {
   type CompanionWalletRow,
 } from "@/data/companion-demo";
 import type { TripAlert } from "@/data/trip-alerts";
+import { loadGoogleMaps, googleMaps, googleMapsAvailable, type GMap } from "@/lib/google-maps-loader";
 import { Icon, type IconName } from "@/components/icons/Icon";
 import PaymentCheckout from "@/components/companion/PaymentCheckout";
 import { useDeviceClock } from "@/components/TripProgressStrip";
@@ -2247,6 +2248,135 @@ function dayLabel(iso: string): string {
   });
 }
 
+/**
+ * The location picker — a map you move under a fixed pin and send that exact
+ * spot, the way a phone messenger does it, in place of typing an address into a
+ * box. Opens on the device's own position when it can, and still offers "my
+ * current location" and the trip's own stops for the times a pin on a map is
+ * not what you want. When Maps can't load (no key, or offline) it falls back to
+ * just those two, so Location is never a dead button.
+ */
+function LocationPicker({
+  onPickPin,
+  onUseCurrent,
+  onPickPlace,
+  onClose,
+  places,
+}: {
+  onPickPin: (loc: { lat: number; lng: number }) => void;
+  onUseCurrent: () => void;
+  onPickPlace: (place: { label: string; address: string }) => void;
+  onClose: () => void;
+  places: { label: string; address: string }[];
+}) {
+  const mapDivRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<GMap | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(googleMapsAvailable() ? "loading" : "unavailable");
+  const [locating, setLocating] = useState(false);
+
+  const centreOnDevice = useCallback((first: boolean) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const map = mapRef.current;
+        if (map) { map.setCenter(p); map.setZoom(16); }
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: true, timeout: first ? 8000 : 10000 },
+    );
+  }, []);
+
+  useEffect(() => {
+    if (status === "unavailable") return;
+    let cancelled = false;
+    void (async () => {
+      const ok = await loadGoogleMaps();
+      if (cancelled) return;
+      const maps = googleMaps();
+      if (!ok || !maps || !mapDivRef.current) { setStatus("unavailable"); return; }
+      mapRef.current = new maps.Map(mapDivRef.current, {
+        center: { lat: 40.7128, lng: -74.006 },
+        zoom: 15,
+        disableDefaultUI: true,
+        clickableIcons: false,
+        gestureHandling: "greedy",
+      });
+      setStatus("ready");
+      centreOnDevice(true);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function sendPin() {
+    const c = mapRef.current?.getCenter?.();
+    if (!c) return;
+    onPickPin({ lat: c.lat(), lng: c.lng() });
+  }
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Share a location" style={{ position: "absolute", inset: 0, zIndex: 32, background: CREAM, display: "flex", flexDirection: "column" }}>
+      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid rgba(38,50,58,.08)" }}>
+        <button onClick={onClose} aria-label="Close" className="wg-fade" style={{ border: "1px solid rgba(38,50,58,.14)", background: "#fff", width: 34, height: 34, borderRadius: 12, cursor: "pointer", fontSize: 15, color: "#57534e", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>
+        <span style={{ font: "600 16px/1.1 Inter,sans-serif", color: "#26323a" }}>Share a location</span>
+      </div>
+
+      {status === "unavailable" ? (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8, padding: 24, textAlign: "center", color: "#78716c" }}>
+          <Icon name="map-pin" className="h-8 w-8" strokeWidth={1.2} />
+          <span style={{ fontSize: 13.5, lineHeight: 1.5, maxWidth: 260 }}>A map isn’t available here right now — you can still send where you are, or a stop from the trip below.</span>
+        </div>
+      ) : (
+        <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
+          <div ref={mapDivRef} style={{ position: "absolute", inset: 0, background: "#e7edf1" }} />
+          {/* The fixed pin — the map moves under it, so its tip always marks the
+              point that Send will use. pointer-events off so it never eats a drag. */}
+          <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-100%)", pointerEvents: "none", color: GOLD, filter: "drop-shadow(0 3px 4px rgba(15,20,25,.35))" }}>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 4.6 6 12 6.4 12.5a.8.8 0 0 0 1.2 0C13 21 19 13.6 19 9a7 7 0 0 0-7-7Z" /><circle cx="12" cy="9" r="2.6" fill="#fff" /></svg>
+          </div>
+          {status === "loading" && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", font: "500 13px/1 Inter,sans-serif", color: "#78716c" }}>Loading map…</div>
+          )}
+          <button
+            onClick={() => centreOnDevice(false)}
+            title="My location"
+            aria-label="Centre on my location"
+            className="wg-press"
+            style={{ position: "absolute", right: 14, bottom: 16, width: 44, height: 44, borderRadius: "50%", border: 0, background: "#fff", color: ICON_BLUE, cursor: "pointer", boxShadow: "0 4px 14px rgba(15,20,25,.22)", display: "flex", alignItems: "center", justifyContent: "center", opacity: locating ? 0.6 : 1 }}
+          >
+            <Icon name="map-pin" className="h-5 w-5" strokeWidth={1.8} />
+          </button>
+        </div>
+      )}
+
+      <div style={{ flexShrink: 0, borderTop: "1px solid rgba(38,50,58,.08)", background: CREAM, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8, maxHeight: "42%", overflowY: "auto" }}>
+        {status === "ready" && (
+          <button onClick={sendPin} className="wg-press" style={{ border: 0, cursor: "pointer", background: GOLD, color: CREAM, borderRadius: 14, minHeight: 48, fontSize: 14.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Icon name="map-pin" className="h-[18px] w-[18px]" /> Send this location
+          </button>
+        )}
+        <button onClick={onUseCurrent} className="wg-warm" style={{ border: "1px solid rgba(38,50,58,.14)", cursor: "pointer", background: "#fff", color: "#26323a", borderRadius: 14, minHeight: 46, fontSize: 13.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <Icon name="map-pin" className="h-[17px] w-[17px]" /> Send my current location
+        </button>
+        {places.length > 0 && (
+          <>
+            <div style={{ padding: "4px 4px 0", font: "600 10px/1 Inter,sans-serif", letterSpacing: ".08em", textTransform: "uppercase", color: "#a8a29e" }}>From this trip</div>
+            {places.map((p, i) => (
+              <button key={i} onClick={() => onPickPlace(p)} className="wg-warm" style={{ display: "flex", flexDirection: "column", width: "100%", textAlign: "left", border: "1px solid rgba(38,50,58,.1)", borderRadius: 12, background: "#fff", cursor: "pointer", padding: "10px 13px" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#26323a" }}>{p.label}</span>
+                <span style={{ fontSize: 11.5, color: "#78716c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.address}</span>
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LiveChat({
   chat,
   subject,
@@ -2300,10 +2430,9 @@ function LiveChat({
   >(null);
   // Whether the "⋯" attach menu (photo / video / location) is open.
   const [attachOpen, setAttachOpen] = useState(false);
-  // The location choice — "my current location" or a stop from this trip —
-  // shown in place of the attach menu once Location is tapped, since a
-  // device fix alone can never be where the hotel or the restaurant is.
-  const [locationChoiceOpen, setLocationChoiceOpen] = useState(false);
+  // The full-panel map picker — opened from Location, a pin you move over a map
+  // (plus "my current location" and the trip's own stops).
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   // The `at` of a message being changed — while set, the composer holds that
   // message's words rather than a new message, and Send saves the change
   // instead of posting another one.
@@ -2415,18 +2544,12 @@ function LiveChat({
   }, [menuOpenAt]);
 
   useEffect(() => {
-    if (!attachOpen && !locationChoiceOpen) return;
+    if (!attachOpen) return;
     const onDocClick = (e: MouseEvent) => {
-      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
-        setAttachOpen(false);
-        setLocationChoiceOpen(false);
-      }
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) setAttachOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setAttachOpen(false);
-        setLocationChoiceOpen(false);
-      }
+      if (e.key === "Escape") setAttachOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
@@ -2434,7 +2557,7 @@ function LiveChat({
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [attachOpen, locationChoiceOpen]);
+  }, [attachOpen]);
 
   // Grows the composer with what is actually typed, up to a cap beyond which
   // it scrolls internally rather than eating the whole screen.
@@ -3422,52 +3545,9 @@ function LiveChat({
                       <button role="menuitem" onClick={() => { setAttachOpen(false); docRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <DocGlyph /> Document
                       </button>
-                      <button role="menuitem" onClick={() => { setAttachOpen(false); setLocationChoiceOpen(true); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
+                      <button role="menuitem" onClick={() => { setAttachOpen(false); setLocationPickerOpen(true); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="map-pin" className="h-4 w-4" /> Location
                       </button>
-                    </div>
-                  )}
-                  {locationChoiceOpen && (
-                    // A device fix is only ever "where I am standing" — the
-                    // one thing it can never say is where the hotel or the
-                    // restaurant is, so this offers the trip's own stops too.
-                    <div
-                      role="menu"
-                      style={{
-                        position: "absolute",
-                        bottom: "100%",
-                        left: 0,
-                        marginBottom: 6,
-                        zIndex: 5,
-                        minWidth: 220,
-                        maxWidth: 280,
-                        maxHeight: 260,
-                        overflowY: "auto",
-                        borderRadius: 12,
-                        border: "1px solid rgba(38,50,58,.12)",
-                        background: "#ffffff",
-                        boxShadow: "0 10px 26px rgba(23,45,82,.16)",
-                      }}
-                    >
-                      <button role="menuitem" onClick={() => { setLocationChoiceOpen(false); pickLocation(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, borderBottom: places.length ? "1px solid rgba(38,50,58,.08)" : 0, background: "none", cursor: "pointer", padding: "13px 14px", fontSize: 13.5, color: "#26323a" }}>
-                        <Icon name="map-pin" className="h-4 w-4" /> Send my current location
-                      </button>
-                      {places.length > 0 && (
-                        <div style={{ padding: "8px 14px 2px", font: "600 10px/1 Inter,sans-serif", letterSpacing: ".08em", textTransform: "uppercase", color: "#a8a29e" }}>
-                          From this trip
-                        </div>
-                      )}
-                      {places.map((p, i) => (
-                        <button
-                          key={i}
-                          role="menuitem"
-                          onClick={() => { setLocationChoiceOpen(false); pickPlaceLocation(p); }}
-                          style={{ display: "flex", flexDirection: "column", width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "8px 14px", fontSize: 13, color: "#26323a" }}
-                        >
-                          <span style={{ fontWeight: 600 }}>{p.label}</span>
-                          <span style={{ fontSize: 11.5, color: "#78716c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.address}</span>
-                        </button>
-                      ))}
                     </div>
                   )}
                 </div>
@@ -3579,6 +3659,18 @@ function LiveChat({
           </div>
         );
       })()}
+      {/* The map location picker — a full-panel overlay over the thread, like
+          WhatsApp's own location screen. Staging (not sending) on pick, so the
+          same confirm-before-send bar every attachment gets still applies. */}
+      {locationPickerOpen && (
+        <LocationPicker
+          places={places}
+          onClose={() => setLocationPickerOpen(false)}
+          onPickPin={(loc) => { setLocationPickerOpen(false); setStagedLocation({ lat: loc.lat, lng: loc.lng, label: "Pinned location" }); }}
+          onUseCurrent={() => { setLocationPickerOpen(false); pickLocation(); }}
+          onPickPlace={(p) => { setLocationPickerOpen(false); pickPlaceLocation(p); }}
+        />
+      )}
       {/* A photo opened full-size, over the whole chat panel — scoped to the
           phone frame (position: absolute against the relatively-positioned
           root above), not the whole browser viewport. */}
