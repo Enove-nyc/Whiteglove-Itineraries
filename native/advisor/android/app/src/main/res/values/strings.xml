@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">White Glove Advisor</string>
+    <string name="title_activity_main">White Glove Advisor</string>
+    <string name="package_name">com.whitegloveadvisor.app</string>
+    <string name="custom_url_scheme">com.whitegloveadvisor.app</string>
+</resources>

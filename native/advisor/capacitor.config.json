@@ -1,0 +1,12 @@
+{
+  "appId": "com.whitegloveadvisor.app",
+  "appName": "White Glove Advisor",
+  "webDir": "www",
+  "server": {
+    "url": "https://whitegloveitineraries.com/app",
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#14213d"
+  }
+}
