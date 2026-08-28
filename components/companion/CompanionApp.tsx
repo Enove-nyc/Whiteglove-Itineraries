@@ -1815,7 +1815,7 @@ export default function CompanionApp({
   else if (st.screen === "chat") body = isConcierge ? conciergeChat : guideChat;
   else if (st.screen === "messages")
     body = advisorInbox ? (
-      <AdvisorInbox pendingShare={pendingShare} onPendingShareUsed={() => setPendingShare(null)} />
+      <AdvisorInbox pendingShare={pendingShare} onPendingShareUsed={() => setPendingShare(null)} onComposerFocus={setComposerUp} />
     ) : liveChat ? (
       <LiveChat chat={liveChat} subject={st.chatSubject} onSubjectUsed={() => setSt((s) => ({ ...s, chatSubject: null }))} places={shareablePlaces} onComposerFocus={setComposerUp} />
     ) : (
@@ -3339,8 +3339,8 @@ function LiveChat({
                 style={{ flex: 1, minWidth: 0, border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", borderRadius: 14, padding: "14px 17px", fontFamily: "Inter,sans-serif", fontSize: 16, color: "#26323a", outline: "none" }}
               />
             )}
-            <button onClick={() => sendStaged()} disabled={sending} aria-label="Send" className="wg-press" style={{ flex: staged.kind === "audio" ? 1 : "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, height: 46, minWidth: 46, borderRadius: 14, fontSize: staged.kind === "audio" ? 14 : 17, fontWeight: staged.kind === "audio" ? 700 : 400, padding: staged.kind === "audio" ? "0 20px" : 0, opacity: sending ? 0.6 : 1 }}>
-              {staged.kind === "audio" ? "Send voice note" : "↑"}
+            <button onClick={() => sendStaged()} disabled={sending} aria-label="Send" className="wg-press" style={{ flex: staged.kind === "audio" ? 1 : "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, height: 46, minWidth: 46, borderRadius: staged.kind === "audio" ? 14 : "50%", fontSize: 14, fontWeight: 700, padding: staged.kind === "audio" ? "0 20px" : 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: sending ? 0.6 : 1 }}>
+              {staged.kind === "audio" ? "Send voice note" : <Icon name="send" className="h-[20px] w-[20px]" strokeWidth={1.9} />}
             </button>
           </div>
         </div>
@@ -3624,11 +3624,15 @@ type InboxConvo = {
 function AdvisorInbox({
   pendingShare,
   onPendingShareUsed,
+  onComposerFocus,
 }: {
   /** A place shared in from outside, waiting for the advisor to pick which
    *  client's thread it belongs in. */
   pendingShare?: string | null;
   onPendingShareUsed?: () => void;
+  /** Bubbled up from the open thread's composer so the shell can pull the
+   *  bottom tab bar out of the way while the advisor is typing. */
+  onComposerFocus?: (focused: boolean) => void;
 }) {
   const serif = "Georgia,'Times New Roman',serif";
   const [convos, setConvos] = useState<InboxConvo[] | null>(null);
@@ -3695,6 +3699,7 @@ function AdvisorInbox({
             chat={{ shareId: open.shareId, side: "advisor", advisorName: open.client || open.name }}
             initialDraft={pendingShare}
             onInitialDraftUsed={onPendingShareUsed}
+            onComposerFocus={onComposerFocus}
           />
         </div>
       </div>
