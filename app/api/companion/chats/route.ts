@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { accountCookieName, getCurrentAccountData, getTrips } from "@/lib/account-store";
-import { deleteConversation, readChat } from "@/lib/companion-chat-store";
+import { deleteConversation, readChat, readMarkers } from "@/lib/companion-chat-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { PLAN_LABELS } from "@/lib/account-plans";
 import { getPlan } from "@/lib/account-plan-store";
@@ -33,13 +33,19 @@ export async function GET() {
   const shared = (await getTrips(account.email).catch(() => [])).filter((t) => t.shareId);
   const conversations = await Promise.all(
     shared.map(async (t) => {
-      const messages = await readChat(t.shareId!);
+      const [messages, markers] = await Promise.all([readChat(t.shareId!), readMarkers(t.shareId!)]);
       const last = messages[messages.length - 1];
+      // The badge is UNREAD, not the whole history: the client's messages that
+      // arrived after the advisor last opened this thread. Nobody wants to be
+      // told a chat holds 214 messages — they want to know 2 are new.
+      const advisorRead = markers.advisor ?? "";
+      const unread = messages.filter((m) => m.from === "client" && !m.deletedAt && m.at > advisorRead).length;
       return {
         shareId: t.shareId!,
         name: t.name,
         client: t.client,
-        count: messages.length,
+        count: unread,
+        hasMessages: messages.length > 0,
         lastText: last?.text ?? "",
         lastFrom: last?.from ?? null,
         lastAt: last?.at ?? "",

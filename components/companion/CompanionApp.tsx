@@ -3301,7 +3301,7 @@ function LiveChat({
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", position: "relative", animation: "wgIn .28s ease both" }}>
-      <div ref={scrollerRef} onScroll={noteScrollPosition} className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div ref={scrollerRef} onScroll={noteScrollPosition} className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 3 }}>
         {!available && (
           <div style={{ alignSelf: "center", textAlign: "center", font: "400 12px/1.5 Inter,sans-serif", color: "#765321", background: "#f7eee0", padding: "10px 14px", borderRadius: 14 }}>
             Messaging isn&apos;t connected yet.
@@ -3547,9 +3547,9 @@ function LiveChat({
                        bubble is the primary gesture and this is the fallback
                        for it. aria-expanded still tells a screen reader which
                        one is open, which is what needed saying. */
-                    style={{ flex: "none", border: 0, background: "none", cursor: "pointer", padding: 10, margin: -6, color: "#a8a29e", opacity: 0.55, display: "flex", alignItems: "center" }}
+                    style={{ flex: "none", border: 0, background: "none", cursor: "pointer", padding: 8, margin: -6, color: "#a8a29e", opacity: 0.32, display: "flex", alignItems: "center" }}
                   >
-                    <Icon name="more" className="h-4 w-4" />
+                    <Icon name="more" className="h-3 w-3" />
                   </button>
                 )}
               </div>
