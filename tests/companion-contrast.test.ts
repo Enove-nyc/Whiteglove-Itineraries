@@ -1,0 +1,128 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+
+/**
+ * THE APP'S OWN COLOURS, MEASURED RATHER THAN EYEBALLED.
+ *
+ * Every colour in components/companion/CompanionApp.tsx is an inline style
+ * literal, so nothing else in the project can check them and nothing did. An
+ * audit of /app/preview in a real browser found the whole of the app's small
+ * print under AA: the wallet's group headings at 4.40, the eyebrow above every
+ * screen title at 2.31, a message's date divider at 2.06 — and every primary
+ * button in the app, cream on gold, at 2.86.
+ *
+ * None of that is decoration. A stop's time, a walk of four minutes, the
+ * document group a confirmation is filed under and the word on the button that
+ * accepts a change are what somebody reads this app for, on a phone, outdoors.
+ *
+ * The four constants are pinned here against the four grounds they are drawn
+ * on. Anything below AA fails the build, so the next person to reach for a
+ * lighter grey finds out here rather than from a scan.
+ */
+
+const SRC = readFileSync("components/companion/CompanionApp.tsx", "utf8");
+
+/** Reads `const NAME = "#rrggbb";` out of the component. */
+function colour(name: string): string {
+  const m = SRC.match(new RegExp(`const ${name} = "(#[0-9a-f]{6})";`, "i"));
+  assert.ok(m, `${name} is gone from CompanionApp.tsx, or is no longer a plain hex literal`);
+  return m![1];
+}
+
+function luminance(hex: string): number {
+  const parts = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const [r, g, b] = parts.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function ratio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+const GOLD = colour("GOLD");
+const CREAM = colour("CREAM");
+const NAVY = colour("NAVY");
+const MUTED = colour("MUTED");
+const FAINT = colour("FAINT");
+const ON_GOLD = SRC.includes("const ON_GOLD = NAVY;") ? NAVY : colour("ON_GOLD");
+
+/** The three grounds the app draws text on: the page, the tab bar, a card. */
+const GROUNDS: Array<[string, string]> = [
+  ["the cream page", CREAM],
+  ["the tab bar's band", "#ece8df"],
+  ["a white card", "#ffffff"],
+];
+
+// Everything measured here is under 18px, so AA is 4.5 for all of it.
+const AA = 4.5;
+
+describe("the two greys clear AA on every ground", () => {
+  for (const [where, bg] of GROUNDS) {
+    it(`MUTED reads on ${where}`, () => {
+      const r = ratio(MUTED, bg);
+      assert.ok(r >= AA, `MUTED ${MUTED} on ${bg} is ${r.toFixed(2)}:1, under ${AA}`);
+    });
+
+    it(`FAINT reads on ${where}`, () => {
+      const r = ratio(FAINT, bg);
+      assert.ok(r >= AA, `FAINT ${FAINT} on ${bg} is ${r.toFixed(2)}:1, under ${AA}`);
+    });
+  }
+
+  it("keeps them two greys, not one", () => {
+    // They exist to separate a label from the metadata beside it. If they are
+    // ever driven to the same value the hierarchy is gone and one of them
+    // should be deleted rather than quietly duplicated.
+    assert.notEqual(MUTED, FAINT);
+    assert.ok(luminance(MUTED) < luminance(FAINT), "MUTED must be the darker of the two");
+  });
+});
+
+describe("what is written on the gold", () => {
+  it("is legible, which the cream was not", () => {
+    /**
+     * Cream on gold is 2.86:1 — well under half of AA — and it was on every
+     * primary action in the app: "See the two options", "Create poll", the
+     * send button, the selected day in the strip, the tab you are on.
+     *
+     * The gold does not move; it is the brand. The navy already in this
+     * palette clears AA against exactly the same gold, so only the words
+     * changed colour.
+     */
+    const r = ratio(ON_GOLD, GOLD);
+    assert.ok(r >= AA, `text on gold is ${r.toFixed(2)}:1, under ${AA}`);
+    assert.ok(ratio(CREAM, GOLD) < AA, "cream on gold has become legible — this test is out of date");
+  });
+
+  it("is not written in cream anywhere the gold is behind it", () => {
+    assert.doesNotMatch(SRC, /background: GOLD, color: CREAM/);
+    assert.doesNotMatch(SRC, /color: on \? CREAM/);
+    assert.doesNotMatch(SRC, /color: t\.on \? CREAM/);
+  });
+});
+
+describe("the bottom bar says what its four buttons are", () => {
+  /**
+   * IT WAS ICON-ONLY, with the word kept as the button's accessible name and
+   * nothing on the screen: a pin, a speech bubble, a wallet and a person,
+   * standing for Trip, Advisor, Wallet and You. Two of those four are not
+   * guessable, and every phone puts the word under the glyph for that reason.
+   *
+   * It also made the bar invisible to anything reading the screen by its text.
+   * An outside scan of /app/preview reported that the tabs did not switch,
+   * having found no control by any of their names. They did switch, and do —
+   * all four, at 390 and at 1280, verified in a browser.
+   */
+  it("draws the label, not only the icon", () => {
+    assert.match(SRC, /<span style=\{\{ font: `\$\{t\.on \? 600 : 500\} 10\.5px\/1 Inter,sans-serif`[^}]*\}\}>\{t\.label\}<\/span>/);
+  });
+
+  it("does not repeat that label as an aria-label as well", () => {
+    // A visible word plus an aria-label saying the same thing is two facts
+    // that can disagree. The unread case still needs one, because "3 unread"
+    // is not written on the button.
+    assert.match(SRC, /aria-label=\{t\.badge \? `\$\{t\.label\} \(unread messages\)` : undefined\}/);
+  });
+});

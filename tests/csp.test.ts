@@ -143,3 +143,28 @@ describe("the header is wired in and now enforces", () => {
     assert.match(CSP, /report-to csp/);
   });
 });
+
+describe("the partner script's own second file is not blocked", () => {
+  /**
+   * The Travelpayouts verification snippet loads from https://emrldco.com,
+   * which the policy allows — and that script then asks for a second file of
+   * its own over PLAIN http, from the same host. Measured in a browser on
+   * /app/preview: "Refused to load the script 'http://emrldco.com/chunk...js'
+   * because it violates ... script-src", against a host three lines above it
+   * in the same policy.
+   *
+   * That block is not the policy being strict. A browser refuses an insecure
+   * script on a secure page whatever the policy says, so this was failing for
+   * every visitor on every page carrying the snippet, and arriving at the
+   * report sink looking like a missing host.
+   */
+  it("upgrades an http subresource rather than refusing it", () => {
+    assert.match(CSP, /upgrade-insecure-requests/);
+  });
+
+  it("does not admit a single insecure host to make that work", () => {
+    // The directive rewrites the request; it never widens a source list. If a
+    // plain-http origin is ever added to one of these, this catches it.
+    assert.doesNotMatch(CSP, /\shttp:\/\//);
+  });
+});
