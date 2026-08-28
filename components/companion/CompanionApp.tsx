@@ -1965,7 +1965,7 @@ export default function CompanionApp({
 /** A live message — text, a picture, a video, a voice note, or a place. */
 type LiveMsg = {
   from: ChatSide;
-  kind?: "text" | "image" | "video" | "audio" | "file" | "location";
+  kind?: "text" | "image" | "video" | "audio" | "file" | "location" | "poll";
   text: string;
   mediaId?: string;
   lat?: number;
@@ -1979,11 +1979,38 @@ type LiveMsg = {
   itineraryRef?: string;
   /** One emoji per side — both people see both. */
   reactions?: Partial<Record<ChatSide, string>>;
+  /** kind "poll": the question, its options, and votes keyed by voter id. */
+  poll?: { question: string; options: string[]; votes?: Record<string, number> };
 };
 
 /** The reactions the chat offers — kept in step with lib/companion-chat-store's
  *  REACTION_EMOJIS, defined here too so this client file pulls no server code. */
 const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🙏"] as const;
+
+/** A poll asks between this many and this many options — mirrors the server. */
+const MIN_POLL_OPTIONS = 2;
+const MAX_POLL_OPTIONS = 5;
+
+/**
+ * A stable, anonymous id for THIS device, so several travellers on the one
+ * shared trip link can each vote in a poll and be counted once. It says nothing
+ * about who they are — it only separates one browser from another — and lives
+ * only in this browser. The advisor never uses it (the server votes them as
+ * "advisor"); it is the client side's way of not being one lumped-together vote.
+ */
+function deviceVoterId(): string {
+  try {
+    const key = "wg-companion-voter";
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40);
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch {
+    return "anon";
+  }
+}
 
 /** The floor a picture may weigh before the server even has a disk to hold it
  * on — used until the server's own GET reports its real, deploy-specific
@@ -2230,6 +2257,15 @@ function DocGlyph({ size = 16 }: { size?: number }) {
   );
 }
 
+/** A poll's little bar-chart glyph for the attach menu. */
+function PollGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 20V10M12 20V4M17 20v-6" />
+    </svg>
+  );
+}
+
 /** "Today" / "Yesterday" / a short date — the divider between a run of
  *  messages sent on different days, the way any messaging app breaks up
  *  scrollback. */
@@ -2377,6 +2413,54 @@ function LocationPicker({
   );
 }
 
+/**
+ * Compose a poll — a question and two to five options — over the thread. A small
+ * sheet rather than an inline row, so a half-typed poll never sits in the
+ * message box. Nothing is sent until Create; the options grow up to the cap.
+ */
+function PollComposer({ onSend, onClose }: { onSend: (question: string, options: string[]) => Promise<boolean>; onClose: () => void }) {
+  const [question, setQuestion] = useState("");
+  const [options, setOptions] = useState<string[]>(["", ""]);
+  const [busy, setBusy] = useState(false);
+  const filled = options.filter((o) => o.trim()).length;
+  const canSend = question.trim().length > 0 && filled >= MIN_POLL_OPTIONS;
+  const field: CSSProperties = { width: "100%", border: "1px solid rgba(38,50,58,.16)", borderRadius: 10, padding: "11px 12px", fontFamily: "Inter,sans-serif", fontSize: 16, color: "#26323a", outline: "none", background: "#fff" };
+
+  async function submit() {
+    if (!canSend || busy) return;
+    setBusy(true);
+    const ok = await onSend(question, options);
+    setBusy(false);
+    if (ok) onClose();
+  }
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Create a poll" onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 33, background: "rgba(15,20,25,.4)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: CREAM, borderRadius: "20px 20px 0 0", padding: "16px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12, maxHeight: "88%", overflowY: "auto", animation: "wgIn .2s ease both" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ font: "600 16px/1 Inter,sans-serif", color: "#26323a" }}>New poll</span>
+          <button onClick={onClose} aria-label="Close" className="wg-fade" style={{ border: 0, background: "none", cursor: "pointer", color: "#a8a29e", display: "flex" }}><Icon name="close" className="h-5 w-5" /></button>
+        </div>
+        <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask a question…" aria-label="Poll question" maxLength={140} style={field} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {options.map((opt, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input value={opt} onChange={(e) => setOptions((prev) => prev.map((o, idx) => (idx === i ? e.target.value : o)))} placeholder={`Option ${i + 1}`} aria-label={`Option ${i + 1}`} maxLength={80} style={field} />
+              {options.length > MIN_POLL_OPTIONS && (
+                <button onClick={() => setOptions((prev) => prev.filter((_, idx) => idx !== i))} aria-label={`Remove option ${i + 1}`} className="wg-fade" style={{ flex: "none", border: 0, background: "none", cursor: "pointer", color: "#a8a29e", display: "flex" }}><Icon name="close" className="h-4 w-4" /></button>
+              )}
+            </div>
+          ))}
+        </div>
+        {options.length < MAX_POLL_OPTIONS && (
+          <button onClick={() => setOptions((prev) => [...prev, ""])} className="wg-link" style={{ alignSelf: "flex-start", border: 0, background: "none", cursor: "pointer", color: ICON_BLUE, fontSize: 13.5, fontWeight: 600, padding: "2px 0" }}>+ Add option</button>
+        )}
+        <button onClick={() => void submit()} disabled={!canSend || busy} className="wg-press" style={{ border: 0, cursor: canSend && !busy ? "pointer" : "default", background: GOLD, color: CREAM, borderRadius: 14, minHeight: 50, fontSize: 15, fontWeight: 700, opacity: canSend && !busy ? 1 : 0.5 }}>Create poll</button>
+      </div>
+    </div>
+  );
+}
+
 function LiveChat({
   chat,
   subject,
@@ -2433,6 +2517,8 @@ function LiveChat({
   // The full-panel map picker — opened from Location, a pin you move over a map
   // (plus "my current location" and the trip's own stops).
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  // The compose-a-poll sheet, opened from the paperclip.
+  const [pollComposeOpen, setPollComposeOpen] = useState(false);
   // The `at` of a message being changed — while set, the composer holds that
   // message's words rather than a new message, and Send saves the change
   // instead of posting another one.
@@ -2831,6 +2917,31 @@ function LiveChat({
     }
   }
 
+  // Cast (or clear) this device's vote on a poll. Optimistic like a reaction —
+  // post and take the fresh tally back; the poll reconciles others' votes.
+  async function castVote(at: string, option: number) {
+    try {
+      const r = await fetch("/api/companion/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ share: shareId, pollVoteAt: at, pollOption: option, voterId: deviceVoterId() }),
+      });
+      const d = await r.json().catch(() => null);
+      if (r.ok && d && Array.isArray(d.messages)) setMessages(d.messages);
+      else if (d?.error) setNote(d.error);
+    } catch {
+      /* the next poll reconciles */
+    }
+  }
+
+  // Send a new poll. Clears and closes the composer only once it lands.
+  async function sendPoll(question: string, options: string[]): Promise<boolean> {
+    const q = question.trim();
+    const opts = options.map((o) => o.trim()).filter(Boolean).slice(0, MAX_POLL_OPTIONS);
+    if (!q || opts.length < MIN_POLL_OPTIONS) return false;
+    return post({ poll: { question: q, options: opts } });
+  }
+
   async function deleteMine(at: string) {
     if (!window.confirm("Delete this message? This can't be undone.")) return;
     try {
@@ -3220,6 +3331,41 @@ function LiveChat({
                 <span style={{ fontSize: 12.5, opacity: 0.85 }}>Open in maps →</span>
               </a>
             );
+          } else if (m.kind === "poll" && m.poll) {
+            const poll = m.poll;
+            const votes = poll.votes ?? {};
+            const total = Object.keys(votes).length;
+            const myKey = side === "advisor" ? "advisor" : `c:${deviceVoterId()}`;
+            const myVote = votes[myKey];
+            content = (
+              <div style={{ maxWidth: "100%", width: 268, alignSelf: mine ? "flex-end" : "flex-start", background: "#ffffff", color: "#26323a", border: "1px solid rgba(38,50,58,.1)", borderRadius: 16, boxShadow: "0 1px 2px rgba(23,45,82,.08)", overflow: "hidden", padding: "13px 14px 11px", display: "flex", flexDirection: "column", gap: 9 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ color: GOLD, display: "flex" }}><PollGlyph size={15} /></span>
+                  <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{poll.question}</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {poll.options.map((opt, oi) => {
+                    const count = Object.values(votes).filter((v) => v === oi).length;
+                    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const chosen = myVote === oi;
+                    return (
+                      <button
+                        key={oi}
+                        onClick={() => void castVote(m.at, oi)}
+                        aria-label={chosen ? `Remove your vote for ${opt}` : `Vote for ${opt}`}
+                        style={{ position: "relative", border: `1px solid ${chosen ? GOLD : "rgba(38,50,58,.14)"}`, background: "#fff", borderRadius: 10, cursor: "pointer", padding: "9px 11px", textAlign: "left", overflow: "hidden", display: "flex", alignItems: "center", gap: 8 }}
+                      >
+                        <span aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: chosen ? "rgba(183,138,74,.20)" : "rgba(38,50,58,.06)", transition: "width .3s ease" }} />
+                        <span style={{ position: "relative", flex: 1, minWidth: 0, fontSize: 13, fontWeight: chosen ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt}</span>
+                        {chosen && <span style={{ position: "relative", color: GOLD, display: "flex" }}><Icon name="check" className="h-4 w-4" strokeWidth={2.4} /></span>}
+                        <span style={{ position: "relative", fontSize: 12, fontWeight: 600, color: "#78716c", minWidth: 16, textAlign: "right" }}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <span style={{ fontSize: 11, color: "#a8a29e" }}>{total === 0 ? "No votes yet — tap to vote" : `${total} vote${total === 1 ? "" : "s"} · tap to change`}</span>
+              </div>
+            );
           } else {
             content = (
               <div style={{ ...bubble, padding: "13px 15px", fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
@@ -3558,6 +3704,9 @@ function LiveChat({
                       <button role="menuitem" onClick={() => { setAttachOpen(false); setLocationPickerOpen(true); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="map-pin" className="h-4 w-4" /> Location
                       </button>
+                      <button role="menuitem" onClick={() => { setAttachOpen(false); setPollComposeOpen(true); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
+                        <PollGlyph /> Poll
+                      </button>
                     </div>
                   )}
                 </div>
@@ -3681,6 +3830,7 @@ function LiveChat({
           onPickPlace={(p) => { setLocationPickerOpen(false); pickPlaceLocation(p); }}
         />
       )}
+      {pollComposeOpen && <PollComposer onSend={sendPoll} onClose={() => setPollComposeOpen(false)} />}
       {/* A photo opened full-size, over the whole chat panel — scoped to the
           phone frame (position: absolute against the relatively-positioned
           root above), not the whole browser viewport. */}

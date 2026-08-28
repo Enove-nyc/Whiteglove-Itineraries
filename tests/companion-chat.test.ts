@@ -379,3 +379,51 @@ describe("reactions — one emoji per side, both people see both", () => {
     assert.deepEqual([...REACTION_EMOJIS], ["❤️", "👍", "😂", "😮", "😢", "🙏"]);
   });
 });
+
+describe("polls — a question everyone on the link can vote on", () => {
+  it("keeps a well-formed poll and its votes", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "advisor", kind: "poll", text: "Dinner?", at: "t", poll: { question: "Dinner?", options: ["A", "B", "C"], votes: { advisor: 1, "c:x": 2 } } }),
+    ]);
+    assert.equal(m.kind, "poll");
+    assert.deepEqual(m.poll?.options, ["A", "B", "C"]);
+    assert.deepEqual(m.poll?.votes, { advisor: 1, "c:x": 2 });
+  });
+
+  it("drops a poll with fewer than two options", () => {
+    const out = parseChatMessages([
+      JSON.stringify({ from: "advisor", kind: "poll", text: "Q", at: "t", poll: { question: "Q", options: ["only one"] } }),
+    ]);
+    assert.equal(out.length, 0);
+  });
+
+  it("strips a vote that points at an option that isn't there", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "advisor", kind: "poll", text: "Q", at: "t", poll: { question: "Q", options: ["A", "B"], votes: { advisor: 5, "c:y": 0 } } }),
+    ]);
+    assert.deepEqual(m.poll?.votes, { "c:y": 0 });
+  });
+
+  it("a deleted poll carries neither question nor votes", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "advisor", kind: "poll", text: "Q", at: "t", deletedAt: "t2", poll: { question: "Q", options: ["A", "B"], votes: { advisor: 0 } } }),
+    ]);
+    assert.equal(m.poll, undefined);
+    assert.equal(m.text, "");
+  });
+
+  it("votePoll toggles the same option off and moves a different one", () => {
+    const STORE = readFileSync("lib/companion-chat-store.ts", "utf8");
+    const fn = STORE.slice(STORE.indexOf("export async function votePoll"), STORE.indexOf("* Delete one message"));
+    assert.match(fn, /if \(votes\[voter\] === optionIndex\) delete votes\[voter\]/);
+    assert.match(fn, /kindOf\(existing\.kind\) !== "poll"/);
+  });
+
+  it("the route votes as 'advisor' for the advisor and a device id for a client", () => {
+    const ROUTE = readFileSync("app/api/companion/chat/route.ts", "utf8");
+    const POST = ROUTE.slice(ROUTE.indexOf("export async function POST"));
+    assert.match(POST, /who\.side === "advisor"\s*\?\s*"advisor"/);
+    assert.match(POST, /votePoll\(who\.chatKey, body\.pollVoteAt, voterId, body\.pollOption\)/);
+    assert.match(POST, /rateLimit\(`companion-vote:/);
+  });
+});

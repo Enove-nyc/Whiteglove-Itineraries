@@ -22,7 +22,30 @@ export type CompanionChatSide = "client" | "advisor";
  * current place, so the advisor can see and hear what they are looking at
  * rather than only read about it.
  */
-export type CompanionChatKind = "text" | "image" | "video" | "audio" | "file" | "location";
+export type CompanionChatKind = "text" | "image" | "video" | "audio" | "file" | "location" | "poll";
+
+/**
+ * A poll — a question and its options, plus who voted for what. Meant for a trip
+ * whose link more than one traveller holds (a family), so "which restaurant
+ * Tuesday?" can go to everyone at once.
+ *
+ * VOTES ARE KEYED BY AN ANONYMOUS PER-DEVICE ID, not by chat side, because
+ * every traveller on the one shared link is the same "client" side — the side
+ * alone could never tell two family members apart. The advisor votes as the
+ * fixed id "advisor"; each traveller's device carries its own random id. The id
+ * is opaque and carries no identity; it only separates one voter from another.
+ */
+export type CompanionPoll = {
+  question: string;
+  options: string[];
+  /** voterId → the index into `options` they chose. */
+  votes?: Record<string, number>;
+};
+
+/** A poll asks a question with between this many and this many options. */
+export const MIN_POLL_OPTIONS = 2;
+export const MAX_POLL_OPTIONS = 5;
+export const MAX_POLL_OPTION = 80;
 
 /**
  * The reactions the app offers — a fixed set, so a stored reaction is always
@@ -77,6 +100,8 @@ export type CompanionChatMessage = {
    * clears it; a different one replaces it. Never carried on a deleted message.
    */
   reactions?: Partial<Record<CompanionChatSide, string>>;
+  /** kind "poll": the question, its options, and who voted for what. */
+  poll?: CompanionPoll;
   /**
    * A quoted reply — a snapshot taken from the ORIGINAL message at the moment
    * this one was sent, not a live reference. So it survives the original
@@ -136,7 +161,31 @@ async function command<T>(args: (string | number)[]): Promise<T | null> {
 
 /** A stored kind we recognise, or "text" — an old or unknown row is text. */
 function kindOf(raw: unknown): CompanionChatKind {
-  return raw === "image" || raw === "video" || raw === "audio" || raw === "file" || raw === "location" ? raw : "text";
+  return raw === "image" || raw === "video" || raw === "audio" || raw === "file" || raw === "location" || raw === "poll" ? raw : "text";
+}
+
+/** Keep only a well-formed poll: a question, 2–5 non-empty option strings, and
+ *  votes that point at real option indexes. Anything off is dropped rather than
+ *  trusted, so a made-up body can never store a malformed poll. */
+function sanitizePoll(raw: unknown): CompanionPoll | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as { question?: unknown; options?: unknown; votes?: unknown };
+  if (typeof r.question !== "string" || !r.question.trim()) return undefined;
+  if (!Array.isArray(r.options)) return undefined;
+  const options = r.options
+    .filter((o): o is string => typeof o === "string" && o.trim().length > 0)
+    .map((o) => o.trim().slice(0, MAX_POLL_OPTION))
+    .slice(0, MAX_POLL_OPTIONS);
+  if (options.length < MIN_POLL_OPTIONS) return undefined;
+  const votes: Record<string, number> = {};
+  if (r.votes && typeof r.votes === "object") {
+    for (const [voter, choice] of Object.entries(r.votes as Record<string, unknown>)) {
+      if (typeof voter !== "string" || !voter) continue;
+      if (typeof choice !== "number" || !Number.isInteger(choice) || choice < 0 || choice >= options.length) continue;
+      votes[voter.slice(0, 64)] = choice;
+    }
+  }
+  return { question: r.question.trim().slice(0, MAX_CHAT_LABEL), options, votes: Object.keys(votes).length ? votes : undefined };
 }
 
 /** Keep only well-formed reactions: a known side, a known emoji, nothing else. */
@@ -177,7 +226,10 @@ export function parseChatMessages(rows: string[] | null): CompanionChatMessage[]
       // rather than render an empty bubble.
       if ((kind === "image" || kind === "video" || kind === "audio" || kind === "file") && typeof m.mediaId !== "string") continue;
       if (kind === "location" && !(Number.isFinite(m.lat) && Number.isFinite(m.lng)) && !(typeof m.address === "string" && m.address.trim())) continue;
-      out.push({ ...m, kind, reactions: sanitizeReactions(m.reactions) });
+      // A poll with no valid question/options is a broken row, not a message.
+      const poll = kind === "poll" ? sanitizePoll(m.poll) : undefined;
+      if (kind === "poll" && !poll) continue;
+      out.push({ ...m, kind, poll, reactions: sanitizeReactions(m.reactions) });
     } catch {
       /* skip a corrupt row rather than drop the thread */
     }
@@ -363,6 +415,47 @@ export async function reactMessage(
     else reactions[by] = emoji;
     const hasAny = Object.keys(reactions).length > 0;
     const updated: CompanionChatMessage = { ...existing, reactions: hasAny ? reactions : undefined };
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
+  }
+  return readChat(shareId);
+}
+
+/**
+ * Record `voterId`'s vote on the poll at `at`. Anyone in the thread may vote,
+ * so this finds by timestamp; voting the same option again clears the vote, a
+ * different one moves it. `optionIndex` must point at a real option. Returns the
+ * thread as it now stands, or null when the store is off or there is no poll
+ * there. Concurrency-safe the same way reactions are — a compare-and-set retry,
+ * never a clobbered tally.
+ */
+export async function votePoll(
+  shareId: string,
+  at: string,
+  voterId: string,
+  optionIndex: number,
+): Promise<CompanionChatMessage[] | null> {
+  if (!chatStoreAvailable()) return null;
+  if (!voterId || typeof voterId !== "string") return null;
+  if (!Number.isInteger(optionIndex) || optionIndex < 0) return null;
+  const voter = voterId.slice(0, 64);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const found = await findRawIndexByAt(shareId, at);
+    if (!found) return null;
+    let existing: CompanionChatMessage;
+    try {
+      existing = JSON.parse(found.raw) as CompanionChatMessage;
+    } catch {
+      return null;
+    }
+    if (existing.deletedAt || kindOf(existing.kind) !== "poll" || !existing.poll) return null;
+    if (optionIndex >= existing.poll.options.length) return null;
+    const votes: Record<string, number> = { ...(existing.poll.votes ?? {}) };
+    if (votes[voter] === optionIndex) delete votes[voter];
+    else votes[voter] = optionIndex;
+    const updated: CompanionChatMessage = {
+      ...existing,
+      poll: { ...existing.poll, votes: Object.keys(votes).length ? votes : undefined },
+    };
     if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
   }
   return readChat(shareId);

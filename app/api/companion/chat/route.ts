@@ -15,6 +15,10 @@ import {
   readChat,
   readMarkers,
   setTyping,
+  votePoll,
+  MIN_POLL_OPTIONS,
+  MAX_POLL_OPTIONS,
+  MAX_POLL_OPTION,
   type CompanionChatSide,
 } from "@/lib/companion-chat-store";
 import {
@@ -201,6 +205,10 @@ export async function POST(request: NextRequest) {
         itineraryRef?: string;
         reactAt?: string;
         reaction?: string;
+        poll?: { question?: string; options?: string[] };
+        pollVoteAt?: string;
+        pollOption?: number;
+        voterId?: string;
       }
     | null;
   const shareId = body?.share?.trim();
@@ -234,6 +242,49 @@ export async function POST(request: NextRequest) {
     const messages = await reactMessage(who.chatKey, body.reactAt, who.side, body.reaction);
     if (!messages) return NextResponse.json({ error: "That reaction couldn’t be saved." }, { status: 400 });
     return NextResponse.json({ messages });
+  }
+
+  // A vote on a poll. The advisor votes as the fixed id "advisor"; a traveller
+  // votes under their own device id (prefixed so it can never collide with the
+  // advisor's), so several family members on the one link each count once.
+  if (typeof body?.pollVoteAt === "string" && body.pollVoteAt && typeof body?.pollOption === "number") {
+    const limited = await rateLimit(`companion-vote:${who.chatKey}`, { limit: 120, windowSeconds: 3600 });
+    if (!limited.ok) {
+      return NextResponse.json({ error: "That is a lot of votes at once — try again shortly." }, { status: 429 });
+    }
+    const voterId =
+      who.side === "advisor"
+        ? "advisor"
+        : `c:${(typeof body.voterId === "string" ? body.voterId : "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40) || "anon"}`;
+    const messages = await votePoll(who.chatKey, body.pollVoteAt, voterId, body.pollOption);
+    if (!messages) return NextResponse.json({ error: "That vote couldn’t be saved." }, { status: 400 });
+    return NextResponse.json({ messages });
+  }
+
+  // A new poll — a question and its options, asked of everyone in the thread.
+  if (body?.poll && typeof body.poll === "object") {
+    const question = typeof body.poll.question === "string" ? body.poll.question.trim() : "";
+    const options = Array.isArray(body.poll.options)
+      ? body.poll.options
+          .filter((o): o is string => typeof o === "string" && o.trim().length > 0)
+          .map((o) => o.trim().slice(0, MAX_POLL_OPTION))
+          .slice(0, MAX_POLL_OPTIONS)
+      : [];
+    if (!question || options.length < MIN_POLL_OPTIONS) {
+      return NextResponse.json({ error: `A poll needs a question and at least ${MIN_POLL_OPTIONS} options.` }, { status: 400 });
+    }
+    const limited = await rateLimit(`companion-poll:${who.chatKey}`, { limit: 20, windowSeconds: 3600 });
+    if (!limited.ok) {
+      return NextResponse.json({ error: "That is a lot of polls at once — try again shortly." }, { status: 429 });
+    }
+    const messages = await appendChat(who.chatKey, {
+      from: who.side,
+      kind: "poll",
+      text: question.slice(0, MAX_CHAT_LABEL),
+      poll: { question: question.slice(0, MAX_CHAT_LABEL), options },
+      at: new Date().toISOString(),
+    });
+    return NextResponse.json({ messages, side: who.side });
   }
 
   // A reply quotes a real message in THIS thread — looked up and re-built

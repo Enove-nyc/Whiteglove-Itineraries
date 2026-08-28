@@ -133,14 +133,24 @@ describe("a sent/read tick shows once, not on every message", () => {
   });
 });
 
-describe("the overflow menu belongs to its own bubble, and recedes until touched", () => {
-  it("is centered on the bubble rather than pinned to its bottom edge", () => {
-    const row = APP.slice(APP.indexOf('flexDirection: mine ? "row-reverse" : "row", maxWidth') - 60, APP.indexOf("{hasMenu &&"));
-    assert.match(row, /alignItems: "center"/);
+describe("messages open a WhatsApp-style action sheet on hold or swipe", () => {
+  it("holds a bubble to open its actions, and taps ⋯ as the fallback", () => {
+    assert.match(APP, /onPointerDown=\{hasMenu \? \(e\) => onMsgPointerDown\(e, m\.at\) : undefined\}/);
+    assert.match(APP, /onClick=\{\(\) => openMenu\(m\.at\)\}/);
   });
 
-  it("dims by default and comes to full opacity only while open", () => {
-    assert.match(APP, /opacity: menuOpen \? 1 : 0\.55/);
+  it("swipes a bubble right to reply to it", () => {
+    assert.match(APP, /if \(g\.swiping && dx > 52 && Math\.abs\(dy\) < 44\)/);
+    assert.match(APP, /startReply\(m\)/);
+  });
+
+  it("floats the six reactions as their own centred pill so they can't be clipped", () => {
+    assert.match(APP, /REACTION_EMOJIS\.map\(\(e\) => \(/);
+    assert.match(APP, /aria-label="Message options"/);
+  });
+
+  it("dims the ⋯, since holding the bubble is the primary gesture", () => {
+    assert.match(APP, /opacity: 0\.55, display: "flex", alignItems: "center"/);
   });
 });
 
