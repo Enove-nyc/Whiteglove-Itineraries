@@ -395,6 +395,11 @@ function WalletAttach({
         htmlFor={inputId}
         style={{
           cursor: busy ? "default" : "pointer",
+          // 12.5px of underlined text is a 15-pixel-tall thing to hit with a
+          // thumb. TAP_INLINE pads it to a real target and pulls the padding
+          // back out with negative margin, so nothing around it moves.
+          display: "inline-block",
+          ...TAP_INLINE,
           fontSize: 12.5,
           fontWeight: 600,
           color: busy ? "#a8a29e" : "#1f3f5c",
@@ -608,7 +613,7 @@ function WalletDocLink({
         target="_blank"
         rel="noreferrer noopener"
         onClick={(e) => void open(e)}
-        style={{ fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
+        style={{ ...TAP_INLINE, fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
       >
         📎 {name}
       </a>
@@ -1627,9 +1632,18 @@ export default function CompanionApp({
               </div>
               {r.sub && <span style={{ fontSize: 12.5, lineHeight: 1.5, color: "#57534e", textWrap: "pretty" }}>{r.sub}</span>}
               {(r.phone || r.address) && (
-                <div style={{ display: "flex", gap: 14, marginTop: 2 }}>
+                /* CALL AND DIRECTIONS ARE THE TWO THINGS SOMEBODY TAPS WHILE
+                   STANDING IN A STREET, and they were 12.5px of underlined
+                   text with no padding at all. TAP_INLINE gives each a real
+                   target; the gap goes to 36 so that after the negative
+                   margins the two zones still do not touch — a thumb that
+                   misses Directions must not place a phone call. */
+                <div style={{ display: "flex", gap: 36, marginTop: 2 }}>
                   {r.phone && (
-                    <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} style={{ fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}>
+                    <a
+                      href={`tel:${r.phone.replace(/[^\d+]/g, "")}`}
+                      style={{ ...TAP_INLINE, fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
+                    >
                       Call
                     </a>
                   )}
@@ -1638,7 +1652,7 @@ export default function CompanionApp({
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
+                      style={{ ...TAP_INLINE, fontSize: 12.5, fontWeight: 600, color: "#1f3f5c", textDecoration: "underline" }}
                     >
                       Directions
                     </a>
