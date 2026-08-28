@@ -3110,6 +3110,9 @@ function LiveChat({
           // A deleted one has none, so its "⋯" is dropped rather than
           // opening onto nothing.
           const hasMenu = !m.deletedAt;
+          // Its own menu, not any menu: the dot beside every other message
+          // stays receded while this one is open.
+          const menuOpen = menuOpenAt === m.at;
           const quote = m.replyTo && (
             <button
               onClick={() => jumpTo(m.replyTo!.at)}
@@ -3190,11 +3193,7 @@ function LiveChat({
                     multi-line note — rather than drifting toward whatever
                     sits below it; dimmed until touched so a long thread of
                     bubbles doesn't read as a column of dots. */}
-                {hasMenu && (() => {
-                  // Its own menu, not any menu: the dot beside every other
-                  // message stays receded while this one is open.
-                  const menuOpen = menuOpenAt === m.at;
-                  return (
+                {hasMenu && (
                   <button
                     onClick={() => openMenu(m.at)}
                     title="Message options"
@@ -3210,8 +3209,7 @@ function LiveChat({
                   >
                     <Icon name="more" className="h-4 w-4" />
                   </button>
-                  );
-                })()}
+                )}
               </div>
               {/* Reactions hang under the bubble, on the message's own side,
                   both people's showing. Tapping mine again removes it. */}
