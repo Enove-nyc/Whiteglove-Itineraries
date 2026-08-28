@@ -3444,11 +3444,8 @@ function LiveChat({
                         overflow: "hidden",
                       }}
                     >
-                      <button role="menuitem" onClick={() => { setAttachOpen(false); cameraRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
-                        <Icon name="camera" className="h-4 w-4" /> Camera
-                      </button>
                       <button role="menuitem" onClick={() => { setAttachOpen(false); fileRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
-                        <Icon name="image" className="h-4 w-4" /> Photo
+                        <Icon name="image" className="h-4 w-4" /> Photo library
                       </button>
                       <button role="menuitem" onClick={() => { setAttachOpen(false); videoRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="video" className="h-4 w-4" /> Video
@@ -3540,13 +3537,13 @@ function LiveChat({
               />
               {!editingAt && (
                 <button
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => cameraRef.current?.click()}
                   disabled={sending || recording}
-                  title="Photos"
-                  aria-label="Choose a photo from your library"
+                  title="Camera"
+                  aria-label="Take a photo with the camera"
                   style={{ flex: "none", border: 0, background: "none", color: ICON_BLUE, cursor: "pointer", width: 38, height: 42, borderRadius: 12, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending || recording ? 0.6 : 1 }}
                 >
-                  <Icon name="image" className="h-[21px] w-[21px]" />
+                  <Icon name="camera" className="h-[20px] w-[20px]" />
                 </button>
               )}
             </div>
