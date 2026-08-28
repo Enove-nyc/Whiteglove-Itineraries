@@ -59,3 +59,47 @@ describe("the two audiences are both addressed", () => {
     assert.doesNotMatch(own, /client/i, "the self-planner's copy still talks about clients");
   });
 });
+
+describe("which of the two buttons needs an account", () => {
+  /**
+   * THE FIRST THING THIS PRODUCT SHOWED A NEW VISITOR WAS A LOGIN FORM.
+   *
+   * Both audiences' primary button opens /itinerary, and the planner is
+   * signed-in only at the owner's word — measured on the built site,
+   * /itinerary answers 307 to /login?next=%2Fitinerary. Somebody who read the
+   * headline, agreed with it and pressed the button got a sign-in screen, with
+   * nothing on the page having said so.
+   *
+   * The gate is not what changed here; the sentence is what was missing. It
+   * also puts the weight on the right button, because the sample is the one to
+   * look at first and it opens straight away.
+   */
+  it("says the planner wants signing in, and the sample does not", () => {
+    const said = AUDIENCE.slice(AUDIENCE.indexOf("See a finished one"));
+    assert.match(said, /signed in/);
+    assert.match(said, /no account/);
+  });
+
+  it("does not call the planner itself paid, because it is not", () => {
+    // A first trip is seeded for every account (withTrips in
+    // lib/account-store.ts) and saving into it never goes through the plan
+    // limit, so the planner is free once somebody has signed in. What a plan
+    // buys is a SECOND trip and everything the app does.
+    const said = AUDIENCE.slice(AUDIENCE.indexOf("See a finished one"));
+    assert.match(said, /free/);
+    assert.doesNotMatch(said, /\$|subscription|pay|purchase/i);
+  });
+
+  it("gives a reason for the account rather than only asking for one", () => {
+    // "Sign in first" with no reason reads as a toll. Keeping the trip and
+    // having it on another device is what the account is actually for.
+    assert.match(AUDIENCE.slice(AUDIENCE.indexOf("See a finished one")), /keeps a trip|other devices/);
+  });
+
+  it("still leads with the planner, not the sample", () => {
+    // The sentence is information, not a demotion — the primary button is
+    // unchanged and still first.
+    const buttons = AUDIENCE.slice(AUDIENCE.indexOf("mt-9 flex flex-wrap"));
+    assert.ok(buttons.indexOf("copy.primary.href") < buttons.indexOf("/sample-itinerary"));
+  });
+});
