@@ -3277,8 +3277,20 @@ function LiveChat({
       recorderRef.current = recorder;
       recorder.start();
       setRecording(true);
-    } catch {
-      setNote("Couldn't reach the microphone. Check the app's microphone permission.");
+    } catch (err) {
+      // Say which wall we hit, so "the mic doesn't work" becomes something a
+      // person can act on. A denied permission, a mic another app is holding,
+      // and a device with no mic each need a different move.
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setNote("Microphone access is off. Open Settings → Apps → this app → Permissions and allow the microphone, then try again.");
+      } else if (name === "NotReadableError" || name === "AbortError") {
+        setNote("The microphone is busy in another app. Close anything using it (a call, a recorder) and try again.");
+      } else if (name === "NotFoundError") {
+        setNote("No microphone was found on this device.");
+      } else {
+        setNote("Couldn't reach the microphone. Check the app's microphone permission.");
+      }
     }
   }
 
