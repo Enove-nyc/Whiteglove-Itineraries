@@ -84,7 +84,25 @@ export type CompanionWalletRow = {
    *  or a ticket straight from the wallet, without a separate id lookup. */
   id?: string;
   stopKind?: "flight" | "lodging" | "activity";
-  attachments?: import("@/data/itinerary").ItinAttachment[];
+  attachments?: Array<
+    import("@/data/itinerary").ItinAttachment & {
+      /**
+       * A document that ships with the site, for the public sample only.
+       *
+       * A real attachment is bytes in storage, fetched through an
+       * owner-checked or share-token-checked route. The sample trip has no
+       * owner and no share token, so it had no documents at all — and the
+       * wallet, whose whole promise is "your boarding pass on your phone with
+       * no signal", was a list of greyed-out reference numbers with nothing
+       * behind them. A buyer looking at the one public demonstration of the
+       * product could not see the thing being demonstrated.
+       *
+       * Set only by COMPANION_DEMO_TRIP. When present the wallet links
+       * straight at it instead of building an API URL that would 401.
+       */
+      sampleUrl?: string;
+    }
+  >;
 };
 export type CompanionWalletGroup = { name: string; rows: CompanionWalletRow[] };
 
@@ -132,6 +150,26 @@ export type CompanionTrip = {
    * concierge backend exists, a real trip can carry it too.
    */
   concierge: boolean;
+  /**
+   * Show this trip the way a CLIENT gets it, not the way the showcase does.
+   *
+   * `concierge` turns on three things no real trip has: a "Concierge" tab, a
+   * Concierge/Guide switch, and a Traveler/Advisor role switch. They exist to
+   * demonstrate a concierge tier that is not built — `concierge` is true for
+   * this one scripted trip and nothing else.
+   *
+   * That was invisible internally and misleading publicly. On /app/preview,
+   * which is sold as "this is what your client opens", a buyer met two mode
+   * switches and a tab their clients will never have, next to an Advisor tab,
+   * with nothing to tell them apart. The owner asked what the difference was,
+   * which is the answer: to a client there is none, because one of them is not
+   * a product.
+   *
+   * With this set, the scripted thread stays — it is the best part of the
+   * sample — but it appears where a client's advisor thread appears, under the
+   * name a client sees, and the switches do not appear at all.
+   */
+  previewAsClient?: boolean;
   /** The trip's own id, for the advisor's "add a boarding pass or ticket"
    *  control on the wallet — only set on a real, wired trip. */
   tripId?: string;
@@ -203,6 +241,28 @@ export const COMPANION_KIND: Record<
   shabbos: { dot: "#15324b", tint: "#e7edf1", label: "Shabbos", fg: "#1f3f5c" },
 };
 
+/**
+ * The three documents the sample wallet opens.
+ *
+ * Drawn as SVG and shipped in public/samples, so they render in the phone
+ * rather than downloading — and every one of them says SAMPLE across its face,
+ * in the banner and in the watermark, because a page that shows a boarding
+ * pass has to be unmistakably a picture of one. The airline is invented; the
+ * references are zeros.
+ */
+function sampleDoc(id: string, name: string, file: string) {
+  return {
+    id,
+    kind: "document",
+    name,
+    contentType: "image/svg+xml",
+    bytes: 0,
+    addedAt: "2026-10-20T09:00:00.000Z",
+    shared: true,
+    sampleUrl: `/samples/${file}`,
+  };
+}
+
 export const COMPANION_DEMO_TRIP: CompanionTrip = {
   concierge: true,
   advisorName: "Miriam Feldman",
@@ -213,7 +273,7 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
   todayIndex: 2,
   kosherTitle: "Lunch back in the Ghetto, one o’clock",
   kosherNote:
-    "Twenty minutes on foot from the Forum, table held. Cholov Yisroel and Glatt, as asked — confirm the hechsher close to the day.",
+    "Twenty minutes on foot from the Forum, table held. Cholov Yisroel and Glatt, as asked — ask to see the teudah when you sit down.",
   family: "The Cohen family",
   familyMeta: "2 adults, 3 children · ages 4, 7, 11",
   days: [
@@ -251,21 +311,21 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
       today: true,
       items: [
         { time: "09:30", title: "The Colosseum", place: "Piazza del Colosseo", kind: "sight", note: "Timed entry booked. The Arch of Titus, with the Menorah on it, is a few minutes from the exit.", walk: "20 min on foot to the Ghetto" },
-        { time: "13:00", title: "Back to the Ghetto for lunch", place: "Via del Portico d'Ottavia", kind: "meal", note: "Confirm the hechsher close to your dates — restaurants change hands.", walk: "12 min on foot" },
+        { time: "13:00", title: "Back to the Ghetto for lunch", place: "Via del Portico d'Ottavia", kind: "meal", note: "Supervision changes hands — ask to see the current teudah.", walk: "12 min on foot" },
         { time: "15:30", title: "The Pantheon and the Trevi Fountain", place: "Piazza della Rotonda", kind: "sight", note: "Both are open squares and free to stand in, which is what makes them work with a four-year-old.", swappable: true },
-        { time: "18:30", title: "Back to the hotel", place: "On foot through the Ghetto", kind: "rest", note: "Early night. The Vatican is a long morning." },
+        { time: "18:30", title: "Back to the hotel", place: "On foot through the Ghetto", kind: "rest", note: "Early night. Ostia is an early train." },
       ],
     },
     {
       dow: "Wed",
       dom: "28",
-      short: "Vatican",
+      short: "Ostia",
       name: "Wednesday 28 October",
       weather: "17°, cloud",
-      walk: "900 m on foot",
+      walk: "2.5 km on foot",
       items: [
-        { time: "09:00", title: "Vatican Museums", place: "Viale Vaticano", kind: "sight", note: "The longest single thing on the trip — three and a half hours. Nothing after it, on purpose." },
-        { time: "13:30", title: "Lunch back in the quarter", place: "Ghetto", kind: "meal", note: "Twenty-five minutes by taxi, held for you at 13:15." },
+        { time: "09:00", title: "Ostia Antica", place: "Via dei Romagnoli · 30 min by train", kind: "sight", note: "Rome’s harbour town, left standing where it fell — streets, baths, a theatre, and one of the oldest shuls in Europe. The longest single thing on the trip, and nothing after it on purpose." },
+        { time: "14:30", title: "Lunch back in the quarter", place: "Ghetto", kind: "meal", note: "The train back from Porta San Paolo, then five minutes on foot. Held for you from two." },
       ],
     },
     {
@@ -338,7 +398,7 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
   messages: [
     { from: "them", text: "Morning — your Colosseum entry is 09:30, and I have someone meeting you at the gate rather than in the queue." },
     { from: "me", text: "Perfect. Is the lunch place the one you sent last week?" },
-    { from: "them", text: "It is, and I called them Sunday to confirm the hechsher for your dates. Table held from one." },
+    { from: "them", text: "It is. I checked on Sunday that they are still under the same hechsher, and the table is held from one." },
   ],
   handledSteps: [
     { what: "Airline moved FCO → JFK to 13:05", when: "Sunday 23:41" },
@@ -350,7 +410,7 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
     {
       name: "Kosher, near you",
       items: [
-        { title: "Lunch in the Ghetto", note: "Twenty minutes on foot from the Forum. Confirm the hechsher close to your dates — restaurants change hands.", tint: "#e7edf1" },
+        { title: "Lunch in the Ghetto", note: "Twenty minutes on foot from the Forum. Supervision changes hands — ask to see the current teudah.", tint: "#e7edf1" },
         { title: "Shopping for Shabbos", note: "Everything on the usual list is within the quarter, a few minutes from the hotel.", tint: "#e7edf1" },
       ],
     },
@@ -373,21 +433,36 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
     {
       name: "Flights",
       rows: [
-        { title: "JFK → Rome (FCO)", ref: "ref ●●●●", sub: "Sun 25 Oct, 18:40 · kosher meals for five, confirmed" },
+        {
+          title: "JFK → Rome (FCO)",
+          ref: "ref ●●●●",
+          sub: "Sun 25 Oct, 18:40 · kosher meals for five, confirmed",
+          attachments: [sampleDoc("sample-bp-out", "Boarding pass — Cohen, D.", "boarding-pass.svg")],
+        },
         { title: "Rome (FCO) → JFK", ref: "ref ●●●●", sub: "Sun 1 Nov, 13:05 · moved from 11:20 by the airline" },
       ],
     },
     {
       name: "Where you are staying",
       rows: [
-        { title: "A hotel inside the Ghetto", ref: "conf ●●●●", sub: "26 Oct – 1 Nov · chosen for where it stands, four minutes from the shul" },
+        {
+          title: "A hotel inside the Ghetto",
+          ref: "conf ●●●●",
+          sub: "26 Oct – 1 Nov · chosen for where it stands, four minutes from the shul",
+          attachments: [sampleDoc("sample-hotel", "Hotel confirmation", "hotel-confirmation.svg")],
+        },
       ],
     },
     {
       name: "Held for you",
       rows: [
-        { title: "Colosseum, timed entry", ref: "5 tickets", sub: "Tue 27 Oct, 09:30 · guide meets you at the gate" },
-        { title: "Vatican Museums", ref: "5 tickets", sub: "Wed 28 Oct, 09:00 · skip the outer queue" },
+        {
+          title: "Colosseum, timed entry",
+          ref: "5 tickets",
+          sub: "Tue 27 Oct, 09:30 · guide meets you at the gate",
+          attachments: [sampleDoc("sample-colosseum", "Entry ticket — admits 5", "colosseum-ticket.svg")],
+        },
+        { title: "Ostia Antica", ref: "5 tickets", sub: "Wed 28 Oct, 09:00 · train from Porta San Paolo" },
         { title: "Airport transfers", ref: "2 cars", sub: "Both moved when the flight moved" },
       ],
     },
