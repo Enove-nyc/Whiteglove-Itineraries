@@ -21,16 +21,22 @@ import { publicPaths } from "@/lib/site-map";
  */
 
 const SAMPLE_PAGE = readFileSync("app/sample-itinerary/page.tsx", "utf8");
+const VIEWS = readFileSync("components/SampleItineraryViews.tsx", "utf8");
 const SAMPLE_DATA = readFileSync("data/sample-itinerary.ts", "utf8");
 
 describe("the sample itinerary", () => {
   it("IS BUILT BY THE PLANNER, not drawn as a mock-up", () => {
     // If the printed itinerary changes, the sample changes with it. That is
     // the only way a sample stays true to what is delivered.
-    assert.match(SAMPLE_PAGE, /<PrintableItinerary itin=\{SAMPLE_ITINERARY\}/);
+    //
+    // The page hands one trip to SampleItineraryViews, which draws it three
+    // ways — on the site, in the app, printed. The rule is unchanged and the
+    // assertion follows the render rather than the file it used to be in.
+    assert.match(SAMPLE_PAGE, /<SampleItineraryViews itin=\{SAMPLE_ITINERARY\}/);
+    assert.match(VIEWS, /<PrintableItinerary itin=\{itin\}/);
     // Embedded, so the document's headings nest under the page's rather than
     // giving it a second h1.
-    assert.match(SAMPLE_PAGE, /embedded/);
+    assert.match(VIEWS, /embedded/);
     const days = buildDays(SAMPLE_ITINERARY, undefined);
     assert.equal(days.length, 8);
     assert.ok(days.every((day) => buildPrintTimeline(day, {}).length > 0), "a day in the sample renders empty");
@@ -161,5 +167,73 @@ describe("the document a phone is shown is the whole document", () => {
     assert.match(PRINTABLE, /@page \{ size: letter/);
     // And the desktop sheet is still a sheet.
     assert.match(PRINTABLE, /width: 8\.5in; min-height: 11in/);
+  });
+});
+
+describe("the sample is the trip, not only the printout", () => {
+  /**
+   * THE PAGE SHOWED ONE OF THE THREE PLACES A TRIP LIVES. A printable document
+   * is a real deliverable and it stays — but it was standing in for the
+   * planner and the phone as well, so somebody deciding whether to plan a trip
+   * here was handed a PDF and asked to imagine the rest of the product.
+   *
+   * All three are the same SAMPLE_ITINERARY. The days come from buildDays(),
+   * which lays out a customer's trip, and the app view goes through
+   * buildCompanionFromItinerary() — the conversion a real client link uses.
+   * Nothing on this page is a picture of a screen.
+   */
+  it("offers all three views", () => {
+    for (const value of ['value: "site"', 'value: "app"', 'value: "print"']) {
+      assert.ok(VIEWS.includes(value), `the sample has no ${value} view`);
+    }
+    assert.match(VIEWS, /<CompanionApp trip=\{\{ \.\.\.companion, previewAsClient: true \}\}/);
+    assert.match(VIEWS, /<PrintableItinerary itin=\{itin\}/);
+  });
+
+  it("builds the app view from the same trip, through the real conversion", () => {
+    // A hand-written second sample would drift from the first the day either
+    // changed, and the page's whole claim is that this is what is produced.
+    assert.match(SAMPLE_PAGE, /buildCompanionFromItinerary\(SAMPLE_ITINERARY/);
+    assert.doesNotMatch(SAMPLE_PAGE, /COMPANION_DEMO_TRIP/, "the app view is a different trip from the document");
+  });
+
+  it("opens the app on the trip's own first day", () => {
+    // The sample is a fixed week in the calendar. An app told that today is
+    // some month afterwards opens on a trip that has finished, which is the
+    // one thing this page must not show.
+    assert.match(SAMPLE_PAGE, /today: SAMPLE_ITINERARY\.startDate/);
+  });
+
+  it("keeps the kosher layer to the kosher site", () => {
+    // Zmanim and a walk to a minyan are the guide's work; the other domain
+    // sells a general-travel product.
+    assert.match(SAMPLE_PAGE, /kosher: brandNow !== "itineraries"/);
+  });
+
+  it("draws the site view for a screen rather than shrinking the sheet", () => {
+    // Paper wants a sheet per day and a fixed measure; a page wants to be read
+    // down. Same entries, same order, same computed times.
+    assert.match(VIEWS, /function SiteView/);
+    assert.match(VIEWS, /buildDays\(itin\)/);
+    assert.match(VIEWS, /buildPrintTimeline\(day\)/);
+  });
+
+  it("asks which view as one question with three answers", () => {
+    assert.match(VIEWS, /<fieldset/);
+    assert.match(VIEWS, /<legend className="sr-only">How would you like to see the sample\?<\/legend>/);
+    assert.match(VIEWS, /type="radio"/);
+    assert.match(VIEWS, /min-h-11/);
+  });
+
+  it("hides the app tab rather than opening an empty frame", () => {
+    // buildCompanionFromItinerary returns null for a trip with no dates.
+    assert.match(VIEWS, /tab\.value === "app" && !companion\) return null/);
+  });
+
+  it("no longer calls the whole page 'the document'", () => {
+    // It is one of three now, and the page saying otherwise was the exact
+    // impression this work exists to correct.
+    assert.doesNotMatch(SAMPLE_PAGE, />\s*The document\s*</);
+    assert.match(SAMPLE_PAGE, /The same week, three ways/);
   });
 });
