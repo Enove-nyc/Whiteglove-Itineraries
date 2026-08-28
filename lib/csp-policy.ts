@@ -155,7 +155,23 @@ export function contentSecurityPolicy(reportPath: string): string {
     .map(([name, values]) => `${name} ${values.join(" ")}`)
     .join("; ");
 
-  return `${body}; report-uri ${reportPath}; report-to csp`;
+  /**
+   * A VALUELESS DIRECTIVE THAT FIXES A REAL BLOCK.
+   *
+   * The Travelpayouts verification snippet loads from https://emrldco.com,
+   * which the policy allows — and that script then asks for a second file of
+   * its own over PLAIN http, from the same host. A browser blocks an insecure
+   * script on a secure page whatever the policy says, so this was failing for
+   * every visitor and reported to the sink as a script-src violation against a
+   * host the policy already trusts, which reads as a misconfiguration here and
+   * is not one.
+   *
+   * upgrade-insecure-requests rewrites http to https before the source is
+   * checked, so the partner's own second file loads from the host already
+   * allowed. It takes no argument and widens nothing: every host in the lists
+   * above is https already, and this cannot admit one that is not.
+   */
+  return `${body}; upgrade-insecure-requests; report-uri ${reportPath}; report-to csp`;
 }
 
 /** The report group named by the policy's report-to, declared in its own header. */
