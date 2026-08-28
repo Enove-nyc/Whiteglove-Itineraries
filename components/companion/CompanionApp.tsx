@@ -32,7 +32,7 @@
  * to be.
  */
 
-import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
 import {
@@ -1872,7 +1872,7 @@ export default function CompanionApp({
         </div>
       )}
       {/* content */}
-      <div className="wg-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch" }}>{body}</div>
+      <div className="wg-scroll" style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>{body}</div>
       {/* tabs — an icon over a label per tab, with one gold pill that slides to
           the active one (the messenger/travel-app bottom bar). Hidden while the
           message composer holds the keyboard, so it never rides up wedged
@@ -2304,10 +2304,6 @@ function LiveChat({
   // shown in place of the attach menu once Location is tapped, since a
   // device fix alone can never be where the hotel or the restaurant is.
   const [locationChoiceOpen, setLocationChoiceOpen] = useState(false);
-  // A place typed by hand — anywhere, not only where the phone is or a stop on
-  // this trip. Shared as an address, the same as a trip stop, so the other side
-  // opens it in Maps.
-  const [locSearch, setLocSearch] = useState("");
   // The `at` of a message being changed — while set, the composer holds that
   // message's words rather than a new message, and Send saves the change
   // instead of posting another one.
@@ -2316,11 +2312,58 @@ function LiveChat({
   // The `at` of the one message whose "⋯" menu (Report / Edit / Delete) is
   // open. Only ever one at a time, so a single value does the job of a map.
   const [menuOpenAt, setMenuOpenAt] = useState<string | null>(null);
-  // Which side the open menu should grow toward — measured against the real
-  // screen at the moment it opens, not assumed from mine/theirs, since a
-  // wide bubble can push its own "⋯" close to either edge and a menu that
-  // always opens the same direction ends up rendered off the visible screen.
-  const [menuOpenLeft, setMenuOpenLeft] = useState(false);
+  // Long-press and swipe-to-reply, the two gestures a phone messenger runs on:
+  // hold a bubble to open its actions, drag it right to reply to it. Tracked in
+  // refs so a drag doesn't re-render the whole thread on every pointer move —
+  // the bubble is nudged by writing transform straight onto its element.
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gestureRef = useRef<{ x: number; y: number; at: string; el: HTMLElement; moved: boolean; swiping: boolean } | null>(null);
+  function openMenu(at: string) {
+    if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+    setMenuOpenAt(at);
+  }
+  function onMsgPointerDown(e: ReactPointerEvent<HTMLDivElement>, at: string) {
+    // The mouse keeps the visible "⋯" button; touch gets hold-and-swipe.
+    if (e.pointerType === "mouse") return;
+    const el = e.currentTarget;
+    gestureRef.current = { x: e.clientX, y: e.clientY, at, el, moved: false, swiping: false };
+    if (longPressRef.current) clearTimeout(longPressRef.current);
+    longPressRef.current = setTimeout(() => {
+      const g = gestureRef.current;
+      if (g && !g.moved) { gestureRef.current = null; openMenu(at); }
+    }, 420);
+  }
+  function onMsgPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    const g = gestureRef.current;
+    if (!g) return;
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    if (!g.moved && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      g.moved = true;
+      if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+    }
+    // A mostly-horizontal drag to the right is a reply gesture; follow the
+    // finger up to a cap and leave vertical scrolling alone.
+    if (g.moved && Math.abs(dx) > Math.abs(dy) && dx > 0) {
+      g.swiping = true;
+      g.el.style.transition = "none";
+      g.el.style.transform = `translateX(${Math.min(dx, 72)}px)`;
+    }
+  }
+  function endMsgGesture(e: ReactPointerEvent<HTMLDivElement>) {
+    const g = gestureRef.current;
+    if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+    if (!g) return;
+    gestureRef.current = null;
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    g.el.style.transition = "transform .18s ease";
+    g.el.style.transform = "";
+    if (g.swiping && dx > 52 && Math.abs(dy) < 44) {
+      const m = messages.find((x) => x.at === g.at);
+      if (m && !m.deletedAt) startReply(m);
+    }
+  }
   // Whether the other side has typed within the last few seconds — read off
   // the poll, exactly like the messages themselves.
   const [otherTyping, setOtherTyping] = useState(false);
@@ -2344,7 +2387,6 @@ function LiveChat({
   const docRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const menuRef = useRef<HTMLDivElement>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   // Whether the scroller was already near its bottom the last time it was
@@ -2365,18 +2407,11 @@ function LiveChat({
 
   useEffect(() => {
     if (!menuOpenAt) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpenAt(null);
-    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpenAt(null);
     };
-    document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [menuOpenAt]);
 
   useEffect(() => {
@@ -2961,7 +2996,7 @@ function LiveChat({
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", position: "relative", animation: "wgIn .28s ease both" }}>
-      <div ref={scrollerRef} onScroll={noteScrollPosition} className="wg-scroll" style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div ref={scrollerRef} onScroll={noteScrollPosition} className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
         {!available && (
           <div style={{ alignSelf: "center", textAlign: "center", font: "400 12px/1.5 Inter,sans-serif", color: "#765321", background: "#f7eee0", padding: "10px 14px", borderRadius: 14 }}>
             Messaging isn&apos;t connected yet.
@@ -3070,13 +3105,11 @@ function LiveChat({
               </div>
             );
           }
-          const isTextEditable = mine && !m.deletedAt && (m.kind ?? "text") === "text";
           // A live message always has at least one action — Reply on any
           // live one, Report on theirs, Delete (and often Edit) on your own.
           // A deleted one has none, so its "⋯" is dropped rather than
           // opening onto nothing.
           const hasMenu = !m.deletedAt;
-          const menuOpen = menuOpenAt === m.at;
           const quote = m.replyTo && (
             <button
               onClick={() => jumpTo(m.replyTo!.at)}
@@ -3120,6 +3153,10 @@ function LiveChat({
               )}
               <div
                 data-msg-at={m.at}
+                onPointerDown={hasMenu ? (e) => onMsgPointerDown(e, m.at) : undefined}
+                onPointerMove={hasMenu ? onMsgPointerMove : undefined}
+                onPointerUp={hasMenu ? endMsgGesture : undefined}
+                onPointerCancel={hasMenu ? endMsgGesture : undefined}
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -3133,6 +3170,9 @@ function LiveChat({
                   background: jumpFlashAt === m.at ? "rgba(183,138,74,.18)" : "transparent",
                   borderRadius: 10,
                   transition: "background .5s ease",
+                  // Hold to open actions, drag right to reply — let the browser
+                  // keep vertical scrolling, we handle the horizontal drag.
+                  touchAction: "pan-y",
                 }}
               >
               {itineraryTag}
@@ -3151,99 +3191,14 @@ function LiveChat({
                     sits below it; dimmed until touched so a long thread of
                     bubbles doesn't read as a column of dots. */}
                 {hasMenu && (
-                  <div ref={menuOpen ? menuRef : undefined} style={{ position: "relative", flex: "none" }}>
-                    <button
-                      onClick={(e) => {
-                        if (!menuOpen) {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          // Not enough room for a ~150px menu on the right —
-                          // grow it left instead, whichever side "mine" would
-                          // otherwise have picked.
-                          setMenuOpenLeft(window.innerWidth - rect.left < 155);
-                        }
-                        setMenuOpenAt(menuOpen ? null : m.at);
-                      }}
-                      title="Message options"
-                      aria-label="Message options"
-                      aria-expanded={menuOpen}
-                      style={{ border: 0, background: "none", cursor: "pointer", padding: 10, margin: -6, color: "#a8a29e", opacity: menuOpen ? 1 : 0.55, display: "flex", alignItems: "center" }}
-                    >
-                      <Icon name="more" className="h-4 w-4" />
-                    </button>
-                    {menuOpen && (
-                      <div
-                        role="menu"
-                        style={{
-                          position: "absolute",
-                          top: "100%",
-                          [menuOpenLeft ? "right" : "left"]: 0,
-                          zIndex: 5,
-                          marginTop: 2,
-                          minWidth: 148,
-                          borderRadius: 12,
-                          border: "1px solid rgba(38,50,58,.12)",
-                          background: "#ffffff",
-                          boxShadow: "0 10px 26px rgba(23,45,82,.16)",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {/* React — a row of emoji at the top of the menu, the way
-                            a messenger offers them on a long-press. Tapping the
-                            one already chosen clears it. */}
-                        <div style={{ display: "flex", gap: 1, padding: "5px 6px", borderBottom: "1px solid rgba(38,50,58,.08)" }}>
-                          {REACTION_EMOJIS.map((e) => (
-                            <button
-                              key={e}
-                              role="menuitem"
-                              onClick={() => void react(m.at, e)}
-                              aria-label={m.reactions?.[side] === e ? `Remove ${e} reaction` : `React ${e}`}
-                              style={{ border: 0, cursor: "pointer", background: m.reactions?.[side] === e ? "rgba(183,138,74,.18)" : "none", borderRadius: 999, fontSize: 20, lineHeight: 1, padding: "4px 5px" }}
-                            >
-                              {e}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          role="menuitem"
-                          onClick={() => { startReply(m); setMenuOpenAt(null); }}
-                          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "10px 14px", fontSize: 13, color: "#26323a" }}
-                        >
-                          <Icon name="reply" className="h-4 w-4" /> Reply
-                        </button>
-                        {!mine && (
-                          reported[m.at] ? (
-                            <span style={{ display: "block", padding: "10px 14px", fontSize: 13, color: "#a8a29e" }}>Reported</span>
-                          ) : (
-                            <button
-                              role="menuitem"
-                              onClick={() => { void report(m.at); setMenuOpenAt(null); }}
-                              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "10px 14px", fontSize: 13, color: "#26323a" }}
-                            >
-                              <Icon name="flag" className="h-4 w-4" /> Report
-                            </button>
-                          )
-                        )}
-                        {isTextEditable && (
-                          <button
-                            role="menuitem"
-                            onClick={() => { startEdit(m); setMenuOpenAt(null); }}
-                            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "10px 14px", fontSize: 13, color: "#26323a" }}
-                          >
-                            <Icon name="pencil" className="h-4 w-4" /> Edit
-                          </button>
-                        )}
-                        {mine && (
-                          <button
-                            role="menuitem"
-                            onClick={() => { setMenuOpenAt(null); void deleteMine(m.at); }}
-                            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "10px 14px", fontSize: 13, color: "#b5442e" }}
-                          >
-                            <Icon name="trash" className="h-4 w-4" /> Delete
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    onClick={() => openMenu(m.at)}
+                    title="Message options"
+                    aria-label="Message options"
+                    style={{ flex: "none", border: 0, background: "none", cursor: "pointer", padding: 10, margin: -6, color: "#a8a29e", opacity: 0.55, display: "flex", alignItems: "center" }}
+                  >
+                    <Icon name="more" className="h-4 w-4" />
+                  </button>
                 )}
               </div>
               {/* Reactions hang under the bubble, on the message's own side,
@@ -3494,24 +3449,8 @@ function LiveChat({
                         boxShadow: "0 10px 26px rgba(23,45,82,.16)",
                       }}
                     >
-                      {/* Any place, typed by hand — a hotel, a meeting point, an
-                          address that is neither where the phone is nor a stop
-                          already on the trip. */}
-                      <form
-                        onSubmit={(e) => { e.preventDefault(); const v = locSearch.trim(); if (!v) return; setLocationChoiceOpen(false); setLocSearch(""); setStagedLocation({ address: v, label: v }); }}
-                        style={{ display: "flex", gap: 6, padding: "10px 12px", borderBottom: "1px solid rgba(38,50,58,.08)" }}
-                      >
-                        <input
-                          value={locSearch}
-                          onChange={(e) => setLocSearch(e.target.value)}
-                          placeholder="Search a place or address"
-                          aria-label="Search a place or address to share"
-                          style={{ flex: 1, minWidth: 0, border: "1px solid rgba(38,50,58,.16)", borderRadius: 10, padding: "8px 10px", fontSize: 16, fontFamily: "Inter,sans-serif", color: "#26323a", outline: "none" }}
-                        />
-                        <button type="submit" disabled={!locSearch.trim()} className="wg-press" style={{ flex: "none", border: 0, background: GOLD, color: CREAM, borderRadius: 10, minHeight: 44, padding: "0 15px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", opacity: locSearch.trim() ? 1 : 0.5 }}>Share</button>
-                      </form>
-                      <button role="menuitem" onClick={() => { setLocationChoiceOpen(false); pickLocation(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, borderBottom: places.length ? "1px solid rgba(38,50,58,.08)" : 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
-                        <Icon name="map-pin" className="h-4 w-4" /> My current location
+                      <button role="menuitem" onClick={() => { setLocationChoiceOpen(false); pickLocation(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, borderBottom: places.length ? "1px solid rgba(38,50,58,.08)" : 0, background: "none", cursor: "pointer", padding: "13px 14px", fontSize: 13.5, color: "#26323a" }}>
+                        <Icon name="map-pin" className="h-4 w-4" /> Send my current location
                       </button>
                       {places.length > 0 && (
                         <div style={{ padding: "8px 14px 2px", font: "600 10px/1 Inter,sans-serif", letterSpacing: ".08em", textTransform: "uppercase", color: "#a8a29e" }}>
@@ -3580,6 +3519,66 @@ function LiveChat({
           </div>
         </div>
       )}
+      {/* Message actions — the WhatsApp long-press sheet: a full-width dim over
+          the thread, the reaction row floating as its own pill (so the six
+          emoji can never be clipped by a bubble's edge the way an anchored
+          dropdown was), and the actions listed below it. Opened by holding a
+          bubble or tapping its "⋯". Scoped to the phone frame, like the photo
+          viewer. */}
+      {menuOpenAt && (() => {
+        const m = messages.find((x) => x.at === menuOpenAt);
+        if (!m || m.deletedAt) return null;
+        const mine = m.from === side;
+        const canEdit = mine && (m.kind ?? "text") === "text";
+        const item: CSSProperties = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "13px 18px", fontSize: 14.5, color: "#26323a" };
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Message options"
+            onClick={() => setMenuOpenAt(null)}
+            style={{ position: "absolute", inset: 0, zIndex: 28, background: "rgba(15,20,25,.34)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: mine ? "flex-end" : "flex-start", gap: 12, padding: "0 16px" }}
+          >
+            <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 2, background: "#ffffff", borderRadius: 999, padding: "7px 9px", boxShadow: "0 14px 38px rgba(15,20,25,.3)", animation: "wgIn .16s ease both" }}>
+              {REACTION_EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => { void react(m.at, e); setMenuOpenAt(null); }}
+                  aria-label={m.reactions?.[side] === e ? `Remove ${e} reaction` : `React ${e}`}
+                  className="wg-fade"
+                  style={{ border: 0, cursor: "pointer", background: m.reactions?.[side] === e ? "rgba(183,138,74,.18)" : "none", borderRadius: 999, fontSize: 25, lineHeight: 1, padding: "6px 7px" }}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+            <div onClick={(e) => e.stopPropagation()} role="menu" style={{ minWidth: 210, maxWidth: "86%", borderRadius: 16, background: "#ffffff", boxShadow: "0 14px 38px rgba(15,20,25,.3)", overflow: "hidden", animation: "wgIn .18s ease both" }}>
+              <button role="menuitem" className="wg-warm" onClick={() => { startReply(m); setMenuOpenAt(null); }} style={item}>
+                <Icon name="reply" className="h-[18px] w-[18px]" /> Reply
+              </button>
+              {canEdit && (
+                <button role="menuitem" className="wg-warm" onClick={() => { startEdit(m); setMenuOpenAt(null); }} style={item}>
+                  <Icon name="pencil" className="h-[18px] w-[18px]" /> Edit
+                </button>
+              )}
+              {!mine && (
+                reported[m.at] ? (
+                  <span style={{ ...item, color: "#a8a29e", cursor: "default" }}><Icon name="flag" className="h-[18px] w-[18px]" /> Reported</span>
+                ) : (
+                  <button role="menuitem" className="wg-warm" onClick={() => { void report(m.at); setMenuOpenAt(null); }} style={item}>
+                    <Icon name="flag" className="h-[18px] w-[18px]" /> Report
+                  </button>
+                )
+              )}
+              {mine && (
+                <button role="menuitem" className="wg-warm" onClick={() => { setMenuOpenAt(null); void deleteMine(m.at); }} style={{ ...item, color: "#b5442e" }}>
+                  <Icon name="trash" className="h-[18px] w-[18px]" /> Delete
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {/* A photo opened full-size, over the whole chat panel — scoped to the
           phone frame (position: absolute against the relatively-positioned
           root above), not the whole browser viewport. */}
