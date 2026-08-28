@@ -109,9 +109,10 @@ export default async function HechsherimPage() {
                           href={agency.website}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
+                          className="mt-1 flex min-h-11 max-w-full items-center gap-1 text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
                         >
-                          {agency.website.replace(/^https?:\/\/(www\.)?/, "")} ↗
+                          <span className="min-w-0 break-all">{agency.website.replace(/^https?:\/\/(www\.)?/, "")}</span>
+                          <span aria-hidden="true">↗</span>
                         </a>
                       ) : null}
                     </div>

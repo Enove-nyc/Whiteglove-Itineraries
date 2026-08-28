@@ -2310,6 +2310,12 @@ function LocationPicker({
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(googleMapsAvailable() ? "loading" : "unavailable");
   const [locating, setLocating] = useState(false);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const centreOnDevice = useCallback((first: boolean) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     setLocating(true);
@@ -2422,6 +2428,11 @@ function PollComposer({ onSend, onClose }: { onSend: (question: string, options:
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const filled = options.filter((o) => o.trim()).length;
   const canSend = question.trim().length > 0 && filled >= MIN_POLL_OPTIONS;
   const field: CSSProperties = { width: "100%", border: "1px solid rgba(38,50,58,.16)", borderRadius: 10, padding: "11px 12px", fontFamily: "Inter,sans-serif", fontSize: 16, color: "#26323a", outline: "none", background: "#fff" };
@@ -2519,6 +2530,9 @@ function LiveChat({
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   // The compose-a-poll sheet, opened from the paperclip.
   const [pollComposeOpen, setPollComposeOpen] = useState(false);
+  // True while the message composer (or a caption box) holds focus. Drives, with
+  // the overlays below, whether the shell hides its bottom tab bar.
+  const [composerFocused, setComposerFocused] = useState(false);
   // The `at` of a message being changed — while set, the composer holds that
   // message's words rather than a new message, and Send saves the change
   // instead of posting another one.
@@ -2533,6 +2547,10 @@ function LiveChat({
   // the bubble is nudged by writing transform straight onto its element.
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gestureRef = useRef<{ x: number; y: number; at: string; el: HTMLElement; moved: boolean; swiping: boolean } | null>(null);
+  // When a long-press opens the sheet, the finger is still down; lifting it
+  // fires a synthesized click on whatever is now under it — the freshly-opened
+  // dim overlay — which would slam the sheet shut again. This eats that one tap.
+  const swallowNextOverlayTapRef = useRef(false);
   function openMenu(at: string) {
     if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
     setMenuOpenAt(at);
@@ -2545,7 +2563,12 @@ function LiveChat({
     if (longPressRef.current) clearTimeout(longPressRef.current);
     longPressRef.current = setTimeout(() => {
       const g = gestureRef.current;
-      if (g && !g.moved) { gestureRef.current = null; openMenu(at); }
+      if (g && !g.moved) {
+        gestureRef.current = null;
+        swallowNextOverlayTapRef.current = true;
+        setTimeout(() => { swallowNextOverlayTapRef.current = false; }, 600);
+        openMenu(at);
+      }
     }, 420);
   }
   function onMsgPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -2621,13 +2644,13 @@ function LiveChat({
   const [docLimit, setDocLimit] = useState(MAX_CHAT_IMAGE_BYTES_FLOOR);
 
   useEffect(() => {
-    if (!menuOpenAt) return;
+    if (!menuOpenAt && !viewerMedia) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpenAt(null);
+      if (e.key === "Escape") { setMenuOpenAt(null); setViewerMedia(null); }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [menuOpenAt]);
+  }, [menuOpenAt, viewerMedia]);
 
   useEffect(() => {
     if (!attachOpen) return;
@@ -2776,8 +2799,15 @@ function LiveChat({
     return () => vv.removeEventListener("resize", onResize);
   }, []);
 
-  // Leaving the thread (unmount, or switching tabs) must always hand the tab bar
-  // back — a lingering "keyboard up" would hide it on the next screen.
+  // Hide the shell's bottom tab bar whenever the keyboard is up OR a full-screen
+  // overlay is open — otherwise the tabs sit wedged over the keyboard, or poke
+  // out from under the map picker / poll sheet, and a stray tap on one would
+  // navigate away mid-task.
+  const chromeHidden = composerFocused || menuOpenAt !== null || locationPickerOpen || pollComposeOpen || viewerMedia !== null || staged !== null;
+  useEffect(() => {
+    onComposerFocus?.(chromeHidden);
+  }, [chromeHidden, onComposerFocus]);
+  // Leaving the thread must always hand the tab bar back.
   useEffect(() => () => onComposerFocus?.(false), [onComposerFocus]);
 
   // One place to POST from — text, a picture, a place, or a voice note all
@@ -2840,6 +2870,9 @@ function LiveChat({
    *  or Cancel. */
   function startReply(m: LiveMsg) {
     if (sending) return;
+    // Dropping out of an edit to reply must not leave the half-edited words in
+    // the box, where they would post as a brand-new message.
+    if (editingAt) setDraft("");
     setEditingAt(null);
     setReplyingTo(m);
   }
@@ -3718,8 +3751,8 @@ function LiveChat({
                 rows={1}
                 value={draft}
                 onChange={(e) => { setDraft(e.target.value); noteTyping(); }}
-                onFocus={() => { onComposerFocus?.(true); requestAnimationFrame(() => pinToBottomIfNear()); }}
-                onBlur={() => onComposerFocus?.(false)}
+                onFocus={() => { setComposerFocused(true); requestAnimationFrame(() => pinToBottomIfNear()); }}
+                onBlur={() => setComposerFocused(false)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                 placeholder={editingAt ? "Edit your message…" : side === "advisor" ? "Reply to your client…" : `Message ${otherName}…`}
                 // 16px, not 14: iOS Safari auto-zooms the whole page into any
@@ -3777,7 +3810,7 @@ function LiveChat({
             role="dialog"
             aria-modal="true"
             aria-label="Message options"
-            onClick={() => setMenuOpenAt(null)}
+            onClick={() => { if (swallowNextOverlayTapRef.current) { swallowNextOverlayTapRef.current = false; return; } setMenuOpenAt(null); }}
             style={{ position: "absolute", inset: 0, zIndex: 28, background: "rgba(15,20,25,.34)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: mine ? "flex-end" : "flex-start", gap: 12, padding: "0 16px" }}
           >
             <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 2, background: "#ffffff", borderRadius: 999, padding: "7px 9px", boxShadow: "0 14px 38px rgba(15,20,25,.3)", animation: "wgIn .16s ease both" }}>
