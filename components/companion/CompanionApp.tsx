@@ -4074,8 +4074,21 @@ type InboxConvo = {
   client: string;
   count: number;
   lastText: string;
+  lastKind: "text" | "image" | "video" | "audio" | "file" | "location" | "poll" | null;
   lastFrom: ChatSide | null;
   lastAt: string;
+};
+
+// What the list shows when the last message carries no text of its own — a
+// photo, a voice note, a location — so a real conversation never reads as
+// "No messages yet".
+const INBOX_KIND_LABEL: Record<string, string> = {
+  image: "📷 Photo",
+  video: "🎥 Video",
+  audio: "🎤 Voice message",
+  file: "📄 Document",
+  location: "📍 Location",
+  poll: "📊 Poll",
 };
 
 /**
@@ -4289,7 +4302,12 @@ function AdvisorInbox({
           return (b.lastAt || "").localeCompare(a.lastAt || "");
         })
         .map((c) => {
-        const preview = c.lastText ? `${c.lastFrom === "advisor" ? "You: " : ""}${c.lastText}` : "No messages yet";
+        // The last line, the way a messenger's list reads it: the text if there
+        // is any, else a label for what the last message was (Photo, Voice
+        // message, Location…), and only a true empty thread says "No messages
+        // yet". "You: " when the advisor sent it.
+        const lastBody = c.lastText || (c.lastKind ? INBOX_KIND_LABEL[c.lastKind] : "") || "";
+        const preview = c.lastAt ? `${c.lastFrom === "advisor" ? "You: " : ""}${lastBody || "Message"}` : "No messages yet";
         const isPinned = pinned.has(c.shareId);
         // One row, no side button — hold it for actions, tap it to open. The
         // whole row is the target, the way a messenger's list works.
@@ -4327,7 +4345,15 @@ function AdvisorInbox({
         const isPinned = pinned.has(c.shareId);
         const item: CSSProperties = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "14px 18px", fontSize: 14.5, color: "#26323a" };
         return (
-          <div onClick={() => { if (swallowTap.current) { swallowTap.current = false; return; } setMenuFor(null); }} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(15,20,25,.4)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div
+            // A fresh press anywhere on the dim area clears the one-tap guard,
+            // so a deliberate tap to dismiss always closes — the guard only
+            // exists to eat the click the finger-lift synthesises the instant
+            // the sheet opens, never a real tap-outside.
+            onPointerDown={() => { swallowTap.current = false; }}
+            onClick={() => { if (swallowTap.current) { swallowTap.current = false; return; } setMenuFor(null); }}
+            style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(15,20,25,.4)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+          >
             <div onClick={(e) => e.stopPropagation()} style={{ background: CREAM, borderRadius: "20px 20px 0 0", padding: "8px 8px calc(8px + env(safe-area-inset-bottom))", animation: "wgIn .2s ease both" }}>
               <div style={{ padding: "10px 18px 8px", font: `400 15px/1.1 ${serif}`, color: "#57534e", borderBottom: "1px solid rgba(38,50,58,.08)" }}>{nameOf(c)}</div>
               <button role="menuitem" className="wg-warm" onClick={() => togglePin(c.shareId)} style={item}>

@@ -47,6 +47,10 @@ export async function GET() {
         count: unread,
         hasMessages: messages.length > 0,
         lastText: last?.text ?? "",
+        // The kind of the last message, so the list can read "Photo" / "Voice
+        // message" / "Location" when it has no text of its own — the way a
+        // messenger's list does, instead of a blank that looks like "nothing".
+        lastKind: last ? (last.kind ?? "text") : null,
         lastFrom: last?.from ?? null,
         lastAt: last?.at ?? "",
       };
