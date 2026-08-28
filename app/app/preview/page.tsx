@@ -44,19 +44,50 @@ export default function AppPreviewPage() {
     <main>
       {/* Above the app, not over it: the app below fills the screen and owns
           every pixel of it, so a floating notice would cover a control. */}
-      <div className="border-b border-[var(--gold)]/30 bg-[var(--cream)] px-5 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3">
-          <p className="text-sm leading-6 text-stone-700">
-            <span className="font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Sample</span>{" "}
-            — a made-up family, a made-up advisor, a real week in Rome. This is what your client opens when
-            you send them the app.
-          </p>
-          <Link
-            href="/app"
-            className="inline-flex min-h-11 items-center rounded-full border border-[var(--navy)] px-5 text-sm font-semibold text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white"
-          >
-            Back to the app
-          </Link>
+      <div className="border-b border-[var(--gold)]/30 bg-[var(--cream)] px-5 py-6 sm:px-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+            <div className="min-w-0">
+              {/* THE PAGE HAD NO HEADING AT ALL. Everything below this band is
+                  the app's own interface, which starts at a date and a city, so
+                  a screen reader asking for the page's headings got the sample
+                  trip's days and nothing saying what the page is. */}
+              <h1 className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)] sm:text-3xl">
+                A sample client trip
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-700">
+                <span className="font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Sample</span>{" "}
+                — a made-up family, a made-up advisor, a real week in Rome. This is what your client opens when
+                you send them the app.
+              </p>
+            </div>
+            <Link
+              href="/app"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-[var(--navy)] px-5 text-sm font-semibold text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white"
+            >
+              Back to the app
+            </Link>
+          </div>
+
+          {/* WHAT THE PHONE BELOW IS SHOWING, said in words. A buyer looking at
+              a 402px phone on a wide screen has to find each of these by
+              tapping through somebody else's week to know the product has
+              them. Every line is a screen in the app below, not a promise. */}
+          <ul className="mt-6 grid gap-x-8 gap-y-2 text-sm leading-6 text-stone-700 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              "Today's schedule, a day at a time",
+              "The map, and directions to the next stop",
+              "Documents and confirmations in a travel wallet",
+              "Messages with their advisor, against the right trip",
+              "Flight times, kept up to date",
+              "The wallet stays on the phone when there is no signal",
+            ].map((line) => (
+              <li key={line} className="flex gap-2">
+                <span aria-hidden="true" className="text-[var(--gold-ink)]">·</span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
