@@ -124,8 +124,17 @@ export default async function RootLayout({
         <IdleLogout minutes={45} endpoint="/api/account/logout" requireAccount />
         {/* tabIndex -1 so the skip link can actually put the focus here.
             Without it the browser scrolls to the anchor and leaves the focus
-            behind, and the next Tab starts at the header again. */}
-        <div id="main-content" tabIndex={-1} className="flex min-h-0 flex-1 flex-col overflow-y-auto outline-none">
+            behind, and the next Tab starts at the header again.
+
+            AND NO overflow-y HERE. It carried `overflow-y-auto`, which the
+            other repository's identical wrapper does not, and it never
+            scrolled anything — the window is the scrollport on every page of
+            this site. What it did do is make this div a scroll container, and
+            a scroll container between a `position: sticky` element and the
+            viewport is the thing that element sticks to, so the site header
+            stuck to a box that never moves. Measured: with it, the header sat
+            at -2,076 after scrolling 2,500px; without it, at 0. */}
+        <div id="main-content" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
           <BookingLinkProvider value={booking}>
             <SignInGateProvider googleAvailable={googleAvailable} phoneSignupAvailable={phoneSignupAvailable}>
               {children}

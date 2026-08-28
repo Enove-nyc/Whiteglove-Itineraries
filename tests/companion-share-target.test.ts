@@ -41,7 +41,17 @@ describe("a shared place waits for the advisor to pick a client, then lands in t
   });
 
   it("AdvisorInbox is told about the pending share and how to clear it", () => {
-    assert.match(APP, /<AdvisorInbox pendingShare=\{pendingShare\} onPendingShareUsed=\{\(\) => setPendingShare\(null\)\} \/>/);
+    /**
+     * READ FROM THE ELEMENT, NOT THE WHOLE LINE. This matched the element
+     * verbatim, so it went red the day AdvisorInbox gained an unrelated prop
+     * (onComposerFocus) and stayed red — a test that fails for a reason it was
+     * never about teaches nobody anything and gets ignored. What it is
+     * actually protecting is the pair: the inbox is handed the pending share,
+     * and handed a way to say it has used it.
+     */
+    const element = APP.slice(APP.indexOf("<AdvisorInbox ")).split("/>")[0];
+    assert.match(element, /pendingShare=\{pendingShare\}/);
+    assert.match(element, /onPendingShareUsed=\{\(\) => setPendingShare\(null\)\}/);
   });
 
   it("opening a client's thread carries the pending share into its composer", () => {
