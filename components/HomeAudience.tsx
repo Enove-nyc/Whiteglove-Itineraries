@@ -98,6 +98,21 @@ export default function HomeAudience() {
           See a finished one
         </Link>
       </div>
+
+      {/* WHICH OF THE TWO NEEDS AN ACCOUNT, SAID BEFORE THEY PRESS ONE.
+          The planner is signed-in only, at the owner's word, so pressing the
+          first button as a new visitor is a redirect to a login form —
+          measured: /itinerary answers 307 to /login?next=%2Fitinerary. Nothing
+          on this page said so, which makes a login form the first thing this
+          product shows somebody who liked the headline.
+
+          Nothing is being opened up here: the sentence is what was missing,
+          not the gate. It also puts the weight on the right button — the
+          sample is the one to look at first, and it opens straight away. */}
+      <p className="mx-auto mt-5 max-w-lg text-sm leading-6 text-[#c9d3da]">
+        The planner opens once you are signed in — it is free, and the account is what keeps a trip
+        and puts it on your other devices. The finished one opens straight away, with no account.
+      </p>
     </>
   );
 }
