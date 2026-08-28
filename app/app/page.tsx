@@ -202,7 +202,7 @@ export default async function AppPage({
       // and no inbox; the tab simply is not there.
       return (
         <main>
-          <CompanionApp trip={companionTrip} advisorInbox={servesClients} sharedDraft={sharedDraft || undefined} />
+          <CompanionApp trip={companionTrip} advisorInbox={servesClients} advisorShareId={selected?.shareId || undefined} sharedDraft={sharedDraft || undefined} />
         </main>
       );
     }

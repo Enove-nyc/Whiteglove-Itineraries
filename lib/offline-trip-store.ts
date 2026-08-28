@@ -16,9 +16,10 @@
  */
 
 const DB_NAME = "wg-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const TRIP_STORE = "trips";
 const DOC_STORE = "documents";
+const MSG_STORE = "messages";
 
 function openDb(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
@@ -37,6 +38,7 @@ function openDb(): Promise<IDBDatabase | null> {
       const db = req.result;
       if (!db.objectStoreNames.contains(TRIP_STORE)) db.createObjectStore(TRIP_STORE);
       if (!db.objectStoreNames.contains(DOC_STORE)) db.createObjectStore(DOC_STORE);
+      if (!db.objectStoreNames.contains(MSG_STORE)) db.createObjectStore(MSG_STORE);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => resolve(null);
@@ -153,4 +155,23 @@ export async function saveDocumentOffline(fileId: string, blob: Blob): Promise<v
 export async function readDocumentOffline(fileId: string): Promise<Blob | null> {
   if (!fileId) return null;
   return idbGet<Blob>(DOC_STORE, fileId);
+}
+
+// --- Chat messages ---------------------------------------------------------
+
+/**
+ * Keep the thread's messages on the device, keyed by its share token, so the
+ * chat still READS with no signal — you can't send until you're back online,
+ * but the conversation is there rather than a blank panel. Saved after every
+ * successful online load; the newest load wins.
+ */
+export async function saveMessagesOffline<T>(shareId: string, messages: T[]): Promise<void> {
+  if (!shareId) return;
+  await idbSet(MSG_STORE, shareId, messages);
+}
+
+/** The saved messages for a thread, or null if never loaded online here. */
+export async function readMessagesOffline<T>(shareId: string): Promise<T[] | null> {
+  if (!shareId) return null;
+  return idbGet<T[]>(MSG_STORE, shareId);
 }

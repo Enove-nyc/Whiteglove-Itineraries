@@ -49,7 +49,7 @@ import { Icon, type IconName } from "@/components/icons/Icon";
 import PaymentCheckout from "@/components/companion/PaymentCheckout";
 import { useDeviceClock } from "@/components/TripProgressStrip";
 import { followAlong, type FollowStop } from "@/lib/trip-progress";
-import { readDocumentOffline, saveDocumentOffline } from "@/lib/offline-trip-store";
+import { readDocumentOffline, saveDocumentOffline, readMessagesOffline, saveMessagesOffline } from "@/lib/offline-trip-store";
 
 /** The blue the app already uses for its own accents — map notes, the
  * initials avatar, kickers. The chat toolbar's icons match it rather than
@@ -665,12 +665,18 @@ export default function CompanionApp({
   trip = COMPANION_DEMO_TRIP,
   chat,
   advisorInbox = false,
+  advisorShareId,
   sharedDraft,
 }: {
   trip?: CompanionTrip;
   chat?: CompanionChat;
   /** The advisor's own side: a Messages tab that lists every client's chat. */
   advisorInbox?: boolean;
+  /** The share token of the trip the advisor is currently viewing, when it has
+   *  a client link. Lets "Ask about this" open THAT client's thread directly
+   *  (with the attraction pinned) instead of dropping the advisor on the inbox
+   *  list. Absent when the trip has never been shared — then the inbox shows. */
+  advisorShareId?: string;
   /** A place shared in from outside the app — Google Maps' share sheet, say
    *  — arrived as the OS's Web Share Target params (app/manifest.ts). Held
    *  until the advisor picks which client's thread it goes into. */
@@ -746,18 +752,20 @@ export default function CompanionApp({
     };
   }, [liveChat]);
 
-  // KEEP THE WALLET DOCUMENTS ON THE DEVICE. A client who opens the trip with a
-  // connection gets every boarding pass and confirmation quietly saved into the
-  // wallet, so they open at the gate with no signal — no download step, the file
-  // is simply already there (WalletDocLink reads it back; lib/offline-trip-store
-  // holds it). Advisor files are login-gated and online-only, so this is the
-  // client side alone. Sequential and fail-soft: it stays well under the
-  // trip-file rate limit, skips anything already saved, and leaves anything it
-  // can't reach for the next online open.
+  // KEEP THE WALLET DOCUMENTS ON THE DEVICE. Whoever opens the trip with a
+  // connection — the client through their share link, the advisor through their
+  // own account — gets every boarding pass and confirmation quietly saved into
+  // the wallet, so it opens at the gate with no signal (WalletDocLink reads it
+  // back; lib/offline-trip-store holds it). Each side pulls from its own door:
+  // the client from the share-token trip-file route, the advisor from the
+  // login-gated account route (same-origin cookies ride along). Sequential and
+  // fail-soft: it stays under the rate limit, skips anything already saved, and
+  // leaves anything it can't reach for the next online open.
   useEffect(() => {
-    if (!isClientViewer) return;
+    // The client needs their share token to fetch; the advisor fetches by
+    // account and needs none. Without either door, there is nothing to pull.
     const shareId = liveChat?.shareId;
-    if (!shareId) return;
+    if (isClientViewer && !shareId) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
     let cancelled = false;
     void (async () => {
@@ -766,10 +774,10 @@ export default function CompanionApp({
         if (cancelled) return;
         try {
           if (await readDocumentOffline(file.id)) continue;
-          const res = await fetch(
-            `/api/trip-file/${encodeURIComponent(shareId)}?id=${encodeURIComponent(file.id)}`,
-            { cache: "no-store" },
-          );
+          const url = isClientViewer
+            ? `/api/trip-file/${encodeURIComponent(shareId!)}?id=${encodeURIComponent(file.id)}`
+            : `/api/account/attachments?id=${encodeURIComponent(file.id)}`;
+          const res = await fetch(url, { cache: "no-store" });
           if (!res.ok) continue;
           const blob = await res.blob();
           if (cancelled) return;
@@ -1373,16 +1381,9 @@ export default function CompanionApp({
         </div>
       )}
       {railView}
-      <button
-        onClick={() => {
-          setSt((s) => ({ ...s, chatSubject: sel.name }));
-          go(usesRealChat ? "messages" : "chat");
-        }}
-        className="wg-warm"
-        style={{ alignSelf: "flex-start", border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", cursor: "pointer", font: `400 13.5px/1 ${serif}`, padding: "12px 18px", borderRadius: 14, color: "#26323a" }}
-      >
-        Ask about this day
-      </button>
+      {/* No day-level "ask" here on purpose — a question belongs to a specific
+          stop, not a whole day. Tap any attraction above to open it and "Ask
+          about this", which pins that attraction to the message. */}
     </div>
   );
 
@@ -1719,7 +1720,7 @@ export default function CompanionApp({
                         }
                         fileId={att.id}
                         name={att.name}
-                        offlineCapable={isClientViewer && !att.sampleUrl}
+                        offlineCapable={!att.sampleUrl}
                       />
                       {!att.sampleUrl && !isClientViewer && trip.tripId && r.id && r.stopKind && (
                         <WalletShareToggle
@@ -1868,7 +1869,15 @@ export default function CompanionApp({
   else if (st.screen === "chat") body = isConcierge ? conciergeChat : guideChat;
   else if (st.screen === "messages")
     body = advisorInbox ? (
-      <AdvisorInbox pendingShare={pendingShare} onPendingShareUsed={() => setPendingShare(null)} onComposerFocus={setComposerUp} />
+      <AdvisorInbox
+        pendingShare={pendingShare}
+        onPendingShareUsed={() => setPendingShare(null)}
+        onComposerFocus={setComposerUp}
+        openShareId={advisorShareId}
+        subject={st.chatSubject}
+        onSubjectUsed={() => setSt((s) => ({ ...s, chatSubject: null }))}
+        places={shareablePlaces}
+      />
     ) : liveChat ? (
       <LiveChat chat={liveChat} subject={st.chatSubject} onSubjectUsed={() => setSt((s) => ({ ...s, chatSubject: null }))} places={shareablePlaces} onComposerFocus={setComposerUp} />
     ) : (
@@ -2739,7 +2748,12 @@ function LiveChat({
   // A day or activity carried in from "Ask about this" — staged the same
   // way a reply is, and attached to the next message sent rather than
   // mixed into its words, so it shows in the thread as its own small tag.
-  const [itineraryRef, setItineraryRef] = useState<string | null>(null);
+  // Initialised from `subject` so a chat that MOUNTS with one already set — the
+  // advisor opening a client's thread straight from "Ask about this" — pins it
+  // from the first paint. The change-watcher below covers the other case, where
+  // the chat is already open and the subject arrives after (the client tapping
+  // "Ask about this" without leaving the thread).
+  const [itineraryRef, setItineraryRef] = useState<string | null>(subject ?? null);
   // A picture or video opened full-size, over the whole chat panel.
   const [viewerMedia, setViewerMedia] = useState<{ kind: "image" | "video"; mediaId: string; text: string } | null>(null);
   // Briefly highlighted after tapping a quote to jump to the message it
@@ -2856,7 +2870,8 @@ function LiveChat({
         return;
       }
       const d = await r.json();
-      setMessages(Array.isArray(d.messages) ? d.messages : []);
+      const msgs: LiveMsg[] = Array.isArray(d.messages) ? d.messages : [];
+      setMessages(msgs);
       setAvailable(d.available !== false);
       setReadAt(d.readMarkers && typeof d.readMarkers === "object" ? d.readMarkers : {});
       setOtherTyping(Boolean(d.typing));
@@ -2864,12 +2879,18 @@ function LiveChat({
       if (typeof d.docLimit === "number" && d.docLimit > 0) setDocLimit(d.docLimit);
       setNote("");
       setLoaded(true);
+      // Keep the thread on the device so it still READS with no signal.
+      void saveMessagesOffline(shareId, msgs);
     } catch {
-      // Almost always no signal — messaging needs the network, while the
-      // itinerary and wallet are still here from the saved copy. Say so rather
-      // than showing nothing.
+      // No signal: messaging needs the network to SEND, but the conversation
+      // itself was saved on the last online open — show it (read-only) rather
+      // than a blank panel, and say sending waits for the network.
+      const cached = await readMessagesOffline<LiveMsg>(shareId).catch(() => null);
+      if (cached && cached.length) setMessages(cached);
       if (typeof navigator !== "undefined" && !navigator.onLine) {
-        setNote("You’re offline — your messages will load when you’re back online.");
+        setNote(cached && cached.length
+          ? "You’re offline — showing saved messages. New messages send when you’re back online."
+          : "You’re offline — your messages will load when you’re back online.");
       }
       setLoaded(true);
     }
@@ -3620,7 +3641,7 @@ function LiveChat({
                 }}
               >
               {itineraryTag}
-              <div style={{ display: "flex", alignItems: "center", gap: 1, flexDirection: mine ? "row-reverse" : "row", maxWidth: "100%" }}>
+              <div className="wg-msgrow" style={{ display: "flex", alignItems: "center", gap: 1, flexDirection: mine ? "row-reverse" : "row", maxWidth: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   {quote}
                   {content}
@@ -3641,14 +3662,14 @@ function LiveChat({
                     aria-label="Message options"
                     aria-expanded={menuOpen}
                     aria-haspopup="menu"
-                    /* Receded, and staying that way. There is one of these on
-                       every message in the thread and at full strength they
-                       read as a column of punctuation down the side of the
-                       conversation — and since the redesign, holding the
-                       bubble is the primary gesture and this is the fallback
-                       for it. aria-expanded still tells a screen reader which
-                       one is open, which is what needed saying. */
-                    style={{ flex: "none", border: 0, background: "none", cursor: "pointer", padding: 8, margin: -6, color: "#a8a29e", opacity: 0.32, display: "flex", alignItems: "center" }}
+                    /* GONE ON A PHONE, where holding the bubble opens the same
+                       actions — WhatsApp and Signal show no per-message button
+                       and neither do we there. Kept only on a hover device (a
+                       desktop mouse), where it fades in on hover of its own row,
+                       since there is no press-and-hold with a mouse. The CSS for
+                       both is wg-msgdots / wg-msgrow in the style block below. */
+                    className="wg-msgdots"
+                    style={{ flex: "none", border: 0, background: "none", cursor: "pointer", padding: 8, margin: -6, color: "#a8a29e", display: "flex", alignItems: "center" }}
                   >
                     <Icon name="more" className="h-3 w-3" />
                   </button>
@@ -4061,6 +4082,10 @@ function AdvisorInbox({
   pendingShare,
   onPendingShareUsed,
   onComposerFocus,
+  openShareId,
+  subject,
+  onSubjectUsed,
+  places = [],
 }: {
   /** A place shared in from outside, waiting for the advisor to pick which
    *  client's thread it belongs in. */
@@ -4069,6 +4094,17 @@ function AdvisorInbox({
   /** Bubbled up from the open thread's composer so the shell can pull the
    *  bottom tab bar out of the way while the advisor is typing. */
   onComposerFocus?: (focused: boolean) => void;
+  /** The share token of the trip the advisor is viewing. When the advisor taps
+   *  "Ask about this" on that trip, we open THIS conversation straight away
+   *  rather than making them find it in the list. */
+  openShareId?: string;
+  /** The attraction tapped through "Ask about this", to pin to the message and
+   *  hand to the opened thread. */
+  subject?: string | null;
+  onSubjectUsed?: () => void;
+  /** Stops from the viewed trip that can be shared by address, for the open
+   *  thread's Location button. */
+  places?: { label: string; address: string }[];
 }) {
   const serif = "Georgia,'Times New Roman',serif";
   const [convos, setConvos] = useState<InboxConvo[] | null>(null);
@@ -4145,6 +4181,23 @@ function AdvisorInbox({
     };
   }, [load]);
 
+  // "Ask about this" on the viewed trip: jump straight into that client's
+  // thread rather than dropping the advisor on the list to hunt for it. Only
+  // when a subject is actually pending (the advisor tapped it) and a matching
+  // conversation exists — otherwise the inbox shows as normal. Once opened, the
+  // thread's own subject wiring pins the attraction and clears it.
+  //
+  // Done as a render-phase value-change (not an effect) so it lands in the same
+  // paint the list arrives in — the advisor never sees the inbox flash before
+  // the thread opens. The key is null until the list is here with a pending
+  // subject, so it fires the once, when the list loads.
+  const autoOpenKey = !open && subject && openShareId && convos ? openShareId : null;
+  useOnValueChange(autoOpenKey, () => {
+    if (!autoOpenKey || !convos) return;
+    const match = convos.find((c) => c.shareId === autoOpenKey);
+    if (match) setOpen(match);
+  });
+
   if (open) {
     return (
       <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", animation: "wgIn .28s ease both" }}>
@@ -4158,6 +4211,9 @@ function AdvisorInbox({
             initialDraft={pendingShare}
             onInitialDraftUsed={onPendingShareUsed}
             onComposerFocus={onComposerFocus}
+            subject={open.shareId === openShareId ? subject : null}
+            onSubjectUsed={onSubjectUsed}
+            places={open.shareId === openShareId ? places : []}
           />
         </div>
       </div>
@@ -4262,6 +4318,16 @@ const CSS = `
  * and tab bar do not bounce. */
 .wg-scroll { overscroll-behavior: contain; }
 .wg-scroll::-webkit-scrollbar, .wg-toolbar::-webkit-scrollbar { display: none; }
+/* The per-message "⋯": nothing to see on a phone, where holding the bubble
+ * opens the same actions — that is how WhatsApp and Signal read. On a hover
+ * device (a desktop mouse) there is no press-and-hold, so it fades in on hover
+ * of its own message row and on keyboard focus. */
+.wg-msgdots { opacity: 0; transition: opacity .14s ease; }
+@media (hover: none) { .wg-msgdots { display: none; } }
+@media (hover: hover) {
+  .wg-msgrow:hover .wg-msgdots { opacity: .4; }
+  .wg-msgdots:focus-visible { opacity: .7; }
+}
 /* No blue focus box on the message field — some Android WebViews draw one over
  * a focused textarea regardless of inline styles, which read as a sloppy square
  * around the composer. Kill the outline, the tap highlight and any focus ring. */

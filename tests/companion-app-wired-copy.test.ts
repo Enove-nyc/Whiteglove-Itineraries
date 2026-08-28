@@ -149,30 +149,22 @@ describe("messages open a WhatsApp-style action sheet on hold or swipe", () => {
     assert.match(APP, /aria-label="Message options"/);
   });
 
-  it("dims the ⋯, since holding the bubble is the primary gesture", () => {
-    /**
-     * THE PROPERTY, NOT THE NUMBER. This pinned opacity 0.55 exactly, and a
-     * later tuning pass receded the control further — to 0.32, with smaller
-     * padding and a smaller glyph — which is the same decision carried further
-     * and not a regression. The test failed anyway, on main, for a change that
-     * was right.
-     *
-     * What matters is that there is one of these on every message in the
-     * thread, so at full strength they read as a column of punctuation down
-     * the side of the conversation. Anything clearly under full does that.
-     */
-    const button = APP.slice(APP.indexOf('aria-label="Message options"'));
-    const style = button.slice(0, button.indexOf("</button>"));
-    const opacity = Number(style.match(/opacity: ([\d.]+)/)?.[1]);
-    assert.ok(Number.isFinite(opacity), "the ⋯ no longer sets an opacity at all");
-    assert.ok(opacity < 0.6, `the ⋯ is drawn at ${opacity}, which is not receded`);
-    assert.ok(opacity > 0, "the ⋯ is invisible rather than receded");
+  it("hides the ⋯ on a phone (hold the bubble instead), reveals it on hover for a mouse", () => {
+    // No per-message button on touch — WhatsApp/Signal show none and hold opens
+    // the actions; the ⋯ is a hover-only fallback for a desktop mouse. (This
+    // replaces the old "dims the ⋯" opacity check — the control no longer sets
+    // an inline opacity at all; its visibility is the CSS below.)
+    assert.match(APP, /className="wg-msgdots"/);
+    assert.match(APP, /@media \(hover: none\) \{ \.wg-msgdots \{ display: none; \} \}/);
+    assert.match(APP, /\.wg-msgrow:hover \.wg-msgdots \{ opacity: \.4; \}/);
   });
 });
 
 describe("an itinerary reference rides with the message it was asked from", () => {
   it("is staged like a reply — attached on send, not typed into the words", () => {
-    assert.match(APP, /const \[itineraryRef, setItineraryRef\] = useState<string \| null>\(null\)/);
+    // Seeded from the subject so a thread that MOUNTS with one (the advisor
+    // opening a client's chat straight from "Ask about this") pins it too.
+    assert.match(APP, /const \[itineraryRef, setItineraryRef\] = useState<string \| null>\(subject \?\? null\)/);
     assert.match(APP, /setItineraryRef\(subject\)/);
     assert.match(APP, /\.\.\.\(itineraryRef \? \{ itineraryRef \} : \{\}\)/);
     assert.match(APP, /setItineraryRef\(null\)/);

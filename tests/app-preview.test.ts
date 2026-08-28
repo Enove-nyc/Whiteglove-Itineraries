@@ -92,7 +92,9 @@ describe("the travel wallet actually holds documents", () => {
     // share toggle, which writes to a trip that does not exist.
     assert.match(APP, /att\.sampleUrl\s*\n?\s*\?\s*att\.sampleUrl/);
     assert.match(APP, /\{!att\.sampleUrl && !isClientViewer && trip\.tripId/);
-    assert.match(APP, /offlineCapable=\{isClientViewer && !att\.sampleUrl\}/);
+    // A shipped sample is never kept offline (it is a static URL with no owner);
+    // both a client and an advisor keep a real one.
+    assert.match(APP, /offlineCapable=\{!att\.sampleUrl\}/);
   });
 });
 

@@ -49,7 +49,10 @@ describe("a shared place waits for the advisor to pick a client, then lands in t
      * actually protecting is the pair: the inbox is handed the pending share,
      * and handed a way to say it has used it.
      */
-    const element = APP.slice(APP.indexOf("<AdvisorInbox ")).split("/>")[0];
+    // The element now spans several lines (it gained openShareId / subject /
+    // places when "Ask about this" learned to open the viewed trip), so match
+    // from the tag name without a trailing space and read to its close.
+    const element = APP.slice(APP.indexOf("<AdvisorInbox")).split("/>")[0];
     assert.match(element, /pendingShare=\{pendingShare\}/);
     assert.match(element, /onPendingShareUsed=\{\(\) => setPendingShare\(null\)\}/);
   });
