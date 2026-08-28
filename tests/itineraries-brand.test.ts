@@ -225,9 +225,24 @@ describe("the itineraries domain's own pages never title themselves 'Kosher Trav
 describe("the guide is redirected off the itineraries domain", () => {
   const MW = readFileSync("middleware.ts", "utf8");
 
-  it("redirects a guide path to the kosher origin, on the itineraries brand", () => {
-    assert.match(MW, /isGuidePath\(pathname\) && brandFromRequestHeaders\(request\.headers\) === "itineraries"/);
-    assert.match(MW, /BRAND_ORIGIN\.kosher/);
+  it("answers a guide path itself rather than handing it to the kosher site", () => {
+    /**
+     * THIS USED TO ASSERT THE OPPOSITE, and the rule it was protecting has
+     * changed on purpose. Every guide path answered 308 to
+     * whiteglovekoshertravel.com, which was right about the mechanism — a real
+     * redirect, never a soft 200 — and wrong about the destination: this
+     * product must not direct its visitors to the kosher site, and a redirect
+     * is the most direct direction there is.
+     *
+     * Now: a neutral equivalent here gets a local 308, and anything with no
+     * answer here gets 410 Gone. See lib/guide-paths.ts and
+     * tests/itineraries-obsolete-routes.test.ts.
+     */
+    assert.match(MW, /brandFromRequestHeaders\(request\.headers\) === "itineraries"/);
+    assert.match(MW, /guideAnswer\(pathname\)/);
+    const block = MW.slice(MW.indexOf("const answer = guideAnswer(pathname)"));
+    const guard = block.slice(0, block.indexOf("}\n"));
+    assert.doesNotMatch(guard, /BRAND_ORIGIN\.kosher/, "it still hands visitors to the other company");
   });
 
   it("lists the guide's sections and NOT the planner's own paths", () => {

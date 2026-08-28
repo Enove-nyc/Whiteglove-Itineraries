@@ -1,17 +1,28 @@
 /**
  * The trip the White Glove app shows before a real one is wired in.
  *
- * This is the Rome week the design was drawn around — a family of five, the
- * kosher side of each day, a Friday that stops early, an advisor who moves
- * things before anybody is asked. It is REAL, publishable Rome information
- * written in the site's voice, not lorem: the Ghetto, the Great Synagogue, the
- * Arch of Titus with the Menorah cut into it, candle-lighting on the Friday.
+ * This is the Rome week the design was drawn around — a family of five, an
+ * adviser who moves things before anybody is asked, a day out of the city. It
+ * is REAL, checkable Rome information written in the product's voice, not
+ * lorem: the Colosseum, the Pantheon, Trastevere, Villa Borghese, Ostia
+ * Antica. The airline, the hotel and every confirmation code are deliberately
+ * unnamed, because none of them has happened.
+ *
+ * IT IS NEUTRAL, AND HAS TO BE. This file used to carry the kosher week the
+ * two products were once built around together: the Ghetto, the Great
+ * Synagogue, candle-lighting on the Friday, a hechsher to confirm at lunch.
+ * All of that is right on White Glove Kosher Travel and none of it belongs
+ * here — this product sells trip-building to advisers with clients of every
+ * kind, and the demo is the first thing a buyer opens. The MODEL still carries
+ * the kosher fields (kosherTitle, shabbosLabel, the shabbos kind) because an
+ * adviser planning for a Jewish client has real use for them; the DEMO simply
+ * does not populate them. tests/itineraries-neutral-content.test.ts holds that
+ * line.
  *
  * WHY IT LIVES IN ITS OWN FILE. The app (components/companion/CompanionApp.tsx)
- * takes this shape as a prop, so the day a signed-in Business account's own
- * itinerary is handed in instead — built from lib/account-store.ts trips and
- * the site's own kosher / Shabbos / destination records — nothing in the app
- * changes but the data. The shape below is the contract for that hand-off.
+ * takes this shape as a prop, so the day a signed-in account's own itinerary is
+ * handed in instead — built from lib/account-store.ts trips — nothing in the
+ * app changes but the data. The shape below is the contract for that hand-off.
  */
 
 import type { TripAlert } from "@/data/trip-alerts";
@@ -265,16 +276,13 @@ function sampleDoc(id: string, name: string, file: string) {
 
 export const COMPANION_DEMO_TRIP: CompanionTrip = {
   concierge: true,
-  advisorName: "Miriam Feldman",
-  homeTitle: "The Cohens · Rome",
+  advisorName: "Dana Whitfield",
+  homeTitle: "The Harpers · Rome",
   homeKicker: "27 October · day 3 of 8",
   tripTitle: "Rome — a week, family of five",
   tripDates: "25 October – 1 November 2026",
   todayIndex: 2,
-  kosherTitle: "Lunch back in the Ghetto, one o’clock",
-  kosherNote:
-    "Twenty minutes on foot from the Forum, table held. Cholov Yisroel and Glatt, as asked — ask to see the teudah when you sit down.",
-  family: "The Cohen family",
+  family: "The Harper family",
   familyMeta: "2 adults, 3 children · ages 4, 7, 11",
   days: [
     {
@@ -286,7 +294,7 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
       walk: "—",
       items: [
         { time: "16:00", title: "Out to JFK", place: "Car, pre-booked", kind: "travel", note: "Two hours in hand. The transfer confirmation sits in your wallet." },
-        { time: "18:40", title: "JFK → Rome (FCO)", place: "Overnight, lands 08:55", kind: "travel", note: "Kosher meals ordered for five, confirmed with the airline on the 14th." },
+        { time: "18:40", title: "JFK → Rome (FCO)", place: "Overnight, lands 08:55", kind: "travel", note: "Seats together for five, confirmed with the airline on the 14th." },
       ],
     },
     {
@@ -297,8 +305,8 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
       weather: "19°, clear",
       walk: "1.4 km on foot",
       items: [
-        { time: "09:30", title: "Land, and settle in", place: "The hotel, inside the Ghetto", kind: "rest", note: "Nothing planned for the first afternoon. A day that starts with a red-eye does not hold a schedule.", walk: "10 min on foot to the quarter" },
-        { time: "16:00", title: "The Ghetto and the Great Synagogue", place: "Via del Portico d'Ottavia", kind: "sight", note: "The streets you will be eating in all week." },
+        { time: "09:30", title: "Land, and settle in", place: "The hotel, near the Pantheon", kind: "rest", note: "Nothing planned for the first afternoon. A day that starts with a red-eye does not hold a schedule.", walk: "8 min on foot to the square" },
+        { time: "17:00", title: "An evening walk through Trastevere", place: "Across the river", kind: "sight", note: "Nothing to book. It keeps everybody awake until a sensible bedtime." },
       ],
     },
     {
@@ -310,10 +318,10 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
       walk: "2.1 km on foot",
       today: true,
       items: [
-        { time: "09:30", title: "The Colosseum", place: "Piazza del Colosseo", kind: "sight", note: "Timed entry booked. The Arch of Titus, with the Menorah on it, is a few minutes from the exit.", walk: "20 min on foot to the Ghetto" },
-        { time: "13:00", title: "Back to the Ghetto for lunch", place: "Via del Portico d'Ottavia", kind: "meal", note: "Supervision changes hands — ask to see the current teudah.", walk: "12 min on foot" },
+        { time: "09:30", title: "The Colosseum", place: "Piazza del Colosseo", kind: "sight", note: "Timed entry booked. One ticket covers the Forum and the Palatine on the same day.", walk: "20 min on foot to the Pantheon" },
+        { time: "13:00", title: "Lunch near the Forum", place: "Monti", kind: "meal", note: "Table held from one. Ten minutes uphill from the exit.", walk: "12 min on foot" },
         { time: "15:30", title: "The Pantheon and the Trevi Fountain", place: "Piazza della Rotonda", kind: "sight", note: "Both are open squares and free to stand in, which is what makes them work with a four-year-old.", swappable: true },
-        { time: "18:30", title: "Back to the hotel", place: "On foot through the Ghetto", kind: "rest", note: "Early night. Ostia is an early train." },
+        { time: "18:30", title: "Back to the hotel", place: "On foot through Monti", kind: "rest", note: "Early night. Ostia is an early train." },
       ],
     },
     {
@@ -324,8 +332,8 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
       weather: "17°, cloud",
       walk: "2.5 km on foot",
       items: [
-        { time: "09:00", title: "Ostia Antica", place: "Via dei Romagnoli · 30 min by train", kind: "sight", note: "Rome’s harbour town, left standing where it fell — streets, baths, a theatre, and one of the oldest shuls in Europe. The longest single thing on the trip, and nothing after it on purpose." },
-        { time: "14:30", title: "Lunch back in the quarter", place: "Ghetto", kind: "meal", note: "The train back from Porta San Paolo, then five minutes on foot. Held for you from two." },
+        { time: "09:00", title: "Ostia Antica", place: "Via dei Romagnoli · 30 min by train", kind: "sight", note: "Rome’s harbour town, left standing where it fell — streets, baths and a theatre. The longest single thing on the trip, and nothing after it on purpose." },
+        { time: "14:30", title: "Lunch back in the centre", place: "Near the Pantheon", kind: "meal", note: "The train back from Porta San Paolo, then five minutes on foot. Held for you from two." },
       ],
     },
     {
@@ -342,28 +350,24 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
     {
       dow: "Fri",
       dom: "30",
-      short: "Erev Shabbos",
+      short: "Borghese",
       name: "Friday 30 October",
       weather: "18°, clear",
-      walk: "600 m on foot",
-      shabbosLabel: "Candle-lighting 16:52",
-      shabbosNote: "The day is built to finish early. Everything is inside the quarter, so nobody is walking far as it comes in.",
+      walk: "2.1 km on foot",
       items: [
-        { time: "10:00", title: "Shopping for Shabbos", place: "Via del Portico d'Ottavia", kind: "meal", note: "Two hours and a half. Everything on the list is within the quarter." },
-        { time: "14:30", title: "Back to the hotel", place: "Ghetto", kind: "rest", note: "Two hours in hand before candle-lighting." },
+        { time: "10:00", title: "Villa Borghese", place: "Piazzale Napoleone I", kind: "sight", note: "The gallery is a timed ticket; the gardens around it are not, and there are bicycles to hire." },
+        { time: "14:30", title: "Back through the gardens", place: "Down to the Spanish Steps", kind: "rest", note: "Downhill the whole way, which matters by day six." },
       ],
     },
     {
       dow: "Sat",
       dom: "31",
-      short: "Shabbos",
+      short: "Ostia",
       name: "Saturday 31 October",
       weather: "18°, clear",
-      walk: "All within the quarter",
-      shabbosLabel: "Shabbos",
-      shabbosNote: "No times and nothing scheduled, on purpose. Everything is within the quarter you are staying in — which is the whole reason the hotel was chosen for where it stands.",
+      walk: "3.4 km, mostly flat",
       items: [
-        { time: "", title: "Shabbos in the Ghetto", place: "The Great Synagogue, four minutes on foot", kind: "shabbos", note: "The app does not ask anything of you today." },
+        { time: "09:30", title: "Ostia Antica, out for the day", place: "Via dei Romagnoli · 30 min by train", kind: "sight", note: "A whole Roman town, quiet enough that children can run in it. The one thing on the day, on purpose." },
       ],
     },
     {
@@ -398,33 +402,33 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
   messages: [
     { from: "them", text: "Morning — your Colosseum entry is 09:30, and I have someone meeting you at the gate rather than in the queue." },
     { from: "me", text: "Perfect. Is the lunch place the one you sent last week?" },
-    { from: "them", text: "It is. I checked on Sunday that they are still under the same hechsher, and the table is held from one." },
+    { from: "them", text: "It is. I called on Sunday to move it back half an hour, and the table is held from one." },
   ],
   handledSteps: [
     { what: "Airline moved FCO → JFK to 13:05", when: "Sunday 23:41" },
     { what: "Seats for five re-held together", when: "Monday 07:04" },
     { what: "Airport transfer moved to 09:40", when: "Monday 07:16" },
-    { what: "Kosher meals reconfirmed on the new flight", when: "Monday 07:20" },
+    { what: "Seat requests reconfirmed on the new flight", when: "Monday 07:20" },
   ],
   guideSections: [
     {
-      name: "Kosher, near you",
+      name: "Eating, near you",
       items: [
-        { title: "Lunch in the Ghetto", note: "Twenty minutes on foot from the Forum. Supervision changes hands — ask to see the current teudah.", tint: "#e7edf1" },
-        { title: "Shopping for Shabbos", note: "Everything on the usual list is within the quarter, a few minutes from the hotel.", tint: "#e7edf1" },
+        { title: "Lunch near the Forum", note: "Ten minutes uphill from the exit, in Monti. Held from one on the day you are there.", tint: "#e7edf1" },
+        { title: "Breakfast round the corner", note: "Two minutes from the hotel, open from seven — which is the useful part with a four-year-old.", tint: "#e7edf1" },
       ],
     },
     {
-      name: "Shabbos here",
+      name: "Getting about",
       items: [
-        { title: "Candle-lighting, Friday", note: "16:52 this week. The planner flags a Friday that runs into it — build the afternoon around that.", tint: "#ffffff" },
-        { title: "The Great Synagogue", note: "Four minutes on foot from the quarter. The Arch of Titus nearby carries the Menorah cut into it.", tint: "#ffffff" },
+        { title: "The day out to Ostia", note: "Porta San Paolo to Ostia Antica, thirty minutes, trains every fifteen. One ticket each way.", tint: "#ffffff" },
+        { title: "Walking, mostly", note: "Four of the week's stops are on foot from the hotel. The other two are one train each.", tint: "#ffffff" },
       ],
     },
     {
       name: "Nearby, worth the walk",
       items: [
-        { title: "The Colosseum", note: "Book the timed entry ahead. The Arch of Titus is a few minutes from the exit.", tint: "#f7eee0" },
+        { title: "The Colosseum", note: "Book the timed entry ahead. One ticket covers the Forum and the Palatine.", tint: "#f7eee0" },
         { title: "The Pantheon and Trevi Fountain", note: "Both are open squares, free to stand in — the kind of stop that works with small children.", tint: "#f7eee0" },
       ],
     },
@@ -436,7 +440,7 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
         {
           title: "JFK → Rome (FCO)",
           ref: "ref ●●●●",
-          sub: "Sun 25 Oct, 18:40 · kosher meals for five, confirmed",
+          sub: "Sun 25 Oct, 18:40 · seats together for five, confirmed",
           attachments: [sampleDoc("sample-bp-out", "Boarding pass — Cohen, D.", "boarding-pass.svg")],
         },
         { title: "Rome (FCO) → JFK", ref: "ref ●●●●", sub: "Sun 1 Nov, 13:05 · moved from 11:20 by the airline" },
@@ -446,9 +450,9 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
       name: "Where you are staying",
       rows: [
         {
-          title: "A hotel inside the Ghetto",
+          title: "A hotel near the Pantheon",
           ref: "conf ●●●●",
-          sub: "26 Oct – 1 Nov · chosen for where it stands, four minutes from the shul",
+          sub: "26 Oct – 1 Nov · chosen for where it stands, four minutes from the square",
           attachments: [sampleDoc("sample-hotel", "Hotel confirmation", "hotel-confirmation.svg")],
         },
       ],
@@ -469,14 +473,14 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
   ],
   prefs: [
     { label: "Kind of trip", value: "Family trip" },
-    { label: "Kosher", value: "Cholov Yisroel · Glatt, Beis Yosef" },
-    { label: "Shabbos", value: "Walking distance to a minyan" },
+    { label: "Must include", value: "One day out of the city" },
+    { label: "Travelling with", value: "Children aged 4, 7 and 11" },
     { label: "Pace", value: "Balanced" },
     { label: "Access", value: "Short walking distances" },
   ],
   advisorTrips: [
     {
-      family: "The Cohen family",
+      family: "The Harper family",
       where: "Rome · day 3 of 8",
       status: "Needs you",
       statusBg: "#f7eee0",
@@ -495,7 +499,7 @@ export const COMPANION_DEMO_TRIP: CompanionTrip = {
       statusFg: "#57534e",
       bg: "#ffffff",
       border: "rgba(38,50,58,.08)",
-      line: "Friday lands at 14:10 and candle-lighting is 16:34. The transfer needs to be the early one.",
+      line: "Lands 14:10 on the Friday and the museum closes at 17:00. The transfer needs to be the early one.",
       action: null,
     },
     {

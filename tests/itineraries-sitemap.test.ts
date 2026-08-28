@@ -80,16 +80,21 @@ describe("one list, read by both the router and the sitemap", () => {
 });
 
 describe("the redirect off this domain is permanent", () => {
-  it("answers 308, not 307", () => {
+  it("answers 308, not 307 — and locally, not to the other site", () => {
     /**
-     * It was temporary on the grounds that the split was young. The split is
-     * not young now, and the temporary answer has a cost that came due: a 307
-     * tells a search engine to keep the itineraries URL indexed and keep
-     * returning to it, which is how 760 kosher paths stayed attributed to this
-     * domain. Permanent is also what is true — the kosher site owns these.
+     * 307 was temporary on the grounds that the split was young, and it cost:
+     * a temporary redirect tells a search engine to keep the itineraries URL
+     * indexed and keep returning to it, which is how 760 kosher paths stayed
+     * attributed to this domain.
+     *
+     * The destination changed after it. A permanent redirect to
+     * whiteglovekoshertravel.com is still directing this product's visitors to
+     * the other one, which this product must not do. Permanent, and to a page
+     * here — or 410 when there is no page here to send them to.
      */
     const middleware = readFileSync("middleware.ts", "utf8");
-    assert.match(middleware, /isGuidePath\(pathname\)[\s\S]{0,400}?BRAND_ORIGIN\.kosher\), 308\)/);
+    assert.match(middleware, /NextResponse\.redirect\(new URL\(answer\.to \+ request\.nextUrl\.search, request\.url\), 308\)/);
+    assert.match(middleware, /status: 410/);
   });
 });
 

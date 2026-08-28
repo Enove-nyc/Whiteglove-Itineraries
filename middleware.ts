@@ -15,7 +15,7 @@ import {
   edgeSiteIsLocked,
 } from "@/lib/edge-lock";
 import { MIGRATION_LISTS, movedTo } from "@/lib/route-migration";
-import { isGuidePath } from "@/lib/guide-paths";
+import { guideAnswer } from "@/lib/guide-paths";
 import { BRAND_ORIGIN, brandFromRequestHeaders, configuredBrand } from "@/lib/site-brand-core";
 import { isAndroidAppHeaders } from "@/lib/android-app";
 
@@ -60,6 +60,38 @@ function hostIsOpen(request: NextRequest): boolean {
  * With `ADMIN_HOST` unset — which is the default — none of this runs and the
  * site behaves exactly as before.
  */
+/**
+ * 410 Gone, with something a person can read.
+ *
+ * A status alone is for the crawler; a human who followed an old link needs a
+ * way onward. Deliberately minimal and self-contained — it cannot render the
+ * site's own chrome from the edge, and a gone page that looks like a working
+ * page invites another try. noindex as well as 410, so the two agree.
+ *
+ * Brand-neutral: this is the general-travel domain and the reason the address
+ * is gone is that it never belonged here.
+ */
+function goneResponse(): NextResponse {
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<meta name="robots" content="noindex,nofollow">` +
+    `<title>Page not available — White Glove Itineraries</title>` +
+    `<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;` +
+    `background:#faf7f2;color:#14213d;font:16px/1.6 Inter,system-ui,sans-serif;padding:24px}` +
+    `main{max-width:34rem}h1{font:600 1.6rem/1.25 Georgia,serif;margin:0 0 .75rem}` +
+    `p{margin:0 0 1.25rem;color:#57534e}a{display:inline-flex;min-height:44px;align-items:center;` +
+    `padding:0 20px;margin:0 8px 8px 0;border-radius:999px;text-decoration:none;font-weight:600}` +
+    `.p{background:#14213d;color:#fff}.s{border:1px solid #c9b487;color:#14213d}</style></head>` +
+    `<body><main><h1>This page is not part of White Glove Itineraries.</h1>` +
+    `<p>The address you followed does not exist on this site.</p>` +
+    `<p><a class="p" href="/itinerary">Build a trip</a><a class="s" href="/">Home</a></p>` +
+    `</main></body></html>`;
+  return new NextResponse(body, {
+    status: 410,
+    headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex, nofollow" },
+  });
+}
+
 function requestHost(request: NextRequest): string {
   return (request.headers.get("host") || request.nextUrl.hostname).toLowerCase().split(":")[0].trim();
 }
@@ -251,19 +283,23 @@ export async function middleware(request: NextRequest) {
   // whether the request came straight to Railway or through the Cloudflare
   // worker that fronts the itineraries domain.
   //
-  // 308 NOW, NOT 307. It was temporary on the grounds that the split was young
-  // and a permanent redirect sticks in browser caches. The split is not young
-  // any more, and the temporary one has a cost that has come due: a 307 tells
-  // a search engine to keep the itineraries URL indexed and keep coming back
-  // to it, so seven hundred and sixty kosher paths stayed attributed to this
-  // domain. Permanent is what is actually true — the kosher site owns these
-  // and always will.
+  // AND IT NO LONGER HANDS THEM TO THE OTHER SITE. Every one of these used to
+  // answer 308 to whiteglovekoshertravel.com, which was right about the
+  // mechanism and wrong about the destination: this product must not direct
+  // its visitors there, and a redirect is the most direct direction there is.
+  // A path with a neutral home here gets a permanent redirect to it; one with
+  // no answer here gets 410 Gone, which is the true thing to say about an
+  // address this domain has never served. See lib/guide-paths.ts.
   //
   // NEVER on the admin host: some admin screen names ("/destinations") are also
   // guide prefixes, and the admin's own links out to them must reach the admin
   // routing below, not get bounced to the kosher site.
-  if (!onAdminHost && isGuidePath(pathname) && brandFromRequestHeaders(request.headers) === "itineraries") {
-    return NextResponse.redirect(new URL(pathname + request.nextUrl.search, BRAND_ORIGIN.kosher), 308);
+  if (!onAdminHost && brandFromRequestHeaders(request.headers) === "itineraries") {
+    const answer = guideAnswer(pathname);
+    if (answer?.kind === "redirect") {
+      return NextResponse.redirect(new URL(answer.to + request.nextUrl.search, request.url), 308);
+    }
+    if (answer?.kind === "gone") return goneResponse();
   }
 
   /**

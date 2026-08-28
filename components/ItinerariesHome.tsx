@@ -77,7 +77,13 @@ export default function ItinerariesHome() {
             <div key={c.title} className="flex flex-col rounded-2xl border border-[var(--gold-light)] bg-white p-6">
               <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{c.title}</h2>
               <p className="mt-3 flex-1 text-sm leading-6 text-stone-600">{c.body}</p>
-              <Link href={c.href} className="mt-4 text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
+              {/* min-h-11: these measured 300x20 at every width — the whole
+                  card is not a link, so this line is the only thing to press
+                  and it was half the minimum target. */}
+              <Link
+                href={c.href}
+                className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2"
+              >
                 {c.link} →
               </Link>
             </div>

@@ -1,21 +1,31 @@
 /**
  * The one thing a visitor could not see: what they actually end up holding.
  *
- * THE GAP THIS FILLS. The services page explains the process well — send us
- * the answers, we come back with directions, you pick one, we build it. What
- * nobody could do was look at the thing at the end of that. "A written
- * day-by-day itinerary" is a description of a deliverable, not the deliverable,
- * and a person deciding whether to write in is deciding about the deliverable.
+ * THE GAP THIS FILLS. The pages explain what the planner does. What nobody
+ * could do was look at the thing at the end of it. "A written day-by-day
+ * itinerary" is a description of a deliverable, not the deliverable, and a
+ * person deciding whether to pay is deciding about the deliverable.
  *
- * WHY THIS IS NOT AN INVENTED TESTIMONIAL, and the line is worth being precise
- * about, because the site's whole argument is that what it prints has been
- * checked:
+ * THIS IS THE GENERAL-TRAVEL SAMPLE, AND THAT IS THE POINT. The two products
+ * share a lineage and this file used to be the same week on both: a family of
+ * five in the Roman Ghetto, built around the Shabbos in the middle of it, with
+ * a hechsher to confirm and a Friday that stops early. All of that is true and
+ * good on White Glove Kosher Travel, and none of it belongs on White Glove
+ * Itineraries, which sells trip-building to advisers with clients of every
+ * kind. An adviser reading the sample was being shown a different company's
+ * deliverable as proof of what this one produces.
  *
- *   • Every PLACE named here is a record the site already holds and publishes
- *     with a source — the four Rome attractions in data/attractions.ts, the
- *     Ghetto quarter and its published shul coordinate in data/kosher-stays.ts,
- *     the one eatery in data/kosher-eateries.ts. Nothing is named that the site
- *     would not name on its own destination page.
+ * So the week here is an ordinary one. Same city, same family of five, same
+ * shape — a red-eye in, a slow first afternoon, two full days, a deliberately
+ * empty one, and out on a Sunday rather than a Friday. What changed is that
+ * the days are now sightseeing rather than a religious calendar.
+ *
+ * WHY IT IS STILL NOT AN INVENTED BROCHURE, and the line is worth being
+ * precise about:
+ *
+ *   • Every PLACE named is a real, checkable Rome landmark. The Colosseum, the
+ *     Pantheon, the Trevi Fountain, the Vatican Museums, Villa Borghese,
+ *     Trastevere and Ostia Antica are where the file says they are.
  *
  *   • Nothing is named that WOULD be a claim. No hotel, no airline, no flight
  *     number, no confirmation code, no price. A real itinerary carries all of
@@ -23,35 +33,25 @@
  *     of the document is the thing being shown and a made-up hotel name would
  *     be the one line on it that was not true of anywhere.
  *
- *   • The dates are a real week of a stated year, so the Friday is a Friday
- *     and the Shabbos falls where the document says it does. They are
- *     illustrative and the page says so, twice.
+ *   • No testimonial, no rating, no "chosen by 300 advisers". There is no real
+ *     one to print and this page does not invent one. The proof on offer is
+ *     the work itself.
  *
- * It is rendered through exactly the same engine as a real trip — buildDays(),
- * buildPrintTimeline(), PrintableItinerary — so what is on the page is what the
- * planner produces rather than a mock-up of it. If the printed document changes,
- * this changes with it, which is the only way a sample stays honest.
- *
- * THE TRIP IS DELIBERATELY ORDINARY: a week in Rome for a family of five. A
- * sample built to show off would be a worse answer to "what do I get" than one
- * built to show the normal case — which includes a day with nothing on it, a
- * Friday that stops early, and a Shabbos with no schedule at all. Those three
- * are the parts an ordinary travel itinerary gets wrong, so they are the parts
- * worth showing.
+ * It goes through the same buildDays() as a customer's trip, so the times, the
+ * walking and driving between stops and the evening entries are computed here
+ * exactly as they are for anybody else. If the planner changes, the sample
+ * changes with it, which is the only way a sample stays true.
  */
 
 import type { Itinerary } from "@/data/itinerary";
 
 /** The label carried on the page, in the metadata, and in the tests. */
 export const SAMPLE_NOTICE =
-  "A sample, not a booking. The places are real records from this site; the flights and the hotel are left unnamed because nothing here is reserved.";
+  "A sample, not a booking. The places are real; the flights and the hotel are left unnamed because nothing here is reserved.";
 
 export const SAMPLE_ITINERARY: Itinerary = {
   title: "Rome — a week, family of five",
   startDate: "2026-10-25",
-  // The week is built around the Shabbos in the middle of it rather than
-  // stopping before one. A sample that flies home on the Friday hides the part
-  // of a trip this site exists for.
   endDate: "2026-11-01",
   dayStartTime: "09:00",
   travelers: [
@@ -82,20 +82,20 @@ export const SAMPLE_ITINERARY: Itinerary = {
       date: "2026-11-01",
       departTime: "11:20",
       arriveTime: "15:10",
-      notes: "Sunday rather than Friday, so nobody is in an airport as Shabbos comes in.",
+      notes: "A late-morning departure, so the last day is not spent watching a clock.",
     },
   ],
   lodging: [
     {
       id: "sample-hotel",
       type: "hotel",
-      name: "A hotel inside the Ghetto",
+      name: "A hotel near the Pantheon",
       address: "Rome",
-      coordinates: "41.8921, 12.4780",
+      coordinates: "41.8986, 12.4769",
       checkIn: "2026-10-26",
       checkOut: "2026-11-01",
       notes:
-        "Chosen for where it stands rather than for its rating: inside the quarter around the Great Synagogue, so Shabbos works on foot. Your own itinerary names the property, the address and the confirmation number.",
+        "Chosen for where it stands rather than for its rating: central enough that four of the week's stops are on foot. Your own itinerary names the property, the address and the confirmation number.",
     },
   ],
   activities: [
@@ -110,39 +110,26 @@ export const SAMPLE_ITINERARY: Itinerary = {
       notes: "Nothing planned for the first afternoon. A day that starts with a red-eye does not hold a schedule.",
     },
     {
-      id: "sample-ghetto",
-      name: "The Ghetto and the Great Synagogue",
-      address: "Via del Portico d'Ottavia, Rome",
-      coordinates: "41.8921, 12.4780",
+      id: "sample-trastevere",
+      name: "An evening walk through Trastevere",
+      address: "Trastevere, Rome",
+      coordinates: "41.8892, 12.4694",
       date: "2026-10-26",
-      startTime: "16:00",
-      durationMins: 90,
+      startTime: "17:00",
+      durationMins: 120,
       order: 2,
-      href: "/destinations/rome",
-      notes: "Ten minutes on foot from where you are staying. The streets you will be eating in all week.",
+      notes: "Across the river and back. Nothing to book, and it keeps everybody awake until a sensible bedtime.",
     },
     {
       id: "sample-colosseum",
-      name: "The Colosseum",
+      name: "The Colosseum and the Roman Forum",
       address: "Piazza del Colosseo, Rome",
       coordinates: "41.8902, 12.4922",
       date: "2026-10-27",
       startTime: "09:30",
-      durationMins: 150,
+      durationMins: 180,
       order: 1,
-      notes: "Book the timed entry ahead. The Arch of Titus, with the Menorah on it, is a few minutes' walk from the exit.",
-    },
-    {
-      id: "sample-lunch",
-      name: "Back to the Ghetto for lunch",
-      address: "Via del Portico d'Ottavia, Rome",
-      coordinates: "41.8921, 12.4780",
-      date: "2026-10-27",
-      startTime: "13:00",
-      durationMins: 75,
-      order: 2,
-      notes:
-        "Twenty minutes on foot from the Forum. Confirm the hechsher of whichever place you use close to your dates — restaurants change hands.",
+      notes: "Book the timed entry ahead. One ticket covers the Forum and the Palatine on the same day.",
     },
     {
       id: "sample-pantheon",
@@ -152,7 +139,7 @@ export const SAMPLE_ITINERARY: Itinerary = {
       date: "2026-10-27",
       startTime: "15:30",
       durationMins: 120,
-      order: 3,
+      order: 2,
       notes: "Both are open squares and free to stand in, which is what makes them work with a four-year-old.",
     },
     {
@@ -168,7 +155,7 @@ export const SAMPLE_ITINERARY: Itinerary = {
     },
     {
       id: "sample-free",
-      name: "An unplanned afternoon",
+      name: "An unplanned day",
       address: "Rome",
       date: "2026-10-29",
       startTime: "10:00",
@@ -178,26 +165,27 @@ export const SAMPLE_ITINERARY: Itinerary = {
         "Deliberately empty. A week with seven full days on it is a week somebody abandons on day three.",
     },
     {
-      id: "sample-erev-shabbos",
-      name: "Shopping for Shabbos, and back before candle-lighting",
-      address: "Via del Portico d'Ottavia, Rome",
-      coordinates: "41.8921, 12.4780",
+      id: "sample-borghese",
+      name: "Villa Borghese and the gardens",
+      address: "Piazzale Napoleone I, Rome",
+      coordinates: "41.9142, 12.4922",
       date: "2026-10-30",
       startTime: "10:00",
-      durationMins: 150,
+      durationMins: 180,
       order: 1,
-      notes:
-        "The planner warns when a Friday runs into candle-lighting — this is the day that check is for. Confirm the times for your own dates.",
+      notes: "The gallery needs a timed ticket; the gardens around it do not, and there are bicycles to hire.",
     },
     {
-      id: "sample-shabbos",
-      name: "Shabbos in the Ghetto",
-      address: "Via del Portico d'Ottavia, Rome",
-      coordinates: "41.8921, 12.4780",
+      id: "sample-ostia",
+      name: "Ostia Antica, out for the day",
+      address: "Viale dei Romagnoli, Ostia Antica",
+      coordinates: "41.7556, 12.2917",
       date: "2026-10-31",
+      startTime: "09:30",
+      durationMins: 300,
       order: 1,
       notes:
-        "No times and nothing scheduled, on purpose. Everything is within the quarter you are staying in, which is the whole reason the hotel was chosen for where it stands.",
+        "Forty minutes on the train and the one thing on the day. A whole Roman town, and quiet enough that children can run in it.",
     },
     {
       id: "sample-last-morning",
@@ -211,7 +199,7 @@ export const SAMPLE_ITINERARY: Itinerary = {
     },
   ],
   notes:
-    "From your planning answers:\n• Kind of trip: Family trip\n• Destination: Rome\n• Travelers: 2 adults, 3 children (ages 4, 7 and 11)\n• Kosher standards: Cholov Yisroel, Glatt / Beis Yosef meat\n• Shabbos: Walking distance to a minyan\n• Pace: Balanced\n• Access needs: Short walking distances",
+    "From the planning answers:\n• Kind of trip: Family trip\n• Destination: Rome\n• Travellers: 2 adults, 3 children (ages 4, 7 and 11)\n• Pace: Balanced\n• Access needs: Short walking distances\n• Must include: One day out of the city",
 };
 
 /**
@@ -223,8 +211,8 @@ export const SAMPLE_ITINERARY: Itinerary = {
 export const WHAT_IS_IN_IT: ReadonlyArray<[string, string]> = [
   ["A day per page", "Every day as one running schedule — the time, what it is, where, and the line of detail that matters."],
   ["Real driving and walking times", "Between each stop, from road routing rather than straight-line distance, so the day holds up."],
-  ["The kosher side, per day", "Where you are eating, how far it is from where you are standing, and what to bring."],
-  ["A Friday that stops early", "The planner flags a day that runs into candle-lighting. That is what the last day here is showing."],
-  ["Room to change it", "It arrives in your account on this site as well as on paper. Move a day, drop a stop, print it again."],
-  ["Nothing invented", "Every place named is a record this site publishes with a source. Where we hold nothing, the page says so."],
+  ["A day with nothing on it", "Planned in, not left over. The week here has one, and it is the reason the other six survive contact."],
+  ["On the phone as well as on paper", "The same trip opens as an app for whoever is travelling, with the wallet kept for when there is no signal."],
+  ["Room to change it", "It stays in the account that built it. Move a day, drop a stop, hand it over again."],
+  ["Nothing invented", "No airline, no confirmation code and no price is printed here, because none of them has happened yet."],
 ];
