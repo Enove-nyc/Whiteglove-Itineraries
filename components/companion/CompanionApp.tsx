@@ -3629,7 +3629,7 @@ function AdvisorInbox({
 
   if (open) {
     return (
-      <div style={{ minHeight: "100%", display: "flex", flexDirection: "column", animation: "wgIn .28s ease both" }}>
+      <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", animation: "wgIn .28s ease both" }}>
         <button onClick={() => setOpen(null)} className="wg-warm" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, border: 0, borderBottom: "1px solid rgba(38,50,58,.08)", background: "#ece8df", cursor: "pointer", padding: "12px 16px", textAlign: "left" }}>
           <span style={{ fontSize: 15, color: "#57534e" }}>←</span>
           <span style={{ font: `400 17px/1.1 ${serif}` }}>{open.client || open.name}</span>
