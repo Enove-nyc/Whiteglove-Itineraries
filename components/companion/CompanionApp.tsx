@@ -673,6 +673,11 @@ export default function CompanionApp({
   // with ?peek=1 so merely checking never marks it read, the way it would if
   // this used the same call the open thread itself polls with.
   const [unread, setUnread] = useState(false);
+  // True while the message composer holds the keyboard open. The bottom tab bar
+  // hides then rather than riding up squeezed between the composer and the
+  // keyboard — the composer stays put on top of the keyboard, the tabs come
+  // back the moment the field is dismissed (WhatsApp's own behaviour).
+  const [composerUp, setComposerUp] = useState(false);
   useEffect(() => {
     if (!liveChat) return;
     let cancelled = false;
@@ -1756,7 +1761,7 @@ export default function CompanionApp({
     body = advisorInbox ? (
       <AdvisorInbox pendingShare={pendingShare} onPendingShareUsed={() => setPendingShare(null)} />
     ) : liveChat ? (
-      <LiveChat chat={liveChat} subject={st.chatSubject} onSubjectUsed={() => setSt((s) => ({ ...s, chatSubject: null }))} places={shareablePlaces} />
+      <LiveChat chat={liveChat} subject={st.chatSubject} onSubjectUsed={() => setSt((s) => ({ ...s, chatSubject: null }))} places={shareablePlaces} onComposerFocus={setComposerUp} />
     ) : (
       guideChat
     );
@@ -1799,7 +1804,10 @@ export default function CompanionApp({
       {/* content */}
       <div className="wg-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch" }}>{body}</div>
       {/* tabs — an icon over a label per tab, with one gold pill that slides to
-          the active one (the messenger/travel-app bottom bar). */}
+          the active one (the messenger/travel-app bottom bar). Hidden while the
+          message composer holds the keyboard, so it never rides up wedged
+          between the input and the keyboard. */}
+      {!(composerUp && st.screen === "messages") && (
       <div style={{ flexShrink: 0, position: "relative", padding: "8px 10px", background: "#ece8df", borderTop: "1px solid rgba(38,50,58,.08)", display: "flex" }}>
         {(() => {
           const idx = tabs.findIndex((t) => t.on);
@@ -1838,6 +1846,7 @@ export default function CompanionApp({
           </button>
         ))}
       </div>
+      )}
     </div>
   );
 
@@ -2175,6 +2184,7 @@ function LiveChat({
   places = [],
   initialDraft,
   onInitialDraftUsed,
+  onComposerFocus,
 }: {
   chat: CompanionChat;
   /** A day or activity tapped through "Ask about this" — folded into the
@@ -2192,6 +2202,9 @@ function LiveChat({
    *  straight into the composer, ready to send as an ordinary message. */
   initialDraft?: string | null;
   onInitialDraftUsed?: () => void;
+  /** Told when the composer takes or loses the keyboard, so the shell can pull
+   *  the bottom tab bar out of the way while typing and bring it back after. */
+  onComposerFocus?: (focused: boolean) => void;
 }) {
   const { shareId, side, advisorName } = chat;
   const [messages, setMessages] = useState<LiveMsg[]>([]);
@@ -2256,6 +2269,7 @@ function LiveChat({
   const [jumpFlashAt, setJumpFlashAt] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -2434,6 +2448,23 @@ function LiveChat({
     const el = scrollerRef.current;
     if (el && nearBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [messages.length, otherTyping]);
+
+  // The keyboard opening shrinks the visual viewport, which shrinks the whole
+  // phone (height:100dvh) and with it the message list — the newest message
+  // would otherwise end up hidden under the composer. Re-pin to the bottom
+  // whenever the viewport resizes, so the last message stays in view above the
+  // keyboard the way it does in a real messaging app.
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const onResize = () => pinToBottomIfNear();
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
+  // Leaving the thread (unmount, or switching tabs) must always hand the tab bar
+  // back — a lingering "keyboard up" would hide it on the next screen.
+  useEffect(() => () => onComposerFocus?.(false), [onComposerFocus]);
 
   // One place to POST from — text, a picture, a place, or a voice note all
   // land here; the reply carries the whole thread back, so the send is also
@@ -2859,8 +2890,8 @@ function LiveChat({
   }
 
   return (
-    <div style={{ minHeight: "100%", display: "flex", flexDirection: "column", position: "relative", animation: "wgIn .28s ease both" }}>
-      <div ref={scrollerRef} onScroll={noteScrollPosition} className="wg-scroll" style={{ flex: 1, overflow: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", position: "relative", animation: "wgIn .28s ease both" }}>
+      <div ref={scrollerRef} onScroll={noteScrollPosition} className="wg-scroll" style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
         {!available && (
           <div style={{ alignSelf: "center", textAlign: "center", font: "400 12px/1.5 Inter,sans-serif", color: "#765321", background: "#f7eee0", padding: "10px 14px", borderRadius: 14 }}>
             Messaging isn&apos;t connected yet.
@@ -3283,7 +3314,7 @@ function LiveChat({
           </button>
         </div>
       ) : (
-        <div style={{ flexShrink: 0, position: "sticky", bottom: 0, background: CREAM, borderTop: "1px solid rgba(38,50,58,.08)", padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ flexShrink: 0, background: "rgba(247,245,240,.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", borderTop: "1px solid rgba(38,50,58,.06)", padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
           {editingAt && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5, color: "#78716c", padding: "0 2px" }}>
               <span>Editing your message</span>
@@ -3318,12 +3349,16 @@ function LiveChat({
           )}
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={(e) => { void pickImage(e.target.files?.[0]); e.target.value = ""; }} />
+            {/* The one input that asks for the camera itself (capture), so the
+                menu's "Camera" takes a fresh photo while the bar's Photos button
+                and the menu's "Photo" open the gallery. */}
+            <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" style={{ display: "none" }} onChange={(e) => { void pickImage(e.target.files?.[0]); e.target.value = ""; }} />
             <input ref={videoRef} type="file" accept="video/mp4,video/quicktime,video/webm" style={{ display: "none" }} onChange={(e) => { pickVideo(e.target.files?.[0]); e.target.value = ""; }} />
             <input ref={docRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => { pickDocument(e.target.files?.[0]); e.target.value = ""; }} />
             {/* One rounded input bar — attach on the left, the growing field, a
                 camera on the right — with the round voice/send button beside it,
                 the WhatsApp / Signal shape. */}
-            <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", gap: 1, background: "#ffffff", border: "1px solid rgba(38,50,58,.16)", borderRadius: 23, padding: "2px 4px 2px 3px" }}>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", gap: 1, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", borderRadius: 24, boxShadow: "0 1px 3px rgba(23,45,82,.05)", padding: "2px 4px 2px 3px" }}>
               {!editingAt && (
                 <div ref={attachMenuRef} style={{ position: "relative", flex: "none" }}>
                   <button
@@ -3353,8 +3388,11 @@ function LiveChat({
                         overflow: "hidden",
                       }}
                     >
+                      <button role="menuitem" onClick={() => { setAttachOpen(false); cameraRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
+                        <Icon name="camera" className="h-4 w-4" /> Camera
+                      </button>
                       <button role="menuitem" onClick={() => { setAttachOpen(false); fileRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
-                        <Icon name="camera" className="h-4 w-4" /> Photo
+                        <Icon name="image" className="h-4 w-4" /> Photo
                       </button>
                       <button role="menuitem" onClick={() => { setAttachOpen(false); videoRef.current?.click(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "11px 14px", fontSize: 13.5, color: "#26323a" }}>
                         <Icon name="video" className="h-4 w-4" /> Video
@@ -3433,6 +3471,8 @@ function LiveChat({
                 rows={1}
                 value={draft}
                 onChange={(e) => { setDraft(e.target.value); noteTyping(); }}
+                onFocus={() => { onComposerFocus?.(true); requestAnimationFrame(() => pinToBottomIfNear()); }}
+                onBlur={() => onComposerFocus?.(false)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                 placeholder={editingAt ? "Edit your message…" : side === "advisor" ? "Reply to your client…" : `Message ${otherName}…`}
                 // 16px, not 14: iOS Safari auto-zooms the whole page into any
@@ -3440,17 +3480,17 @@ function LiveChat({
                 // exactly what reads as the screen "jumping" when the keyboard
                 // opens. Grows with what is typed (see the effect above),
                 // rather than staying squashed to one line.
-                style={{ flex: 1, minWidth: 0, resize: "none", overflow: "auto", border: 0, background: "none", borderRadius: 0, padding: "11px 6px 11px 8px", fontFamily: "Inter,sans-serif", fontSize: 16, lineHeight: 1.4, color: "#26323a", outline: "none" }}
+                style={{ flex: 1, minWidth: 0, resize: "none", overflow: "auto", border: 0, background: "none", borderRadius: 0, padding: "11px 6px 11px 8px", fontFamily: "Inter,sans-serif", fontSize: 16, lineHeight: 1.4, color: "#26323a", outline: "none", boxShadow: "none", WebkitAppearance: "none", WebkitTapHighlightColor: "transparent" }}
               />
               {!editingAt && (
                 <button
                   onClick={() => fileRef.current?.click()}
                   disabled={sending || recording}
-                  title="Camera"
-                  aria-label="Take or choose a photo"
+                  title="Photos"
+                  aria-label="Choose a photo from your library"
                   style={{ flex: "none", border: 0, background: "none", color: ICON_BLUE, cursor: "pointer", width: 38, height: 42, borderRadius: 12, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending || recording ? 0.6 : 1 }}
                 >
-                  <Icon name="camera" className="h-[20px] w-[20px]" />
+                  <Icon name="image" className="h-[21px] w-[21px]" />
                 </button>
               )}
             </div>
@@ -3462,7 +3502,9 @@ function LiveChat({
                 <Icon name="stop" className="h-[19px] w-[19px]" />
               </button>
             ) : draft.trim() || editingAt ? (
-              <button onClick={() => send()} disabled={sending} title="Send" aria-label="Send" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: "50%", fontSize: 19, fontWeight: 700, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}>{editingAt ? "✓" : "↑"}</button>
+              <button onClick={() => send()} disabled={sending} title="Send" aria-label="Send" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}>
+                {editingAt ? <Icon name="check" className="h-[21px] w-[21px]" strokeWidth={2.4} /> : <Icon name="send" className="h-[20px] w-[20px]" strokeWidth={1.9} />}
+              </button>
             ) : (
               <button onClick={() => void startRecording()} disabled={sending} title="Record a voice note" aria-label="Record a voice note" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}>
                 <Icon name="microphone" className="h-[20px] w-[20px]" />
@@ -3678,6 +3720,11 @@ const CSS = `
  * and tab bar do not bounce. */
 .wg-scroll { overscroll-behavior: contain; }
 .wg-scroll::-webkit-scrollbar, .wg-toolbar::-webkit-scrollbar { display: none; }
+/* No blue focus box on the message field — some Android WebViews draw one over
+ * a focused textarea regardless of inline styles, which read as a sloppy square
+ * around the composer. Kill the outline, the tap highlight and any focus ring. */
+.wg-phone textarea, .wg-phone input, .wg-phone button { -webkit-tap-highlight-color: transparent; }
+.wg-phone textarea:focus, .wg-phone textarea:focus-visible, .wg-phone input:focus, .wg-phone input:focus-visible { outline: none; box-shadow: none; }
 .wg-press:hover { filter: brightness(.95); }
 .wg-fade:hover { opacity: .72; }
 .wg-warm:hover { background: #f7eee0; }
