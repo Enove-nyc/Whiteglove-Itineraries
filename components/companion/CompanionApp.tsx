@@ -3190,16 +3190,28 @@ function LiveChat({
                     multi-line note — rather than drifting toward whatever
                     sits below it; dimmed until touched so a long thread of
                     bubbles doesn't read as a column of dots. */}
-                {hasMenu && (
+                {hasMenu && (() => {
+                  // Its own menu, not any menu: the dot beside every other
+                  // message stays receded while this one is open.
+                  const menuOpen = menuOpenAt === m.at;
+                  return (
                   <button
                     onClick={() => openMenu(m.at)}
                     title="Message options"
                     aria-label="Message options"
-                    style={{ flex: "none", border: 0, background: "none", cursor: "pointer", padding: 10, margin: -6, color: "#a8a29e", opacity: 0.55, display: "flex", alignItems: "center" }}
+                    aria-expanded={menuOpen}
+                    aria-haspopup="menu"
+                    /* Receded until touched, because there is one of these on
+                       every message in the thread and at full strength they
+                       read as a column of punctuation down the side of the
+                       conversation. Full opacity while its own menu is open,
+                       so the message being acted on is the one that looks it. */
+                    style={{ flex: "none", border: 0, background: "none", cursor: "pointer", padding: 10, margin: -6, color: "#a8a29e", opacity: menuOpen ? 1 : 0.55, display: "flex", alignItems: "center" }}
                   >
                     <Icon name="more" className="h-4 w-4" />
                   </button>
-                )}
+                  );
+                })()}
               </div>
               {/* Reactions hang under the bubble, on the message's own side,
                   both people's showing. Tapping mine again removes it. */}

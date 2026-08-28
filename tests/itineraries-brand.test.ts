@@ -9,6 +9,7 @@ import {
   NAV_CATEGORIES,
 } from "@/lib/navigation";
 import { brandForHost, brandFromRequestHeaders } from "@/lib/site-brand-core";
+import { GUIDE_ONLY_PREFIXES, isGuidePath } from "@/lib/guide-paths";
 
 /**
  * whitegloveitineraries.com is its own site — STRICTLY the planner, not a guide.
@@ -180,12 +181,10 @@ describe("the itineraries domain's own pages never title themselves 'Kosher Trav
    * the kosher site before it can render, and /admin does not, because this
    * domain sends that to the kosher host too.
    */
-  const middleware = readFileSync("middleware.ts", "utf8");
-  const GUIDE_ONLY = middleware
-    .slice(middleware.indexOf("const GUIDE_ONLY_PREFIXES"))
-    .split("];")[0]
-    .match(/"\/[a-z-]+"/g)!
-    .map((quoted) => quoted.replace(/"/g, ""));
+  // Read, not parsed out of middleware.ts: the list moved to
+  // lib/guide-paths.ts so the sitemap could read it too, and a regular
+  // expression over source only ever checks the copy it is pointed at.
+  const GUIDE_ONLY = [...GUIDE_ONLY_PREFIXES];
 
   const routeOf = (file: string) =>
     "/" + file.replace(/^app\//, "").replace(/\/page\.tsx$/, "").replace(/\/?\(.*?\)/g, "").replace(/^\/+/, "");
@@ -232,12 +231,11 @@ describe("the guide is redirected off the itineraries domain", () => {
   });
 
   it("lists the guide's sections and NOT the planner's own paths", () => {
-    const list = MW.slice(MW.indexOf("GUIDE_ONLY_PREFIXES"), MW.indexOf("function isGuidePath"));
     for (const guide of ["/kosher", "/cemeteries", "/heritage", "/destinations", "/hotels", "/things-to-do", "/directory"]) {
-      assert.ok(list.includes(`"${guide}"`), `guide prefix ${guide} should be redirected`);
+      assert.ok(isGuidePath(guide), `guide prefix ${guide} should be redirected`);
     }
     for (const planner of ["/plan", "/itinerary", "/app", "/account", "/i", "/f", "/book", "/proposal", "/p", "/library", "/forms", "/form", "/pipeline", "/t", "/payments", "/pay"]) {
-      assert.ok(!list.includes(`"${planner}"`), `planner path ${planner} must stay on the itineraries domain`);
+      assert.ok(!isGuidePath(planner), `planner path ${planner} must stay on the itineraries domain`);
     }
   });
 });

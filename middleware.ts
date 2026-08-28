@@ -15,50 +15,16 @@ import {
   edgeSiteIsLocked,
 } from "@/lib/edge-lock";
 import { MIGRATION_LISTS, movedTo } from "@/lib/route-migration";
+import { isGuidePath } from "@/lib/guide-paths";
 import { BRAND_ORIGIN, brandFromRequestHeaders, configuredBrand } from "@/lib/site-brand-core";
 import { isAndroidAppHeaders } from "@/lib/android-app";
 
-/**
- * The guide lives on the kosher site; the itineraries site is strictly the
- * planner. These are the guide's path prefixes — the browsable directory of
- * destinations, kosher information, heritage and travel services — and any of
- * them reached on the itineraries domain is redirected to the kosher one, where
- * it belongs. The planner's own paths (/plan, /itinerary, /app, /account, the
- * share links) are deliberately NOT here, so they stay put.
- */
-const GUIDE_ONLY_PREFIXES = [
-  "/destinations",
-  "/map",
-  "/kosher",
-  "/kosher-travel",
-  "/shuls",
-  "/mikvaos",
-  "/eruvin",
-  "/zmanim",
-  "/tzaddikim",
-  "/cemeteries",
-  "/hechsherim",
-  "/heritage",
-  "/hotels",
-  "/things-to-do",
-  "/transfers",
-  "/travel-insurance",
-  "/travel-gear",
-  "/directory",
-  // The kevarim-towns directory. Guide content that was never on this list,
-  // so it answered 200 on the itineraries domain with a Kosher Travel title.
-  "/stops",
-  "/esim",
-  "/travel-guide",
-  "/sources",
-  "/verification",
-  "/submit",
-  "/alerts",
-  "/case-studies",
-  "/info",
-];
-
 /*
+ * The guide lives on the kosher site; the itineraries site is strictly the
+ * planner. GUIDE_ONLY_PREFIXES and isGuidePath moved to lib/guide-paths.ts so
+ * the sitemap reads the same list — it did not, and offered Google 760 kosher
+ * URLs this middleware redirects away from.
+ *
  * /sample-itinerary IS NOT ON THAT LIST, and used to be.
  *
  * It is the one page that answers "what do I actually get" — a real week
@@ -68,9 +34,6 @@ const GUIDE_ONLY_PREFIXES = [
  * the site was ejecting its own prospects mid-decision.
  */
 
-function isGuidePath(pathname: string): boolean {
-  return GUIDE_ONLY_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
 
 /**
  * Hostnames that are always open, set as a comma-separated SITE_OPEN_HOSTS
@@ -286,14 +249,21 @@ export async function middleware(request: NextRequest) {
   // is sent to the kosher site, where the guide lives. Brand is read from the
   // request (the proxy's x-wg-brand header first, then the Host), so it is right
   // whether the request came straight to Railway or through the Cloudflare
-  // worker that fronts the itineraries domain. 307, not 308: the split is still
-  // young, and a permanent redirect would stick in browser caches if it moved.
+  // worker that fronts the itineraries domain.
+  //
+  // 308 NOW, NOT 307. It was temporary on the grounds that the split was young
+  // and a permanent redirect sticks in browser caches. The split is not young
+  // any more, and the temporary one has a cost that has come due: a 307 tells
+  // a search engine to keep the itineraries URL indexed and keep coming back
+  // to it, so seven hundred and sixty kosher paths stayed attributed to this
+  // domain. Permanent is what is actually true — the kosher site owns these
+  // and always will.
   //
   // NEVER on the admin host: some admin screen names ("/destinations") are also
   // guide prefixes, and the admin's own links out to them must reach the admin
   // routing below, not get bounced to the kosher site.
   if (!onAdminHost && isGuidePath(pathname) && brandFromRequestHeaders(request.headers) === "itineraries") {
-    return NextResponse.redirect(new URL(pathname + request.nextUrl.search, BRAND_ORIGIN.kosher), 307);
+    return NextResponse.redirect(new URL(pathname + request.nextUrl.search, BRAND_ORIGIN.kosher), 308);
   }
 
   /**

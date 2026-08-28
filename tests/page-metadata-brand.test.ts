@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { GUIDE_ONLY_PREFIXES } from "@/lib/guide-paths";
 
 /**
  * A page's HEAD must not name the other brand while its body names this one.
@@ -23,11 +24,14 @@ import { describe, it } from "node:test";
  * brand that ever sees them is the one they name.
  */
 
+/**
+ * READ, NOT PARSED. This used to pull the list out of middleware.ts with a
+ * regular expression, which broke the moment the list moved to
+ * lib/guide-paths.ts so the sitemap could read it too — and a test that parses
+ * source can only ever check the copy it happens to be looking at.
+ */
 function guideOnlyPrefixes(): string[] {
-  const source = readFileSync("middleware.ts", "utf8");
-  const block = source.match(/const GUIDE_ONLY_PREFIXES = \[([\s\S]*?)\];/);
-  assert.ok(block, "middleware.ts no longer declares GUIDE_ONLY_PREFIXES the way this test reads it");
-  return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  return [...GUIDE_ONLY_PREFIXES];
 }
 
 /** Every app-router page file, with the route it serves. */

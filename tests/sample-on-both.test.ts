@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { publicPaths } from "@/lib/site-map";
+import { GUIDE_ONLY_PREFIXES } from "@/lib/guide-paths";
 
 /**
  * The page that answers "what do I actually get", on the site that charges for it.
@@ -21,11 +22,14 @@ import { publicPaths } from "@/lib/site-map";
  * scrolls further down.
  */
 
+/**
+ * READ, NOT PARSED. This used to pull the list out of middleware.ts with a
+ * regular expression, which broke the moment the list moved to
+ * lib/guide-paths.ts so the sitemap could read it too — and a test that parses
+ * source can only ever check the copy it happens to be looking at.
+ */
 function guideOnlyPrefixes(): string[] {
-  const source = readFileSync("middleware.ts", "utf8");
-  const block = source.match(/const GUIDE_ONLY_PREFIXES = \[([\s\S]*?)\];/);
-  assert.ok(block, "middleware.ts no longer declares GUIDE_ONLY_PREFIXES the way this test reads it");
-  return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  return [...GUIDE_ONLY_PREFIXES];
 }
 
 describe("the sample is reachable on the domain that sells it", () => {
