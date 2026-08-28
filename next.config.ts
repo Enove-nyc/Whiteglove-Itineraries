@@ -22,11 +22,14 @@ const nextConfig: NextConfig = {
    * (components/PartnerSearchWidget). DENY would blank those three panels and
    * the failure would look like a broken partner rather than a header.
    *
-   * The permissions list switches off what nothing on this site uses —
-   * getUserMedia and camera — and ALLOWS geolocation for this origin only
-   * (`geolocation=(self)`): the companion app's chat lets a traveller share
-   * their current place with their advisor, and a blanket `geolocation=()`
-   * would kill that in every browser that honours the header. Self, not `*`,
+   * The permissions list ALLOWS microphone, camera and geolocation for this
+   * origin only (`=(self)`), and switches nothing off blanketly. All three are
+   * things the companion app's chat now does: a voice note records the mic, the
+   * camera takes a photo, and a shared location reads geolocation. A blanket
+   * `microphone=()` / `camera=()` — which this header used to carry, back when
+   * nothing on the site used either — makes getUserMedia throw NotAllowedError
+   * inside the native app no matter what the OS has granted, so the voice-note
+   * button failed with the OS permission sitting there enabled. Self, not `*`,
    * so only our own pages may ask, and the browser still prompts the person.
    * `payment` is deliberately absent from the list: Duffel's card component
    * handles card entry, and switching that capability off is not a guess worth
@@ -61,7 +64,7 @@ const nextConfig: NextConfig = {
           // attribution that reads a referrer keeps working; the path a
           // visitor was reading does not leave the site.
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(self)" },
           { key: "Reporting-Endpoints", value: reportingEndpointsHeader(CSP_REPORT_PATH) },
           { key: "Content-Security-Policy", value: contentSecurityPolicy(CSP_REPORT_PATH) },
         ],
