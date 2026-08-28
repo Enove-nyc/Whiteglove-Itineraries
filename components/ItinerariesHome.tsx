@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import HomeAudience from "@/components/HomeAudience";
 import StartingPoints from "@/components/StartingPoints";
 
 /**
@@ -12,7 +13,13 @@ import StartingPoints from "@/components/StartingPoints";
  * the other domain. Everything it links to already exists; this is a front
  * door, not a new section.
  *
- * TWO AUDIENCES, ONE PAGE. The three cards below are for the advisor already
+ * TWO AUDIENCES, AND THE HERO NOW ASKS WHICH. It spoke to one of them only —
+ * "in your client's pocket", "one link per client" — so somebody planning a
+ * single trip of their own, which is a plan this product sells at a one-time
+ * fee, read a page about running clients and had to work out for themselves
+ * that it was also for them. components/HomeAudience.tsx.
+ *
+ * The three cards below are for the advisor already
  * using this as a client tool. Underneath them is the site's other real
  * audience — somebody planning their own trip — who used to have no way in
  * from this page at all: no self-service door, nothing free, nothing to
@@ -21,8 +28,6 @@ import StartingPoints from "@/components/StartingPoints";
  * build it yourself, search booking partners — not a new pitch invented here.
  */
 export default function ItinerariesHome() {
-  const cta =
-    "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition";
   return (
     <main className="min-h-screen bg-[var(--cream)] text-[var(--ink)]">
       <Navbar brand="itineraries" />
@@ -31,31 +36,7 @@ export default function ItinerariesHome() {
         <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-[var(--navy)] via-[#24405f] to-[#3a5462]" />
         <div className="relative mx-auto max-w-3xl text-center">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#e7d3ad]">White Glove Itineraries</p>
-          <h1 className="mt-5 font-[family-name:var(--font-display)] text-4xl leading-tight sm:text-6xl">
-            The trip you plan, in your client&apos;s pocket.
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#c9d3da] sm:text-lg">
-            Build an itinerary a day at a time, then hand it over as an app on their phone —
-            the days, the map, a travel wallet kept for when there is no signal, and a chat
-            with you. One link per client.
-          </p>
-          {/* THE SECOND ACTION IS THE SAMPLE, not the app.
-              Both of the old two asked a visitor to start using the product
-              before they had seen what it produces: "Build a trip" opens an
-              empty planner and "See the app" opens their own, which is empty
-              too. /sample-itinerary is the finished document — a real week,
-              rendered by the same component that prints a customer's trip —
-              and it needs no account. It also used to be unreachable from this
-              domain entirely; see the note in middleware.ts. The app is still
-              one line down, in the "Hand it over" card. */}
-          <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link href="/itinerary" className={`${cta} bg-white text-[var(--navy)] hover:bg-[var(--gold-light)]`}>
-              Build a trip
-            </Link>
-            <Link href="/sample-itinerary" className={`${cta} border border-white/40 text-white hover:bg-white/10`}>
-              See a finished one
-            </Link>
-          </div>
+          <HomeAudience />
         </div>
       </section>
 
