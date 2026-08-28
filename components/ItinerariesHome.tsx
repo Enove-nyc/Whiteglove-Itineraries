@@ -68,16 +68,28 @@ export default function ItinerariesHome() {
               href: "/itinerary",
               link: "Open the planner",
             },
+            /* BOTH OF THESE POINTED AT /app, AND /app IS A DOOR.
+               To a visitor who has not signed in it offers two things — enter
+               a code from your adviser, or log in — so "See the app" showed
+               somebody a code field instead of the app, and "Open your inbox"
+               showed them the client-code door instead of an inbox. Two of the
+               three cards on the page that explains the product opened onto a
+               lock.
+
+               The app has a real public demonstration at /app/preview: one
+               synthetic trip, no account, the thing itself. The inbox has no
+               public version because it holds real client conversations, so
+               that one goes to sign-in and carries where it was headed. */
             {
               title: "Hand it over",
               body: "Create a client link for a trip. It opens as an app on their phone — no account, only their itinerary.",
-              href: "/app",
+              href: "/app/preview",
               link: "See the app",
             },
             {
               title: "Stay in touch",
               body: "Every client is a chat. You see all of them in one inbox; they reach you from their trip.",
-              href: "/app",
+              href: "/login?next=%2Fapp",
               link: "Open your inbox",
             },
           ].map((c) => (
