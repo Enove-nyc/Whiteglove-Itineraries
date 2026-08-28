@@ -83,9 +83,14 @@ export default async function AboutPage() {
             >
               Open the contact form
             </Link>
+            {/* AN ADDRESS IS DATA, NOT A LABEL, and it was being set as one.
+                Uppercase at 0.12em tracking made it wider than a phone — the
+                one element still scrolling a page sideways once the root
+                element stopped hiding it. Sentence case at its own size, and
+                free to break if a longer address ever lands here. */}
             <a
               href={`mailto:${contactEmailFor(siteBrand, words)}`}
-              className="inline-flex min-h-11 items-center rounded-md border border-white/30 px-6 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:border-[var(--gold-light)] hover:text-[var(--gold-light)]"
+              className="inline-flex min-h-11 max-w-full items-center break-all rounded-md border border-white/30 px-5 py-2 text-sm font-semibold text-white transition hover:border-[var(--gold-light)] hover:text-[var(--gold-light)]"
             >
               {contactEmailFor(siteBrand, words)}
             </a>

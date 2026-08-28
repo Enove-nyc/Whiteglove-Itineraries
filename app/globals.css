@@ -126,13 +126,34 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html { overflow-x: hidden; scroll-behavior: smooth; }
+/* NOTHING ON html, AND THAT IS THE FIX, NOT AN OMISSION.
+ *
+ * This carried `overflow-x: hidden`, to stop a stray wide element scrolling
+ * the page sideways. It also made the root element a scroll container, and a
+ * scroll container between a `position: sticky` element and the viewport is
+ * what that element sticks to — so every sticky thing here resolved against a
+ * box that never scrolls, and not one of them has ever stuck. The site header
+ * included: `sticky top-0` on Navbar has been decorative since it was written.
+ *
+ * Measured in the other repository, where the same rule sat in the same file
+ * and the long directory pages made it visible: scrolled to 6,000px, the
+ * header sat at -3,729 with any non-visible overflow-x on html, and at 0
+ * without it. `clip` behaves exactly like `hidden` here — the trap is the root
+ * element, not the keyword, which is why swapping the keyword was tried first
+ * and changed nothing.
+ *
+ * The guard against sideways scroll stays on body, where it costs nothing:
+ * body is not the scrollport, so a sticky descendant is unaffected by it.
+ * Every page on this site was swept at 390 and 768 afterwards; the contact
+ * address on /about was the one element the root rule had been hiding, and is
+ * fixed in the same commit. */
+html { scroll-behavior: smooth; }
 body {
   background: var(--cream);
   color: var(--ink);
   font-family: var(--font-sans);
   line-height: 1.6;
-  overflow-x: hidden;
+  overflow-x: clip;
   text-rendering: optimizeLegibility;
 }
 
