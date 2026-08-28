@@ -794,7 +794,16 @@ export default function CompanionApp({
   }
 
   const hasConcierge = trip.concierge;
-  const isConcierge = hasConcierge && st.tmode === "concierge";
+  /**
+   * The Concierge/Guide and Traveler/Advisor switches, and the "Concierge" tab
+   * name, are a demonstration of a tier that is not built — `concierge` is true
+   * for the scripted sample and nothing else. On /app/preview, which promises
+   * "this is what your client opens", they were three controls a client will
+   * never have, sitting beside the Advisor tab with nothing to tell them apart.
+   * The scripted thread survives; the switches do not.
+   */
+  const showcaseSwitches = hasConcierge && !trip.previewAsClient;
+  const isConcierge = hasConcierge && (trip.previewAsClient || st.tmode === "concierge");
   const isGuideMode = !isConcierge;
   /**
    * A REAL advisor thread exists (hasMessages), as opposed to the showcase's
@@ -1005,7 +1014,13 @@ export default function CompanionApp({
   // You — so a real trip's Guide notes live inside the You tab (see
   // guideSection below) rather than getting a tab of their own.
   const tabDefs: [Screen, string, IconName][] = [["home", "Trip", "map-pin"]];
-  if (hasConcierge) tabDefs.push([conciergeTabScreen, isGuideMode ? "Guide" : "Concierge", "sparkle"]);
+  if (hasConcierge)
+    tabDefs.push(
+      trip.previewAsClient
+        ? // Where a client's advisor thread sits, under the name a client sees.
+          [conciergeTabScreen, "Advisor", "chat"]
+        : [conciergeTabScreen, isGuideMode ? "Guide" : "Concierge", "sparkle"],
+    );
   if (hasMessages && conciergeTabScreen !== "messages") tabDefs.push(["messages", advisorInbox ? "Messages" : "Advisor", "chat"]);
   tabDefs.push(["wallet", "Wallet", "wallet"], ["profile", "You", "account"]);
   const tabs = tabDefs.map(([id, label, icon]) => {
@@ -1498,7 +1513,16 @@ export default function CompanionApp({
         {st.messages.map((m, i) => {
           const mine = m.from === "me";
           return (
-            <div key={i} style={{ maxWidth: "80%", alignSelf: mine ? "flex-end" : "flex-start", background: mine ? NAVY : "#ffffff", color: mine ? CREAM : "#26323a", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", padding: "13px 15px", fontSize: 14, lineHeight: 1.5, boxShadow: "0 1px 2px rgba(23,45,82,.08)" }}>{m.text}</div>
+            /* THE SAME SHAPE AS THE REAL THREAD. The message block caps at 82%
+               of the thread and sits on its own side; the bubble inside sizes
+               to its own text against that definite width, so "yes" is a short
+               bubble rather than one letter per line. This used to be a flat
+               80% on the bubble itself, which is what LiveChat was fixed away
+               from — leaving the sample, the one public demonstration of the
+               product, showing the design the product no longer has. */
+            <div key={i} style={{ maxWidth: "82%", alignSelf: mine ? "flex-end" : "flex-start" }}>
+              <div style={{ maxWidth: "100%", width: "fit-content", marginLeft: mine ? "auto" : 0, background: mine ? NAVY : "#ffffff", color: mine ? CREAM : "#26323a", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", padding: "13px 15px", fontSize: 14, lineHeight: 1.5, boxShadow: "0 1px 2px rgba(23,45,82,.08)" }}>{m.text}</div>
+            </div>
           );
         })}
         {st.typing && (
@@ -1511,9 +1535,31 @@ export default function CompanionApp({
             <button key={i} onClick={() => send(q)} className="wg-warm" style={{ flex: "none", border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", cursor: "pointer", fontSize: 12.5, minHeight: 44, padding: "9px 16px", borderRadius: 14, color: "#26323a", whiteSpace: "nowrap" }}>{q}</button>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
-          <input value={st.draft} onChange={(e) => setSt((s) => ({ ...s, draft: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder={st.role === "advisor" ? "Reply to the Cohens…" : `Ask ${firstName} anything…`} style={{ flex: 1, minWidth: 0, border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", borderRadius: 14, padding: "14px 17px", fontFamily: "Inter,sans-serif", fontSize: 16, color: "#26323a", outline: "none" }} />
-          <button onClick={() => send()} className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: 14, fontSize: 17, padding: 0 }}>↑</button>
+        {/* ONE ROUNDED BAR, the shape the real thread was redesigned into —
+            paperclip on the left, the field, a camera on the right, the round
+            send button beside it. The sample kept a plain box and a square
+            gold arrow, so the app a buyer was shown did not look like the app
+            their client would open. The controls here are the demonstration
+            and do nothing: this trip has no upload behind it. */}
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", gap: 1, background: "#ffffff", border: "1px solid rgba(38,50,58,.16)", borderRadius: 23, padding: "2px 4px 2px 3px" }}>
+            <span aria-hidden="true" style={{ color: ICON_BLUE, opacity: 0.55, width: 38, height: 42, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="paperclip" className="h-[21px] w-[21px]" />
+            </span>
+            <input
+              value={st.draft}
+              onChange={(e) => setSt((s) => ({ ...s, draft: e.target.value }))}
+              onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+              placeholder={st.role === "advisor" ? "Reply to the Cohens…" : `Message ${firstName}…`}
+              /* 16px, not 14: iOS Safari zooms the whole page into any input
+                 under 16px the moment it is focused. */
+              style={{ flex: 1, minWidth: 0, border: 0, background: "none", padding: "11px 6px 11px 8px", fontFamily: "Inter,sans-serif", fontSize: 16, lineHeight: 1.4, color: "#26323a", outline: "none" }}
+            />
+            <span aria-hidden="true" style={{ color: ICON_BLUE, opacity: 0.55, width: 38, height: 42, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="camera" className="h-[21px] w-[21px]" />
+            </span>
+          </div>
+          <button onClick={() => send()} aria-label="Send" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: CREAM, width: 46, height: 46, borderRadius: 23, fontSize: 17, padding: 0 }}>↑</button>
         </div>
       </div>
     </div>
@@ -1539,6 +1585,11 @@ export default function CompanionApp({
       ))}
     </div>
   );
+
+  /** True when this row's documents are the shipped samples, which need no
+   *  account and no share token to open. */
+  const att0Sample = (r: { attachments?: Array<{ sampleUrl?: string }> }) =>
+    Boolean(r.attachments?.some((a) => a.sampleUrl));
 
   const walletScreen = (
     <div style={{ padding: "16px 16px 28px", display: "flex", flexDirection: "column", gap: 16, animation: "wgIn .28s ease both" }}>
@@ -1598,21 +1649,26 @@ export default function CompanionApp({
                   file through their own account; the client opens it through
                   this trip's code, and only the files the adviser marked for
                   them are in the payload at all. See app/api/trip-file. */}
-              {r.attachments && r.attachments.length > 0 && (!isClientViewer || liveChat?.shareId) && (
+              {r.attachments && r.attachments.length > 0 && (att0Sample(r) || !isClientViewer || liveChat?.shareId) && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 2 }}>
                   {r.attachments.map((att) => (
                     <span key={att.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                      {/* A shipped sample is a static file and needs neither of
+                          the two doors below — it has no owner to check and no
+                          share token to check it against. */}
                       <WalletDocLink
                         url={
-                          isClientViewer
-                            ? `/api/trip-file/${encodeURIComponent(liveChat!.shareId)}?id=${encodeURIComponent(att.id)}`
-                            : `/api/account/attachments?id=${encodeURIComponent(att.id)}`
+                          att.sampleUrl
+                            ? att.sampleUrl
+                            : isClientViewer
+                              ? `/api/trip-file/${encodeURIComponent(liveChat!.shareId)}?id=${encodeURIComponent(att.id)}`
+                              : `/api/account/attachments?id=${encodeURIComponent(att.id)}`
                         }
                         fileId={att.id}
                         name={att.name}
-                        offlineCapable={isClientViewer}
+                        offlineCapable={isClientViewer && !att.sampleUrl}
                       />
-                      {!isClientViewer && trip.tripId && r.id && r.stopKind && (
+                      {!att.sampleUrl && !isClientViewer && trip.tripId && r.id && r.stopKind && (
                         <WalletShareToggle
                           tripId={trip.tripId}
                           row={r}
@@ -1702,7 +1758,7 @@ export default function CompanionApp({
       {/* Trip kind — Concierge or Guide — lives here on the phone, where the
           desktop showcase has it as a toolbar above the frame. Only when a
           live advisor is attached; a wired trip is read one way. */}
-      {hasConcierge && (
+      {showcaseSwitches && (
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
           <div style={{ ...kicker("#78716c"), paddingLeft: 4 }}>How you are reading this trip</div>
           <div style={{ display: "flex", gap: 6, padding: 5, background: "#ece8df", borderRadius: 14, alignSelf: "flex-start" }}>
@@ -1724,7 +1780,7 @@ export default function CompanionApp({
               ? "The advisor side: the trips you are holding today, and the one that needs a decision from you."
               : "The trip is in your name. Two others can look at it; nobody but you can change it."}
         </p>
-        {hasConcierge && (
+        {showcaseSwitches && (
           <div style={{ display: "flex", gap: 6, padding: 5, background: "rgba(255,255,255,.8)", borderRadius: 14, alignSelf: "flex-start" }}>
             {roleOpts.map((r) => (
               <button key={r.id} onClick={r.pick} style={{ border: 0, cursor: "pointer", font: `400 13px/1 ${serif}`, padding: "10px 16px", borderRadius: 14, background: r.bg, color: r.fg }}>{r.label}</button>
@@ -1860,7 +1916,7 @@ export default function CompanionApp({
           <div className="wg-chrome-intro">
             <div style={{ font: "600 11px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#c8a76a" }}>White Glove · app</div>
           </div>
-          {hasConcierge && (
+          {showcaseSwitches && (
             <div className="wg-toolbar-group">
               <div className="wg-toolbar-label">Trip kind</div>
               <div className="wg-toolbar">

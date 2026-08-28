@@ -103,6 +103,19 @@ describe("the two doors", () => {
 
   it("the toggle is offered to the side that owns the trip, and never to the client", () => {
     const app = codeOf("components/companion/CompanionApp.tsx");
-    assert.match(app, /\{!isClientViewer && trip\.tripId && r\.id && r\.stopKind && \(\s*\n\s*<WalletShareToggle/);
+    /**
+     * THE PROPERTY, NOT THE LITERAL GUARD. This matched the exact condition,
+     * so adding `!att.sampleUrl` to it — which only ever shows the toggle in
+     * FEWER cases — read as a break. What has to hold is that the toggle is
+     * behind a client check and behind a real trip: `isClientViewer` false,
+     * and a tripId, stop id and stop kind to write against. Anything narrower
+     * than that is somebody else's rule and not this file's business.
+     */
+    const guard = app.match(/\{[^{}\n]*&& \(\s*\n\s*<WalletShareToggle/)?.[0] ?? "";
+    assert.ok(guard, "the share toggle is not behind a guard at all");
+    assert.match(guard, /!isClientViewer/, "a client is offered the adviser's share toggle");
+    assert.match(guard, /trip\.tripId/);
+    assert.match(guard, /r\.id/);
+    assert.match(guard, /r\.stopKind/);
   });
 });

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CompanionApp from "@/components/companion/CompanionApp";
+import { COMPANION_DEMO_TRIP } from "@/data/companion-demo";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
 
@@ -59,11 +60,17 @@ export default function AppPreviewPage() {
         </div>
       </div>
 
-      {/* No trip prop: the component's own default IS the demo trip, and
-          passing it here would be the same object under a second name. No
-          advisorInbox either — this is the client's side, which is the side
-          being sold. */}
-      <CompanionApp />
+      {/* THE DEMO TRIP, SHOWN AS A CLIENT GETS IT. The component's own default
+          is this same object; what the page adds is `previewAsClient`, which
+          takes away the three controls no client will ever have — the
+          Concierge tab, the Concierge/Guide switch and the Traveler/Advisor
+          switch. They demonstrate a concierge tier that is not built, and on
+          the one page that promises "this is what your client opens" they were
+          a feature being shown to somebody who could not buy it. The scripted
+          advisor thread stays; it just sits where a client's thread sits.
+
+          No advisorInbox either — this is the client's side, the side sold. */}
+      <CompanionApp trip={{ ...COMPANION_DEMO_TRIP, previewAsClient: true }} />
     </main>
   );
 }
