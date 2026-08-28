@@ -111,7 +111,14 @@ describe("the printed sample carries the brand of the site showing it", () => {
   const source = readFileSync("app/sample-itinerary/page.tsx", "utf8");
 
   it("passes the brand rather than taking the default", () => {
-    assert.match(source, /<PrintableItinerary[^>]*siteBrand=\{brand\}/);
+    //
+    // THE CHAIN, not one call site. The page reads the brand and hands it to
+    // SampleItineraryViews, which hands it to the printed document. Both links
+    // are checked, because the document taking its own default is the defect —
+    // it printed White Glove Kosher Travel on the site that sells this.
+    assert.match(source, /<SampleItineraryViews[^>]*siteBrand=\{brand\}/);
+    const views = readFileSync("components/SampleItineraryViews.tsx", "utf8");
+    assert.match(views, /<PrintableItinerary[^>]*siteBrand=\{siteBrand\}/);
   });
 
   it("every caller that prints a document names its brand", () => {

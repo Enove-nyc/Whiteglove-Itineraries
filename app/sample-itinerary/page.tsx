@@ -3,10 +3,11 @@ import Footer from "@/components/Footer";
 import GloveMark, { GloveList } from "@/components/GloveMark";
 import Navbar from "@/components/Navbar";
 import PageBlocks from "@/components/PageBlocks";
-import PrintableItinerary from "@/components/PrintableItinerary";
+import SampleItineraryViews from "@/components/SampleItineraryViews";
 import SectionHeading from "@/components/SectionHeading";
 import StructuredData from "@/components/StructuredData";
 import { SAMPLE_ITINERARY, SAMPLE_NOTICE, WHAT_IS_IN_IT } from "@/data/sample-itinerary";
+import { buildCompanionFromItinerary } from "@/lib/companion-build";
 import { ACTION_BUTTON_CLASS } from "@/lib/action-button";
 import { resolvePage } from "@/lib/pages";
 import { pageMetadata } from "@/lib/seo";
@@ -60,6 +61,27 @@ export async function generateMetadata() {
  * available, which is the work itself.
  */
 export default async function SampleItineraryPage() {
+  /**
+   * The app view of the same week, through the conversion a real client link
+   * goes through — not a mock-up of a screen.
+   *
+   * `today` is the trip's own first day rather than the actual date. The
+   * sample is a fixed week in the calendar, and a companion app told that
+   * today is some month afterwards opens on a trip that has finished, which is
+   * the one thing this page must not show. Opening on day one is what a client
+   * sees when their trip starts.
+   *
+   * The kosher layer is on for the kosher site only: zmanim and a walk to a
+   * minyan are the guide's work, and the itineraries domain sells a
+   * general-travel product.
+   */
+  const brandNow = await currentBrand();
+  const companion = await buildCompanionFromItinerary(SAMPLE_ITINERARY, {
+    today: SAMPLE_ITINERARY.startDate,
+    tripName: SAMPLE_ITINERARY.title,
+    kosher: brandNow !== "itineraries",
+  }).catch(() => null);
+
   const [page, brand] = await Promise.all([resolvePage("sample-itinerary"), currentBrand()]);
   const itineraries = brand === "itineraries";
 
@@ -84,9 +106,14 @@ export default async function SampleItineraryPage() {
               A week in Rome, as it arrives.
             </h1>
             <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-600">
+              {/* NOT "THE DOCUMENT" ANY MORE. The page shows the same week
+                  three ways now — on the site, in the app, printed — and the
+                  document is the last of them. It read as though the printable
+                  file were the whole deliverable, which is the impression this
+                  page existed to correct. */}
               {itineraries
-                ? "A family of five, seven nights — the document your client is actually handed."
-                : "A family of five, seven nights, and a Shabbos in the middle of it — the document you are actually handed."}
+                ? "A family of five, seven nights — the trip your client is actually handed, in all three of the places it lives."
+                : "A family of five, seven nights, and a Shabbos in the middle of it — the trip you are actually handed, in all three of the places it lives."}
             </p>
             <p className="mt-4 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#fcf6e9] px-5 py-3 leading-7 text-stone-700">
               <span className="font-semibold text-[var(--navy)]">{SAMPLE_NOTICE}</span>
@@ -101,32 +128,34 @@ export default async function SampleItineraryPage() {
       <section className="border-y border-[var(--gold-light)] bg-[var(--cream-deep)] px-5 py-12 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-7xl">
           <h2 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
-            The document
+            The same week, three ways
           </h2>
           <p className="mt-3 max-w-3xl leading-7 text-stone-600">
             {itineraries
-              ? "A cover, then a page per day. The same trip also opens as an app on their phone, and stays in your account where you can move a day and print it again."
-              : "A cover, then a page per day — and it arrives in your account too, where you can move a day and print it again."}
+              ? "Read on the site, opened as an app on your client's phone, or printed as a cover and a page per day. One trip behind all three — it stays in your account, where you can move a day and hand it over again."
+              : "Read on the site, opened as an app on your phone, or printed as a cover and a page per day. One trip behind all three — it arrives in your account too, where you can move a day and print it again."}
           </p>
 
-          {/* Framed rather than dropped straight onto the page, so it reads as
-              a document being shown rather than as this page's own layout. The
-              horizontal scroll is on this container and never on the body: the
-              printed page has a fixed width and a phone does not. */}
-          <div className="mt-8 overflow-x-auto rounded-2xl border border-[var(--gold-light)] bg-white p-3 shadow-[0_18px_45px_rgba(23,45,82,.09)] sm:p-6">
-            <div className="min-w-[42rem]">
-              {/* THE DOCUMENT'S OWN BRAND, not the reader's — and on this page they
-                  are the same thing, because the sample is produced by whichever
-                  site is showing it. Left unset, the cover, the footer and every
-                  day's running head said White Glove Kosher Travel on the site
-                  that sells this. */}
-              <PrintableItinerary itin={SAMPLE_ITINERARY} burials={{}} embedded siteBrand={brand} />
-            </div>
+          {/* THREE VIEWS OF ONE WEEK, because a trip lives in three places and
+              this page was showing one of them. The printable document is a
+              real deliverable and it stays — but it was standing in for the
+              planner and the phone as well, so somebody deciding whether to
+              plan a trip here was handed a PDF and asked to imagine the rest.
+
+              All three are built from the same SAMPLE_ITINERARY. The days come
+              from buildDays(), the function that lays out a customer's trip,
+              and the app view is converted by buildCompanionFromItinerary() —
+              the same conversion a real client link goes through. Nothing here
+              is a picture of a screen.
+
+              THE DOCUMENT'S OWN BRAND, not the reader's — and on this page
+              they are the same thing, because the sample is produced by
+              whichever site is showing it. Left unset, the cover, the footer
+              and every day's running head said White Glove Kosher Travel on
+              the site that sells this. */}
+          <div className="mt-8">
+            <SampleItineraryViews itin={SAMPLE_ITINERARY} companion={companion} siteBrand={brand} />
           </div>
-
-          <p className="mt-4 text-sm leading-6 text-stone-500">
-            Shown at the width it prints. On a phone, slide the panel sideways to read across it.
-          </p>
         </div>
       </section>
 
@@ -209,7 +238,7 @@ export default async function SampleItineraryPage() {
             </div>
             <p className="mt-4 leading-7 text-stone-600">
               {itineraries
-                ? "The planner builds this document from the days you enter, and the same trip opens as an app on your client’s phone. A single trip is a one-off; an advisor plan is a subscription with no cap on how many."
+                ? "The planner builds this document from the days you enter, and the same trip opens as an app on your client’s phone. A single trip is a one-off; an adviser plan is a subscription with no cap on how many."
                 : "Build the same document yourself, for your own dates — or answer three short steps for destination ideas first. Sign in to start; it’s free."}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
