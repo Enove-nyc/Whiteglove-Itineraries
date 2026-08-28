@@ -131,8 +131,25 @@ describe("the itineraries front door offers it", () => {
   it("puts the finished document beside the empty planner", () => {
     // Both old actions asked somebody to start using the product before they
     // had seen what it produces.
-    const home = readFileSync("components/ItinerariesHome.tsx", "utf8");
-    assert.ok(home.includes('href="/sample-itinerary"'));
+    //
+    // Read across the hero's two files: the actions moved into HomeAudience
+    // when the hero learnt to ask who is reading it, and the point of this
+    // test is that the sample is offered from the front door — not which
+    // component happens to draw the button today.
+    const hero = ["components/ItinerariesHome.tsx", "components/HomeAudience.tsx"]
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+    assert.ok(hero.includes('href="/sample-itinerary"'));
+  });
+
+  it("offers it to both audiences, not only the adviser", () => {
+    // The switch changes the first button and the copy. The evidence of what
+    // the product makes is the same evidence either way, so it must not be
+    // something only one of the two is shown.
+    const audience = readFileSync("components/HomeAudience.tsx", "utf8");
+    const perAudience = audience.slice(audience.indexOf("const COPY"), audience.indexOf("const CTA"));
+    assert.doesNotMatch(perAudience, /sample-itinerary/, "the sample is behind one of the two answers");
+    assert.ok(audience.includes('href="/sample-itinerary"'));
   });
 
   it("answers the pricing page's own question with it", () => {
