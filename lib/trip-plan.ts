@@ -60,12 +60,25 @@ export const TRIP_KINDS: ReadonlyArray<{
   blurb: string;
   /** Which vacation category to recommend from. Absent for the two that have none. */
   theme?: TripTheme;
+  /**
+   * What this reads on whitegloveitineraries.com, where a blurb names the
+   * kosher world. Only "group" needs one — "a school, a shul or a simcha" is a
+   * Jewish group trip, and that site sells general travel to advisers with
+   * clients of any kind. Heritage is filtered out there entirely rather than
+   * reworded, because the category itself is the guide's.
+   */
+  itinerariesBlurb?: string;
 }> = [
   { value: "relaxing", label: "Relaxing vacation", blurb: "Sea, mountains or a quiet hotel.", theme: "beach" },
   { value: "city-break", label: "City break", blurb: "Streets, food and things to see.", theme: "city" },
   { value: "family", label: "Family trip", blurb: "Enough for the children and enough for you.", theme: "family" },
   { value: "honeymoon", label: "Honeymoon", blurb: "Private and unhurried.", theme: "couples" },
-  { value: "group", label: "Group trip", blurb: "Several families, a school, a shul or a simcha." },
+  {
+    value: "group",
+    label: "Group trip",
+    blurb: "Several families, a school, a shul or a simcha.",
+    itinerariesBlurb: "Friends, families, schools, teams or an organized group.",
+  },
   // The VALUE stays "heritage" — data, tests and query strings reference it.
   { value: "heritage", label: "Heritage", blurb: "Kevarim, batei hachaim and the towns they are in." },
   { value: "unsure", label: "Not sure yet", blurb: "A normal place to start." },
