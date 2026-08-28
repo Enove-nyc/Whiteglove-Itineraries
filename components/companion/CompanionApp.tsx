@@ -4080,15 +4080,16 @@ type InboxConvo = {
 };
 
 // What the list shows when the last message carries no text of its own — a
-// photo, a voice note, a location — so a real conversation never reads as
-// "No messages yet".
-const INBOX_KIND_LABEL: Record<string, string> = {
-  image: "📷 Photo",
-  video: "🎥 Video",
-  audio: "🎤 Voice message",
-  file: "📄 Document",
-  location: "📍 Location",
-  poll: "📊 Poll",
+// photo, a voice note, a location. The glyph is the SAME one the paperclip
+// menu uses for that kind (Icon / DocGlyph / PollGlyph), never a coloured
+// emoji, so the two read as one app.
+const INBOX_KIND_META: Record<string, { glyph: ReactNode; label: string }> = {
+  image: { glyph: <Icon name="image" className="h-3.5 w-3.5" />, label: "Photo" },
+  video: { glyph: <Icon name="video" className="h-3.5 w-3.5" />, label: "Video" },
+  audio: { glyph: <Icon name="microphone" className="h-3.5 w-3.5" />, label: "Voice message" },
+  file: { glyph: <DocGlyph size={13} />, label: "Document" },
+  location: { glyph: <Icon name="map-pin" className="h-3.5 w-3.5" />, label: "Location" },
+  poll: { glyph: <PollGlyph size={13} />, label: "Poll" },
 };
 
 /**
@@ -4303,11 +4304,13 @@ function AdvisorInbox({
         })
         .map((c) => {
         // The last line, the way a messenger's list reads it: the text if there
-        // is any, else a label for what the last message was (Photo, Voice
-        // message, Location…), and only a true empty thread says "No messages
-        // yet". "You: " when the advisor sent it.
-        const lastBody = c.lastText || (c.lastKind ? INBOX_KIND_LABEL[c.lastKind] : "") || "";
-        const preview = c.lastAt ? `${c.lastFrom === "advisor" ? "You: " : ""}${lastBody || "Message"}` : "No messages yet";
+        // is any, else what the last message WAS — a small glyph and a word for
+        // a photo / voice note / location, drawn from the SAME icon set as the
+        // paperclip menu (not a coloured emoji), in the muted preview tone. Only
+        // a truly empty thread says "No messages yet". "You: " when the advisor
+        // sent it.
+        const you = c.lastFrom === "advisor" ? "You: " : "";
+        const kp = !c.lastText && c.lastKind ? INBOX_KIND_META[c.lastKind] : null;
         const isPinned = pinned.has(c.shareId);
         // One row, no side button — hold it for actions, tap it to open. The
         // whole row is the target, the way a messenger's list works.
@@ -4329,7 +4332,21 @@ function AdvisorInbox({
                 {isPinned && <Icon name="map-pin" className="h-3.5 w-3.5" aria-label="Pinned" />}
                 {nameOf(c)}
               </span>
-              <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{preview}</span>
+              <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 4 }}>
+                {!c.lastAt ? (
+                  "No messages yet"
+                ) : c.lastText ? (
+                  `${you}${c.lastText}`
+                ) : kp ? (
+                  <>
+                    {you}
+                    <span style={{ flexShrink: 0, display: "inline-flex", color: "#a8a29e" }}>{kp.glyph}</span>
+                    {kp.label}
+                  </>
+                ) : (
+                  `${you}Message`
+                )}
+              </span>
             </span>
             {c.count > 0 && <span aria-label={`${c.count} unread`} style={{ flex: "none", minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: GOLD, color: CREAM, fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.count}</span>}
           </button>
