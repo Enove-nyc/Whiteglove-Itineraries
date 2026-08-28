@@ -587,23 +587,42 @@ function WalletDocLink({
   offlineCapable: boolean;
 }) {
   const [note, setNote] = useState("");
+  // An image document (a boarding pass photographed or exported as a picture)
+  // opened in a fitted overlay, rather than a raw new tab where a phone shows it
+  // at full pixel size and you have to pinch it down.
+  const [imageView, setImageView] = useState<string | null>(null);
 
   async function open(e: ReactMouseEvent<HTMLAnchorElement>) {
-    // Online, or a file we don't cache (the advisor's): let the link do its
-    // normal thing — open the served URL in a new tab.
-    if (!offlineCapable) return;
-    if (typeof navigator !== "undefined" && navigator.onLine) return;
-    // No signal: serve the saved bytes instead of a request that would fail.
     e.preventDefault();
     setNote("");
-    const blob = await readDocumentOffline(fileId);
+    // Get the bytes: the saved copy when offline, otherwise the served file.
+    let blob: Blob | null = null;
+    if (offlineCapable && typeof navigator !== "undefined" && !navigator.onLine) {
+      blob = await readDocumentOffline(fileId);
+      if (!blob) {
+        setNote("Not saved for offline yet — open it once with a connection.");
+        return;
+      }
+    } else {
+      try {
+        const r = await fetch(url, { cache: "no-store" });
+        if (r.ok) blob = await r.blob();
+      } catch {
+        /* fall through to a plain open */
+      }
+    }
     if (!blob) {
-      setNote("Not saved for offline yet — open it once with a connection.");
+      window.open(url, "_blank", "noopener");
       return;
     }
+    if (blob.type.startsWith("image/")) {
+      // Fit it to the screen instead of opening it at native resolution.
+      setImageView(URL.createObjectURL(blob));
+      return;
+    }
+    // A PDF (or anything else) hands off to the OS viewer, which sizes it.
     const objectUrl = URL.createObjectURL(blob);
     window.open(objectUrl, "_blank", "noopener");
-    // Give the new tab time to take the URL before releasing it.
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   }
 
@@ -619,6 +638,25 @@ function WalletDocLink({
         📎 {name}
       </a>
       {note && <span style={{ fontSize: 11, color: "#b42318" }}>{note}</span>}
+      {imageView && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={name}
+          onClick={() => { URL.revokeObjectURL(imageView); setImageView(null); }}
+          style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(15,20,25,.94)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); URL.revokeObjectURL(imageView); setImageView(null); }}
+            aria-label="Close"
+            style={{ position: "absolute", top: "calc(14px + env(safe-area-inset-top))", right: 14, border: 0, background: "rgba(255,255,255,.15)", color: "#fff", width: 38, height: 38, borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}
+          >
+            ✕
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageView} alt={name} onClick={(e) => e.stopPropagation()} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 6 }} />
+        </div>
+      )}
     </span>
   );
 }
@@ -1337,7 +1375,7 @@ export default function CompanionApp({
       {railView}
       <button
         onClick={() => {
-          setSt((s) => ({ ...s, chatSubject: `Day ${st.selDay + 1} — ${sel.name}` }));
+          setSt((s) => ({ ...s, chatSubject: sel.name }));
           go(usesRealChat ? "messages" : "chat");
         }}
         className="wg-warm"
@@ -1410,7 +1448,7 @@ export default function CompanionApp({
             className="wg-warm"
             style={{ border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", cursor: "pointer", font: `400 14px/1 ${serif}`, padding: "13px 20px", borderRadius: 14, color: "#26323a" }}
           >
-            Ask to move this
+            Ask about this
           </button>
         </div>
       </div>
