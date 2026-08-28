@@ -24,6 +24,13 @@ export type CompanionChatSide = "client" | "advisor";
  */
 export type CompanionChatKind = "text" | "image" | "video" | "audio" | "file" | "location";
 
+/**
+ * The reactions the app offers — a fixed set, so a stored reaction is always
+ * one of these and never arbitrary text a caller made up.
+ */
+export const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🙏"] as const;
+const REACTION_SET: ReadonlySet<string> = new Set(REACTION_EMOJIS);
+
 export type CompanionChatMessage = {
   from: CompanionChatSide;
   /**
@@ -64,6 +71,12 @@ export type CompanionChatMessage = {
    * coordinates from anything deleted before it ever leaves the store.
    */
   deletedAt?: string;
+  /**
+   * Emoji reactions, one per side: each of the two people can leave a single
+   * reaction on a message, and both see both. Tapping the same emoji again
+   * clears it; a different one replaces it. Never carried on a deleted message.
+   */
+  reactions?: Partial<Record<CompanionChatSide, string>>;
   /**
    * A quoted reply — a snapshot taken from the ORIGINAL message at the moment
    * this one was sent, not a live reference. So it survives the original
@@ -126,6 +139,17 @@ function kindOf(raw: unknown): CompanionChatKind {
   return raw === "image" || raw === "video" || raw === "audio" || raw === "file" || raw === "location" ? raw : "text";
 }
 
+/** Keep only well-formed reactions: a known side, a known emoji, nothing else. */
+function sanitizeReactions(raw: unknown): Partial<Record<CompanionChatSide, string>> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Partial<Record<CompanionChatSide, string>> = {};
+  for (const side of ["client", "advisor"] as const) {
+    const v = (raw as Record<string, unknown>)[side];
+    if (typeof v === "string" && REACTION_SET.has(v)) out[side] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /**
  * Turn stored rows into messages, dropping anything malformed.
  *
@@ -153,7 +177,7 @@ export function parseChatMessages(rows: string[] | null): CompanionChatMessage[]
       // rather than render an empty bubble.
       if ((kind === "image" || kind === "video" || kind === "audio" || kind === "file") && typeof m.mediaId !== "string") continue;
       if (kind === "location" && !(Number.isFinite(m.lat) && Number.isFinite(m.lng)) && !(typeof m.address === "string" && m.address.trim())) continue;
-      out.push({ ...m, kind });
+      out.push({ ...m, kind, reactions: sanitizeReactions(m.reactions) });
     } catch {
       /* skip a corrupt row rather than drop the thread */
     }
@@ -238,6 +262,23 @@ async function findRawIndex(shareId: string, at: string, from: CompanionChatSide
   return null;
 }
 
+/** Find a message by its timestamp alone — a reaction can be left by either
+ *  side on either side's message, so unlike edit/delete it is not scoped to the
+ *  sender. */
+async function findRawIndexByAt(shareId: string, at: string): Promise<{ index: number; raw: string } | null> {
+  const rows = await command<string[]>(["LRANGE", keyFor(shareId), 0, -1]);
+  if (!rows) return null;
+  for (let i = 0; i < rows.length; i++) {
+    try {
+      const m = JSON.parse(rows[i]) as CompanionChatMessage;
+      if (m.at === at) return { index: i, raw: rows[i] };
+    } catch {
+      /* not this one */
+    }
+  }
+  return null;
+}
+
 /**
  * LSET one row back, but only if it is still the exact row we read.
  *
@@ -288,6 +329,42 @@ export async function editMessageText(
   }
   // The row kept moving under concurrent writes — return the thread as it
   // stands rather than risk overwriting the wrong message.
+  return readChat(shareId);
+}
+
+/**
+ * Toggle `by`'s reaction on the message at `at`. Either side may react to
+ * either side's message (unlike edit/delete, which are the sender's own), so
+ * this finds by timestamp alone. The same emoji clears the reaction; a
+ * different one replaces it; a deleted message takes none; only an emoji from
+ * REACTION_EMOJIS is stored. Returns the thread as it now stands, or null when
+ * the store is off or there is nothing at that address.
+ */
+export async function reactMessage(
+  shareId: string,
+  at: string,
+  by: CompanionChatSide,
+  emoji: string,
+): Promise<CompanionChatMessage[] | null> {
+  if (!chatStoreAvailable()) return null;
+  if (!REACTION_SET.has(emoji)) return null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const found = await findRawIndexByAt(shareId, at);
+    if (!found) return null;
+    let existing: CompanionChatMessage;
+    try {
+      existing = JSON.parse(found.raw) as CompanionChatMessage;
+    } catch {
+      return null;
+    }
+    if (existing.deletedAt) return readChat(shareId); // nothing to react to
+    const reactions: Partial<Record<CompanionChatSide, string>> = { ...(existing.reactions ?? {}) };
+    if (reactions[by] === emoji) delete reactions[by];
+    else reactions[by] = emoji;
+    const hasAny = Object.keys(reactions).length > 0;
+    const updated: CompanionChatMessage = { ...existing, reactions: hasAny ? reactions : undefined };
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
+  }
   return readChat(shareId);
 }
 

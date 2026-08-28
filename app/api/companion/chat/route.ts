@@ -11,6 +11,7 @@ import {
   isTyping,
   markRead,
   quoteFor,
+  reactMessage,
   readChat,
   readMarkers,
   setTyping,
@@ -198,6 +199,8 @@ export async function POST(request: NextRequest) {
         replyToAt?: string;
         typing?: boolean;
         itineraryRef?: string;
+        reactAt?: string;
+        reaction?: string;
       }
     | null;
   const shareId = body?.share?.trim();
@@ -217,6 +220,20 @@ export async function POST(request: NextRequest) {
   if (body?.typing === true) {
     await setTyping(who.chatKey, who.side);
     return NextResponse.json({ ok: true });
+  }
+
+  // A reaction toggles this side's emoji on one existing message — its own
+  // quick action, handled before the message-building below since it changes a
+  // message rather than adding one. reactMessage rejects anything but a known
+  // emoji, so a made-up body can never store arbitrary text as a "reaction".
+  if (typeof body?.reactAt === "string" && body.reactAt && typeof body?.reaction === "string") {
+    const limited = await rateLimit(`companion-react:${who.chatKey}`, { limit: 90, windowSeconds: 3600 });
+    if (!limited.ok) {
+      return NextResponse.json({ error: "That is a lot of reactions at once — try again shortly." }, { status: 429 });
+    }
+    const messages = await reactMessage(who.chatKey, body.reactAt, who.side, body.reaction);
+    if (!messages) return NextResponse.json({ error: "That reaction couldn’t be saved." }, { status: 400 });
+    return NextResponse.json({ messages });
   }
 
   // A reply quotes a real message in THIS thread — looked up and re-built

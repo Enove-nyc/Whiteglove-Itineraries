@@ -1897,7 +1897,13 @@ type LiveMsg = {
   deletedAt?: string;
   replyTo?: { at: string; from: ChatSide; kind?: string; text: string };
   itineraryRef?: string;
+  /** One emoji per side — both people see both. */
+  reactions?: Partial<Record<ChatSide, string>>;
 };
+
+/** The reactions the chat offers — kept in step with lib/companion-chat-store's
+ *  REACTION_EMOJIS, defined here too so this client file pulls no server code. */
+const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🙏"] as const;
 
 /** The floor a picture may weigh before the server even has a disk to hold it
  * on — used until the server's own GET reports its real, deploy-specific
@@ -2549,6 +2555,23 @@ function LiveChat({
     }
   }
 
+  // Toggle my reaction on a message. Post and take the fresh thread back, like
+  // every other write here; the 15s poll reconciles the other side's.
+  async function react(at: string, emoji: string) {
+    setMenuOpenAt(null);
+    try {
+      const r = await fetch("/api/companion/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ share: shareId, reactAt: at, reaction: emoji }),
+      });
+      const d = await r.json().catch(() => null);
+      if (r.ok && d && Array.isArray(d.messages)) setMessages(d.messages);
+    } catch {
+      /* leave the thread as it was; the next poll will reconcile */
+    }
+  }
+
   async function deleteMine(at: string) {
     if (!window.confirm("Delete this message? This can't be undone.")) return;
     try {
@@ -3063,6 +3086,22 @@ function LiveChat({
                           overflow: "hidden",
                         }}
                       >
+                        {/* React — a row of emoji at the top of the menu, the way
+                            a messenger offers them on a long-press. Tapping the
+                            one already chosen clears it. */}
+                        <div style={{ display: "flex", gap: 1, padding: "5px 6px", borderBottom: "1px solid rgba(38,50,58,.08)" }}>
+                          {REACTION_EMOJIS.map((e) => (
+                            <button
+                              key={e}
+                              role="menuitem"
+                              onClick={() => void react(m.at, e)}
+                              aria-label={m.reactions?.[side] === e ? `Remove ${e} reaction` : `React ${e}`}
+                              style={{ border: 0, cursor: "pointer", background: m.reactions?.[side] === e ? "rgba(183,138,74,.18)" : "none", borderRadius: 999, fontSize: 20, lineHeight: 1, padding: "4px 5px" }}
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </div>
                         <button
                           role="menuitem"
                           onClick={() => { startReply(m); setMenuOpenAt(null); }}
@@ -3106,6 +3145,30 @@ function LiveChat({
                   </div>
                 )}
               </div>
+              {/* Reactions hang under the bubble, on the message's own side,
+                  both people's showing. Tapping mine again removes it. */}
+              {(m.reactions?.advisor || m.reactions?.client) && (
+                <div style={{ display: "flex", gap: 4, marginTop: 1, flexDirection: mine ? "row-reverse" : "row" }}>
+                  {(() => {
+                    const counts = new Map<string, number>();
+                    for (const e of [m.reactions?.advisor, m.reactions?.client]) if (e) counts.set(e, (counts.get(e) ?? 0) + 1);
+                    return [...counts.entries()].map(([e, c]) => {
+                      const isMine = m.reactions?.[side] === e;
+                      return (
+                        <button
+                          key={e}
+                          onClick={() => void react(m.at, e)}
+                          aria-label={`${e} reaction${c > 1 ? `, ${c}` : ""}${isMine ? " — yours, tap to remove" : ""}`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 3, cursor: "pointer", border: `1px solid ${isMine ? GOLD : "rgba(38,50,58,.12)"}`, background: isMine ? "rgba(183,138,74,.14)" : "#ffffff", borderRadius: 999, padding: "1px 6px 1px 5px", boxShadow: "0 1px 2px rgba(23,45,82,.08)" }}
+                        >
+                          <span style={{ fontSize: 13, lineHeight: 1.4 }}>{e}</span>
+                          {c > 1 && <span style={{ fontSize: 11, fontWeight: 600, color: "#78716c" }}>{c}</span>}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
               {/* Time under every message, the way a messenger shows it — with
                   the sent/read tick on the last one I sent (gold once it's been
                   read), not repeated down the thread. */}

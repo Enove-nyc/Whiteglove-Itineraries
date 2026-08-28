@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { parseChatMessages, quoteFor } from "@/lib/companion-chat-store";
+import { parseChatMessages, quoteFor, REACTION_EMOJIS } from "@/lib/companion-chat-store";
 
 /**
  * The concierge thread: text, a picture, a video, a voice note, or a place —
@@ -329,5 +329,53 @@ describe("deleting a whole conversation is fenced", () => {
     const fn = STORE.slice(STORE.indexOf("export async function deleteConversation"), STORE.indexOf("/* ---- read markers"));
     assert.match(fn, /DEL", typingKeyFor\(shareId, "client"\)/);
     assert.match(fn, /DEL", typingKeyFor\(shareId, "advisor"\)/);
+  });
+});
+
+describe("reactions — one emoji per side, both people see both", () => {
+  it("keeps a valid reaction and its side", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "advisor", text: "hi", at: "t", reactions: { client: "❤️" } }),
+    ]);
+    assert.deepEqual(m.reactions, { client: "❤️" });
+  });
+
+  it("drops an unknown emoji and an unknown side, keeps the good one", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "advisor", text: "hi", at: "t", reactions: { client: "🐸", advisor: "👍", nobody: "❤️" } }),
+    ]);
+    assert.deepEqual(m.reactions, { advisor: "👍" });
+  });
+
+  it("a message with no valid reactions carries none", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "advisor", text: "hi", at: "t", reactions: { client: "not-an-emoji" } }),
+    ]);
+    assert.equal(m.reactions, undefined);
+  });
+
+  it("a deleted message keeps no reactions", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "advisor", text: "hi", at: "t", deletedAt: "t2", reactions: { client: "❤️" } }),
+    ]);
+    assert.equal(m.reactions, undefined);
+  });
+
+  it("reactMessage rejects a made-up emoji and toggles the same one off", () => {
+    const STORE = readFileSync("lib/companion-chat-store.ts", "utf8");
+    const fn = STORE.slice(STORE.indexOf("export async function reactMessage"), STORE.indexOf("* Delete one message"));
+    assert.match(fn, /if \(!REACTION_SET\.has\(emoji\)\) return null/);
+    assert.match(fn, /if \(reactions\[by\] === emoji\) delete reactions\[by\]/);
+  });
+
+  it("the route stores a reaction only through reactMessage, from the link's own side", () => {
+    const ROUTE = readFileSync("app/api/companion/chat/route.ts", "utf8");
+    const POST = ROUTE.slice(ROUTE.indexOf("export async function POST"));
+    assert.match(POST, /reactMessage\(who\.chatKey, body\.reactAt, who\.side, body\.reaction\)/);
+    assert.match(POST, /rateLimit\(`companion-react:/);
+  });
+
+  it("offers exactly the six agreed emoji", () => {
+    assert.deepEqual([...REACTION_EMOJIS], ["❤️", "👍", "😂", "😮", "😢", "🙏"]);
   });
 });
