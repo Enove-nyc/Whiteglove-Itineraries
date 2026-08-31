@@ -87,7 +87,14 @@ export default function AdvisorApp({ trips, children }: { trips: AdvisorTripRow[
             {children}
           </div>
         )}
-        {tab === "messages" && <AdvisorInbox onComposerFocus={setComposerUp} />}
+        {tab === "messages" && (
+          // The inbox lives in its own scroll region, the same way the client
+          // app wraps it — otherwise a long list of clients has nothing to
+          // scroll inside and gets clipped under the bottom bar.
+          <div className="wg-scroll" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
+            <AdvisorInbox onComposerFocus={setComposerUp} />
+          </div>
+        )}
         {tab === "trips" && (
           <TripList
             trips={trips}
