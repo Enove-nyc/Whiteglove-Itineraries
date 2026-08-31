@@ -62,11 +62,14 @@ describe("the policy names what the site actually loads", () => {
     assert.ok(connect.includes("https://emrldco.com"), "emrldco must be in connect-src");
   });
 
-  it("LEAVES unsafe-eval OUT, so Report-Only can answer whether it is needed", () => {
-    // Google Maps has historically wanted it. Whether it still does is the
-    // question this phase exists to answer, so it must not be pre-granted —
-    // that would hide the very report that settles it.
-    assert.doesNotMatch(CSP, /'unsafe-eval'/);
+  it("GRANTS unsafe-eval and blob: on script-src — the map needs them", () => {
+    // Google Maps' WebGL renderer compiles code with eval() and loads a worker
+    // over a blob: URL. `new google.maps.Map()` does not throw when those are
+    // blocked, so the map never falls back to OpenStreetMap — it just paints
+    // blank. Both are documented by Google as required.
+    const script = CSP.split(";").find((d) => d.trim().startsWith("script-src")) ?? "";
+    assert.match(script, /'unsafe-eval'/, "Google Maps' renderer needs eval; without it the map is blank");
+    assert.match(script, /\bblob:/, "Google Maps loads a worker over a blob: URL");
   });
 
   it("points reports at the endpoint, both the old way and the new", () => {

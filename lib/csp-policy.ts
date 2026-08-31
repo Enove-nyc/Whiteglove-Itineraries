@@ -31,10 +31,10 @@
  *     hand-off the old next.config note warned a careless policy would break,
  *     and the single strongest reason to learn from Report-Only first.
  *
- * 'unsafe-eval' IS DELIBERATELY ABSENT. Google Maps has historically wanted it
- * and may still; leaving it out is not an oversight but the question this phase
- * exists to answer — if the reports show script-src blocking eval on a map
- * page, it goes in before enforcing, and if they do not, it never does.
+ * 'unsafe-eval' AND blob: ARE ON script-src, because Google Maps needs them:
+ * the map paints blank without them (see the note beside them in the directive
+ * below). Google documents both as required, and the cost is small here since
+ * 'unsafe-inline' already keeps this from being a strict script policy.
  *
  * The two unknowns — the exact hosts the Travelpayouts widget and the Duffel
  * form open once running — carry best guesses here. A report naming a host not
@@ -110,6 +110,17 @@ export function contentSecurityPolicy(reportPath: string): string {
     "script-src": dedupe([
       "'self'",
       "'unsafe-inline'",
+      // Google Maps' JavaScript API needs BOTH of these, and without them the
+      // map goes blank rather than falling back: the WebGL/vector renderer
+      // compiles code with eval(), and the API loads a worker over a blob:
+      // URL. `new google.maps.Map()` does NOT throw when they are blocked — it
+      // returns a map object that then never paints — so AreaMap has no error
+      // to catch and never drops to the OpenStreetMap fallback; the box just
+      // stays empty. Google documents both as required; and the marginal cost
+      // is small here, since 'unsafe-inline' above already keeps this from
+      // being a strict script policy.
+      "'unsafe-eval'",
+      "blob:",
       "https://emrldco.com",
       "https://tp.media",
       "https://maps.googleapis.com",
