@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { tripBarDates } from "@/lib/trip-bar";
 import { useBookingLink } from "@/components/BookingLinkProvider";
 import { bookingHref } from "@/lib/booking-access";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -466,43 +467,60 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
 
       {/* Trip header */}
       <section className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-4 shadow-[0_10px_30px_rgba(23,45,82,.06)] sm:p-6">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-          <label className="block"><span className={caption}>Trip name</span><input className={inputClass} value={itin.title} onChange={(e) => set({ title: e.target.value })} /></label>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="block"><span className={caption}>Start date</span><DateField ariaLabel="Trip start date" className={inputClass} value={itin.startDate} onChange={(startDate) => {
-              // Moving the start past the end takes the end with it, rather
-              // than leaving a trip that finishes before it begins.
-              set({ startDate, endDate: correctedEnd(startDate, itin.endDate) });
-            }} /></label>
-            <label className="block"><span className={caption}>End date</span><DateField ariaLabel="Trip end date" className={inputClass} min={earliestEnd(itin.startDate)} value={itin.endDate} onChange={(endDate) => set({ endDate: correctedEnd(itin.startDate, endDate) })} /></label>
-            <label className="block"><span className={caption} title="What time you set off each morning. Arrival times are worked out from this.">Day starts</span><input type="time" className={inputClass} value={itin.dayStartTime ?? "08:00"} onChange={(e) => set({ dayStartTime: e.target.value })} /></label>
+        {/* SET ONCE, THEN RE-READ ON EVERY VISIT FOR THE REST OF THE TRIP.
+            The name, the dates, who is coming and what time a day starts are
+            answered in the first minute of a trip and then sit open at the
+            top of this page for months. Behind a disclosure they are one line
+            until somebody wants them; the summary carries the trip's name and
+            dates so the page still says which trip this is with it shut. */}
+        <details className="group -mx-1 rounded-xl px-1">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1 marker:content-none">
+            <span className="text-sm font-semibold text-[var(--navy)]">
+              {itin.title?.trim() || "This trip"}
+              {itin.startDate && <span className="ml-2 font-normal text-stone-500">{tripBarDates({ startDate: itin.startDate, endDate: itin.endDate })}</span>}
+            </span>
+            <span className="text-xs font-semibold text-[var(--gold-ink)]">Trip details <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-180">⌄</span></span>
+          </summary>
+          <div className="pt-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+            <label className="block"><span className={caption}>Trip name</span><input className={inputClass} value={itin.title} onChange={(e) => set({ title: e.target.value })} /></label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="block"><span className={caption}>Start date</span><DateField ariaLabel="Trip start date" className={inputClass} value={itin.startDate} onChange={(startDate) => {
+                // Moving the start past the end takes the end with it, rather
+                // than leaving a trip that finishes before it begins.
+                set({ startDate, endDate: correctedEnd(startDate, itin.endDate) });
+              }} /></label>
+              <label className="block"><span className={caption}>End date</span><DateField ariaLabel="Trip end date" className={inputClass} min={earliestEnd(itin.startDate)} value={itin.endDate} onChange={(endDate) => set({ endDate: correctedEnd(itin.startDate, endDate) })} /></label>
+              <label className="block"><span className={caption} title="What time you set off each morning. Arrival times are worked out from this.">Day starts</span><input type="time" className={inputClass} value={itin.dayStartTime ?? "08:00"} onChange={(e) => set({ dayStartTime: e.target.value })} /></label>
+            </div>
           </div>
-        </div>
-        {/* Somewhere to put the things a trip has that no field asks about:
-            who has the key, which pharmacy was open late, the driver's brother's
-            number, what to do differently next time.
-
-            Itinerary.notes has existed in the type since the planner was built
-            and was never shown anywhere — not here, not in the print, not in
-            the shared view. It was a field nobody could reach.
-
-            Deliberately not a place for passport numbers or anything else that
-            should not be sitting in a saved trip, and the label says so rather
-            than leaving somebody to guess. */}
-        <label className="mt-5 block border-t border-[var(--gold-light)] pt-4">
-          <span className={caption}>Your notes</span>
-          <textarea
-            rows={3}
-            className={`${inputClass} min-h-24`}
-            value={itin.notes ?? ""}
-            onChange={(e) => set({ notes: e.target.value })}
-            placeholder="Anything you want to remember — who has the key, where you parked, what to bring next time…"
-          />
-          <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-500">
-            Printed and shared with the trip — keep passport numbers and anything private out.
-          </span>
-        </label>
-
+          {/* Somewhere to put the things a trip has that no field asks about:
+              who has the key, which pharmacy was open late, the driver's brother's
+              number, what to do differently next time.
+  
+              Itinerary.notes has existed in the type since the planner was built
+              and was never shown anywhere — not here, not in the print, not in
+              the shared view. It was a field nobody could reach.
+  
+              Deliberately not a place for passport numbers or anything else that
+              should not be sitting in a saved trip, and the label says so rather
+              than leaving somebody to guess. */}
+          <label className="mt-5 block border-t border-[var(--gold-light)] pt-4">
+            <span className={caption}>Your notes</span>
+            <textarea
+              rows={3}
+              className={`${inputClass} min-h-24`}
+              value={itin.notes ?? ""}
+              onChange={(e) => set({ notes: e.target.value })}
+              placeholder="Anything you want to remember — who has the key, where you parked, what to bring next time…"
+            />
+            <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-500">
+              Printed and shared with the trip — keep passport numbers and anything private out.
+            </span>
+          </label>
+  
+          </div>
+        </details>
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[var(--gold-light)] pt-4">
           <span className={`${caption} mr-1`}>Add to trip</span>
           <button type="button" onClick={() => { setEditingFlightId(null); setTab(tab === "flight" ? null : "flight"); }} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Flight</button>
@@ -549,72 +567,6 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
         {tab === "import" && <SmartImportPanel onImport={importSmartImportItems} onCancel={() => setTab(null)} />}
         </div>
       </section>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
-            <span className="text-sm font-semibold text-[var(--navy)]">Travelers <span className="font-normal text-stone-400">({travelersOf(itin).length})</span></span>
-            <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
-          </summary>
-          <div className="border-t border-[var(--gold-light)] p-3">
-            <TravelersPanel
-              travelers={travelersOf(itin)}
-              onChange={(travelers) => set({ travelers, travelerName: travelers[0]?.name ?? "" })}
-              bookingFor={itin.bookingFor}
-              onBookingFor={(bookingFor, traveler) => {
-                const travelers = traveler ? [...travelersOf(itin), traveler] : travelersOf(itin);
-                set({ bookingFor, travelers, travelerName: travelers[0]?.name ?? "" });
-              }}
-              tripId={tripId}
-            />
-          </div>
-        </details>
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
-            <span className="text-sm font-semibold text-[var(--navy)]">Share this itinerary</span>
-            <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
-          </summary>
-          <div className="border-t border-[var(--gold-light)] space-y-3 p-3">
-            <ShareItineraryPanel />
-            {/* Renders nothing at all unless this is a Business account. */}
-            <SendToClientPanel />
-          </div>
-        </details>
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
-            <span className="text-sm font-semibold text-[var(--navy)]">Rooms for this trip</span>
-            <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
-          </summary>
-          <div className="border-t border-[var(--gold-light)] p-3"><RoomGroupsPanel itin={itin} onChange={persist} /></div>
-        </details>
-      </div>
-
-      <BookFlightsPanel itin={itin} />
-
-      {/* Bookings summary + print */}
-      {(itin.flights.length + itin.lodging.length + itin.activities.length) > 0 && (
-        <div className="grid gap-3 md:grid-cols-3">
-          <BookingList
-            title="Flights"
-            items={itin.flights.map((f) => {
-              // A red-eye reads as leaving and landing on the same day unless
-              // the list says otherwise, which is how a night in the air went
-              // missing from the plan.
-              const night = readOvernightFlight(f);
-              const lands = night.arrivalDate > f.date ? ` → lands ${night.arrivalDate}` : "";
-              return {
-                id: f.id,
-                label: `${f.from} → ${f.to}`,
-                sub: `${f.date}${f.departTime ? " · " + f.departTime : ""}${lands}${night.overnight ? " · overnight" : ""}`,
-              };
-            })}
-            onRemove={removeFlight}
-            onEdit={(id) => { setEditingFlightId(id); setTab("flight"); }}
-          />
-          <BookingList title="Lodging" items={itin.lodging.map((l) => ({ id: l.id, label: l.type === "overnight-transit" ? `Overnight ${l.name || "transit"}` : l.name, sub: `${l.checkIn} → ${l.checkOut}` }))} onRemove={removeLodging} onEdit={(id) => { setEditingLodgingId(id); setTab("hotel"); }} />
-          <BookingList title="Activities" items={itin.activities.map((a) => ({ id: a.id, label: a.name, sub: `${a.date}${a.startTime ? " · " + a.startTime : ""}` }))} onRemove={removeActivity} />
-        </div>
-      )}
 
       {/* Analysis + day-by-day */}
       {loaded && days.length > 0 && (
@@ -727,6 +679,83 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           )}
         </>
       )}
+
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
+            <span className="text-sm font-semibold text-[var(--navy)]">Travelers <span className="font-normal text-stone-400">({travelersOf(itin).length})</span></span>
+            <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="border-t border-[var(--gold-light)] p-3">
+            <TravelersPanel
+              travelers={travelersOf(itin)}
+              onChange={(travelers) => set({ travelers, travelerName: travelers[0]?.name ?? "" })}
+              bookingFor={itin.bookingFor}
+              onBookingFor={(bookingFor, traveler) => {
+                const travelers = traveler ? [...travelersOf(itin), traveler] : travelersOf(itin);
+                set({ bookingFor, travelers, travelerName: travelers[0]?.name ?? "" });
+              }}
+              tripId={tripId}
+            />
+          </div>
+        </details>
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
+            <span className="text-sm font-semibold text-[var(--navy)]">Share this itinerary</span>
+            <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="border-t border-[var(--gold-light)] space-y-3 p-3">
+            <ShareItineraryPanel />
+            {/* Renders nothing at all unless this is a Business account. */}
+            <SendToClientPanel />
+          </div>
+        </details>
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
+            <span className="text-sm font-semibold text-[var(--navy)]">Rooms for this trip</span>
+            <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="border-t border-[var(--gold-light)] p-3"><RoomGroupsPanel itin={itin} onChange={persist} /></div>
+        </details>
+      </div>
+
+      <BookFlightsPanel itin={itin} />
+
+      {/* THE SAME THINGS AGAIN, AS LISTS. Every flight, hotel and stop below is
+          already on its own day above — this is the second view of it, useful
+          for "show me every flight" and for deleting one, and not worth a
+          permanent section of the page. Shut by default, under the trip. */}
+      {(itin.flights.length + itin.lodging.length + itin.activities.length) > 0 && (
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] px-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 marker:content-none">
+          <span className="text-sm font-semibold text-[var(--navy)]">Everything on this trip, as lists</span>
+          <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="grid gap-3 border-t border-[var(--gold-light)] py-4 md:grid-cols-3">
+          <BookingList
+            title="Flights"
+            items={itin.flights.map((f) => {
+              // A red-eye reads as leaving and landing on the same day unless
+              // the list says otherwise, which is how a night in the air went
+              // missing from the plan.
+              const night = readOvernightFlight(f);
+              const lands = night.arrivalDate > f.date ? ` → lands ${night.arrivalDate}` : "";
+              return {
+                id: f.id,
+                label: `${f.from} → ${f.to}`,
+                sub: `${f.date}${f.departTime ? " · " + f.departTime : ""}${lands}${night.overnight ? " · overnight" : ""}`,
+              };
+            })}
+            onRemove={removeFlight}
+            onEdit={(id) => { setEditingFlightId(id); setTab("flight"); }}
+          />
+          <BookingList title="Lodging" items={itin.lodging.map((l) => ({ id: l.id, label: l.type === "overnight-transit" ? `Overnight ${l.name || "transit"}` : l.name, sub: `${l.checkIn} → ${l.checkOut}` }))} onRemove={removeLodging} onEdit={(id) => { setEditingLodgingId(id); setTab("hotel"); }} />
+          <BookingList title="Activities" items={itin.activities.map((a) => ({ id: a.id, label: a.name, sub: `${a.date}${a.startTime ? " · " + a.startTime : ""}` }))} onRemove={removeActivity} />
+        </div>
+        </details>
+      )}
+
 
       {loaded && days.length === 0 && (
         <div className="mt-8 border border-dashed border-[var(--gold-light)] p-10 text-center">
