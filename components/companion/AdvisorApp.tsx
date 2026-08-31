@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons/Icon";
-import { AdvisorInbox, COMPANION_CSS } from "@/components/companion/CompanionApp";
+import CompanionApp, { AdvisorInbox, COMPANION_CSS } from "@/components/companion/CompanionApp";
+import type { CompanionTrip } from "@/data/companion-demo";
 
 /**
  * THE ADVISOR APP — its own app, not the client's.
@@ -53,13 +55,47 @@ const TABS: { id: Tab; label: string; icon: IconName; eyebrow: string; title: st
   { id: "account", label: "Account", icon: "account", eyebrow: "Advisor", title: "Dashboard" },
 ];
 
-export default function AdvisorApp({ trips, children }: { trips: AdvisorTripRow[]; children: ReactNode }) {
-  // Open on the dashboard — the advisor's overview — the same page this app
-  // used to be before it grew tabs.
-  const [tab, setTab] = useState<Tab>("account");
+export default function AdvisorApp({
+  trips,
+  children,
+  openTrip,
+  openScreen,
+  openShareId,
+}: {
+  trips: AdvisorTripRow[];
+  children: ReactNode;
+  /** A trip opened from the Trips or Wallet tab (server-built on /advisor?trip=…).
+   *  When present, it shows embedded in this shell — the advisor's own four-tab
+   *  bar stays below it, so opening a trip never lands them in the client app. */
+  openTrip?: CompanionTrip | null;
+  /** Which of the trip's screens to open on — "wallet" from the Wallet tab. */
+  openScreen?: "wallet";
+  /** The trip's share token, so "Comment on this" opens that client's thread. */
+  openShareId?: string;
+}) {
+  const router = useRouter();
+  // Open on the dashboard — the advisor's overview — unless a trip was opened,
+  // in which case the shell shows that trip (from Trips, or Wallet).
+  const [tab, setTab] = useState<Tab>(openTrip ? (openScreen === "wallet" ? "wallet" : "trips") : "account");
+  // Whether a trip is showing embedded right now. Set from the server prop;
+  // tapping any bottom tab leaves the trip and returns to normal tabs.
+  const [viewingTrip, setViewingTrip] = useState(Boolean(openTrip));
   // While the message composer holds the keyboard, drop the bottom bar out of
   // the way (the inbox bubbles this up), same as the client app does.
   const [composerUp, setComposerUp] = useState(false);
+
+  // Tapping a bottom tab always leaves an open trip and shows that tab.
+  function selectTab(id: Tab) {
+    setViewingTrip(false);
+    setTab(id);
+  }
+
+  // Backing out of the embedded trip returns to the advisor app and drops the
+  // ?trip from the address so a refresh doesn't reopen it.
+  function exitTrip() {
+    setViewingTrip(false);
+    router.replace("/advisor");
+  }
 
   const meta = TABS.find((t) => t.id === tab)!;
   const activeIdx = TABS.findIndex((t) => t.id === tab);
@@ -72,22 +108,39 @@ export default function AdvisorApp({ trips, children }: { trips: AdvisorTripRow[
       <style>{COMPANION_CSS}</style>
 
       {/* header — the navy bar, a gold eyebrow over a serif title, exactly the
-          client app's. No back button: every tab here is top-level. */}
-      <div style={{ flexShrink: 0, padding: "calc(20px + env(safe-area-inset-top)) 18px 12px", display: "flex", alignItems: "center", gap: 10, background: NAVY, color: CREAM, borderBottom: "1px solid rgba(255,255,255,.08)" }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: GOLD_ON_DARK }}>{meta.eyebrow}</div>
-          <div style={{ font: `400 19px/1.15 ${serif}`, letterSpacing: "-.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta.title}</div>
+          client app's. No back button: every tab here is top-level. Hidden
+          while a trip is open, because the embedded trip brings its own navy
+          header (with the back that leaves the trip). */}
+      {!viewingTrip && (
+        <div style={{ flexShrink: 0, padding: "calc(20px + env(safe-area-inset-top)) 18px 12px", display: "flex", alignItems: "center", gap: 10, background: NAVY, color: CREAM, borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: GOLD_ON_DARK }}>{meta.eyebrow}</div>
+            <div style={{ font: `400 19px/1.15 ${serif}`, letterSpacing: "-.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta.title}</div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* content */}
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {tab === "account" && (
+        {viewingTrip && openTrip && (
+          // The trip itself, embedded — its own navy header and itinerary,
+          // this app's four-tab bar still below it. The advisor is never handed
+          // off to the client app, and Account is always one tap away.
+          <CompanionApp
+            trip={openTrip}
+            embedded
+            onExit={exitTrip}
+            advisorInbox
+            advisorShareId={openShareId}
+            initialScreen={openScreen}
+          />
+        )}
+        {!viewingTrip && tab === "account" && (
           <div className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             {children}
           </div>
         )}
-        {tab === "messages" && (
+        {!viewingTrip && tab === "messages" && (
           // The inbox lives in its own scroll region, the same way the client
           // app wraps it — otherwise a long list of clients has nothing to
           // scroll inside and gets clipped under the bottom bar.
@@ -95,18 +148,18 @@ export default function AdvisorApp({ trips, children }: { trips: AdvisorTripRow[
             <AdvisorInbox onComposerFocus={setComposerUp} />
           </div>
         )}
-        {tab === "trips" && (
+        {!viewingTrip && tab === "trips" && (
           <TripList
             trips={trips}
             blurb="Every client's trip. Open one to see its itinerary and chat."
-            hrefFor={(t) => `/app?trip=${encodeURIComponent(t.id)}`}
+            hrefFor={(t) => `/advisor?trip=${encodeURIComponent(t.id)}`}
           />
         )}
-        {tab === "wallet" && (
+        {!viewingTrip && tab === "wallet" && (
           <TripList
             trips={trips}
             blurb="Open a trip to add its documents — boarding passes, confirmations — to the client's wallet."
-            hrefFor={(t) => `/app?trip=${encodeURIComponent(t.id)}&screen=wallet`}
+            hrefFor={(t) => `/advisor?trip=${encodeURIComponent(t.id)}&screen=wallet`}
           />
         )}
       </div>
@@ -135,7 +188,7 @@ export default function AdvisorApp({ trips, children }: { trips: AdvisorTripRow[
             return (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => selectTab(t.id)}
                 aria-current={on ? "page" : undefined}
                 aria-label={t.label}
                 style={{ position: "relative", zIndex: 1, flex: 1, border: 0, cursor: "pointer", background: "transparent", color: on ? ON_GOLD : MUTED, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "9px 3px", transition: "color .2s ease" }}

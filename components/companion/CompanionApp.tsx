@@ -741,11 +741,23 @@ export default function CompanionApp({
   advisorShareId,
   sharedDraft,
   initialScreen,
+  embedded = false,
+  onExit,
 }: {
   trip?: CompanionTrip;
   chat?: CompanionChat;
   /** The advisor's own side: a Messages tab that lists every client's chat. */
   advisorInbox?: boolean;
+  /**
+   * Rendered inside the advisor app (not as its own full-screen app): drop the
+   * desktop showcase frame, fill the parent, and hide THIS app's own bottom bar
+   * so the advisor app's four-tab bar is the only one. The navy header stays —
+   * it is the trip's header and its back button — and on the top screen that
+   * back calls `onExit` to leave the trip rather than going nowhere.
+   */
+  embedded?: boolean;
+  /** Called when the embedded trip is backed out of from its top screen. */
+  onExit?: () => void;
   /** Which tab to open on — e.g. the advisor arriving from the dashboard's
    *  "Messages" opens straight on the inbox instead of the trip. Falls back to
    *  home (or messages when a shared place is waiting). */
@@ -898,6 +910,12 @@ export default function CompanionApp({
     setSt((s) => ({ ...s, screen, prev: s.screen }));
   }
   function back() {
+    // Embedded in the advisor app: backing out of the top (home) screen leaves
+    // the trip entirely rather than going nowhere.
+    if (embedded && st.screen === "home") {
+      onExit?.();
+      return;
+    }
     setSt((s) => ({ ...s, screen: s.prev && s.prev !== s.screen ? s.prev : "home", prev: null }));
   }
 
@@ -1530,7 +1548,12 @@ export default function CompanionApp({
             className="wg-warm"
             style={{ border: "1px solid rgba(38,50,58,.16)", background: "#ffffff", cursor: "pointer", font: `400 14px/1 ${serif}`, padding: "13px 20px", borderRadius: 14, color: INK }}
           >
-            Ask about this
+            {/* The client asks; the advisor answers. So it reads "Comment on
+                this" on the advisor's side (their own inbox view, or the trip
+                embedded in the advisor app) and "Ask about this" everywhere the
+                viewer is the traveller — a client link, a Gold member's own
+                trip, or the sample preview. */}
+            {advisorInbox || embedded ? "Comment on this" : "Ask about this"}
           </button>
         </div>
       </div>
@@ -1973,11 +1996,13 @@ export default function CompanionApp({
   // list). So the app header shows NO back of its own there — two back arrows
   // stacked in one conversation was the confusion. To leave Messages for the
   // trip, the bottom pill does it, the same as any other tab.
-  const canBack = st.screen !== "home" && !(advisorInbox && st.screen === "messages");
+  // Embedded, the header always carries a back — on the home screen it exits the
+  // trip (back to the advisor app), elsewhere it steps back a screen.
+  const canBack = embedded ? true : st.screen !== "home" && !(advisorInbox && st.screen === "messages");
 
   // ── the phone itself ────────────────────────────────────────────────────
   const phone = (
-    <div className="wg-phone" style={{ display: "flex", flexDirection: "column", background: CREAM, fontFamily: "Inter,system-ui,sans-serif", overflow: "hidden" }}>
+    <div className="wg-phone" style={{ display: "flex", flexDirection: "column", background: CREAM, fontFamily: "Inter,system-ui,sans-serif", overflow: "hidden", ...(embedded ? { height: "100%", flex: 1, minHeight: 0 } : {}) }}>
       {/* header */}
       {/* THE BAR AT THE TOP IS THE DARK ONE NOW.
           It was cream, on a cream page, above white cards — so every screen
@@ -2021,7 +2046,7 @@ export default function CompanionApp({
           the active one (the messenger/travel-app bottom bar). Hidden while the
           message composer holds the keyboard, so it never rides up wedged
           between the input and the keyboard. */}
-      {!(composerUp && st.screen === "messages") && (
+      {!embedded && !(composerUp && st.screen === "messages") && (
       <div style={{ flexShrink: 0, position: "relative", padding: "8px 10px", background: "#ece8df", borderTop: "1px solid rgba(38,50,58,.08)", display: "flex" }}>
         {(() => {
           const idx = tabs.findIndex((t) => t.on);
@@ -2076,6 +2101,18 @@ export default function CompanionApp({
       )}
     </div>
   );
+
+  // Embedded in the advisor app: no desktop showcase frame, no second app root
+  // — just the phone, filling the advisor app's content area, with the advisor
+  // app's own four-tab bar below it.
+  if (embedded) {
+    return (
+      <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <style>{COMPANION_CSS}</style>
+        {phone}
+      </div>
+    );
+  }
 
   return (
     <div className="wg-app-root">

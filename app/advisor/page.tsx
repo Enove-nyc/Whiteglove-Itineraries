@@ -5,15 +5,24 @@ import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
 import { advisorPlacesFor } from "@/lib/account-places";
 import { requireSignedIn } from "@/lib/require-signed-in";
-import { accountCookieName, getCurrentAccountData, tripIsStarted, withTrips } from "@/lib/account-store";
+import { accountCookieName, checkTripFlightStatus, getCurrentAccountData, getTripAlerts, getTripItinerary, tripIsStarted, withTrips } from "@/lib/account-store";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients, mayViewPipelineAnalytics } from "@/lib/account-limits";
 import { readChat, readMarkers } from "@/lib/companion-chat-store";
 import { needsAttention, pipelineStats, tripStage, TRIP_STAGE_LABEL } from "@/data/trip-pipeline";
 import { collectedCents, formatCents, hasBalance, outstandingCents } from "@/data/trip-payments";
+import { emptyItinerary } from "@/data/itinerary";
+import { buildCompanionFromItinerary } from "@/lib/companion-build";
+import { readBrand } from "@/lib/business-brand-store";
+import { getAppPrefs } from "@/lib/app-prefs-store";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
 import AdvisorApp, { type AdvisorTripRow } from "@/components/companion/AdvisorApp";
+import type { CompanionTrip } from "@/data/companion-demo";
+
+function firstParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
 
 // The advisor's home — the screen the advisor app opens on. A cockpit: the
 // business at a glance (what's owed, who's waiting, what's leaving soon) over
@@ -37,7 +46,11 @@ function money(pairs: Array<[string, number]>): string {
   return pairs.map(([currency, cents]) => formatCents(cents, currency)).join("  ·  ");
 }
 
-export default async function AdvisorDashboardPage() {
+export default async function AdvisorDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ trip?: string | string[]; screen?: string | string[] }>;
+}) {
   await requireSignedIn("/advisor");
   const cookie = (await cookies()).get(accountCookieName())?.value;
   const account = await getCurrentAccountData(cookie);
@@ -159,8 +172,38 @@ export default async function AdvisorDashboardPage() {
 
   const firstName = (account.record.name ?? "").trim().split(/\s+/)[0] ?? "";
 
+  // A trip opened from the Trips or Wallet tab (/advisor?trip=…) — built the
+  // same way the client app builds it, but shown embedded in this shell so the
+  // advisor never leaves their own app. Only a started trip this account owns
+  // can open; anything else falls through to the dashboard.
+  const params = await searchParams;
+  const wantedTripId = firstParam(params.trip);
+  const openScreen = firstParam(params.screen) === "wallet" ? ("wallet" as const) : undefined;
+  let openTrip: CompanionTrip | null = null;
+  let openShareId: string | undefined;
+  if (wantedTripId) {
+    const selected = trips.find((t) => t.id === wantedTripId);
+    if (selected) {
+      openShareId = selected.shareId;
+      const chosen = await getTripItinerary(account.email, selected.id).catch(() => null);
+      if (chosen) {
+        const [brand, prefs] = await Promise.all([
+          readBrand(account.email).catch(() => null),
+          getAppPrefs(account.email).catch(() => ({ kosherFeatures: false })),
+        ]);
+        const advisorName = chosen.advisor || (brand?.enabled ? brand.name : undefined);
+        openTrip = await buildCompanionFromItinerary(
+          { ...emptyItinerary(), ...chosen.itinerary },
+          { today, advisorName, tripName: chosen.tripName, client: chosen.client, tripId: selected.id, kosher: prefs.kosherFeatures },
+        );
+        await checkTripFlightStatus(account.email, selected.id).catch(() => []);
+        if (openTrip) openTrip.liveAlerts = await getTripAlerts(account.email, selected.id).catch(() => []);
+      }
+    }
+  }
+
   return (
-    <AdvisorApp trips={tripRows}>
+    <AdvisorApp trips={tripRows} openTrip={openTrip} openScreen={openScreen} openShareId={openShareId}>
       <section className="mx-auto w-full max-w-3xl px-5 pb-8 pt-5 sm:px-8">
         {/* The navy app header above already says "Advisor · Dashboard", so the
             hero drops the eyebrow and opens straight on the welcome. */}
