@@ -13,6 +13,7 @@ import { needsAttention, pipelineStats, tripStage, TRIP_STAGE_LABEL } from "@/da
 import { collectedCents, formatCents, hasBalance, outstandingCents } from "@/data/trip-payments";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
+import AdvisorApp, { type AdvisorTripRow } from "@/components/companion/AdvisorApp";
 
 // The advisor's home — the screen the advisor app opens on. A cockpit: the
 // business at a glance (what's owed, who's waiting, what's leaving soon) over
@@ -136,6 +137,22 @@ export default async function AdvisorDashboardPage() {
   const nextDep = upcoming[0] ?? null;
   const noTrips = trips.length === 0;
 
+  // The Trips and Wallet tabs of the advisor app list every started trip.
+  const tripRows: AdvisorTripRow[] = trips.map((t) => {
+    const stage = tripStage(
+      { pipelineStage: t.pipelineStage, proposal: t.proposal, startDate: t.itinerary?.startDate, endDate: t.itinerary?.endDate },
+      today,
+    );
+    return {
+      id: t.id,
+      name: t.name,
+      client: (t.client ?? "").trim(),
+      shareId: t.shareId,
+      startDate: t.itinerary?.startDate ?? "",
+      stageLabel: TRIP_STAGE_LABEL[stage],
+    };
+  });
+
   // The tools grid — reuse the same gated list the account menu shows, minus a
   // link back to this page, plus the planner as the way to start a new trip.
   const places = advisorPlacesFor(plan).filter((p) => p.href !== "/advisor");
@@ -143,18 +160,18 @@ export default async function AdvisorDashboardPage() {
   const firstName = (account.record.name ?? "").trim().split(/\s+/)[0] ?? "";
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
-      <Navbar minimal homeHref="/advisor" />
-      <section className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:px-8 sm:py-14">
+    <AdvisorApp trips={tripRows}>
+      <section className="mx-auto w-full max-w-3xl px-5 pb-8 pt-5 sm:px-8">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Advisor</p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
+        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
           {firstName ? `Welcome back, ${firstName}` : "Your dashboard"}
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
           Your business at a glance. Tap any card to open it.
         </p>
 
-        {/* Quick actions */}
+        {/* Quick actions — Trips, Messages and Wallet are the bottom tabs now,
+            so this keeps only the two that aren't. */}
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/itinerary"
@@ -167,12 +184,6 @@ export default async function AdvisorDashboardPage() {
             className="inline-flex min-h-11 items-center rounded-full border border-[var(--gold)] px-5 text-sm font-semibold text-[var(--navy)] transition hover:bg-white"
           >
             Open pipeline
-          </Link>
-          <Link
-            href="/app?screen=messages"
-            className="inline-flex min-h-11 items-center rounded-full border border-[var(--gold)] px-5 text-sm font-semibold text-[var(--navy)] transition hover:bg-white"
-          >
-            Messages
           </Link>
         </div>
 
@@ -197,7 +208,7 @@ export default async function AdvisorDashboardPage() {
               <DashTile href="/payments" label="Owed to you" value={money(stats.outstandingByCurrency)} tone={stats.outstandingByCurrency.length ? "gold" : "calm"} />
               <DashTile href="/pipeline" label="Needs you" value={String(attentionCount)} sub={attentionCount ? "waiting on a reply" : "all caught up"} tone={attentionCount ? "gold" : "calm"} />
               <DashTile href="/pipeline" label="Active trips" value={String(stats.activeCount)} sub={nextDep ? `next ${nextDep.startDate}` : undefined} tone="calm" />
-              <DashTile href="/app?screen=messages" label="Unread" value={String(unreadCount)} sub={unreadCount ? "client messages" : "no new messages"} tone={unreadCount ? "gold" : "calm"} />
+              <DashTile href="/pipeline" label="Unread" value={String(unreadCount)} sub={unreadCount ? "client messages" : "no new messages"} tone={unreadCount ? "gold" : "calm"} />
             </div>
 
             {(collectedByCurrency.size > 0 || (showAnalytics && stats.commissionByCurrency.length > 0)) && (
@@ -244,8 +255,7 @@ export default async function AdvisorDashboardPage() {
           </Link>
         </div>
       </section>
-      <Footer minimal />
-    </main>
+    </AdvisorApp>
   );
 }
 

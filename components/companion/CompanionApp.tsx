@@ -2079,7 +2079,7 @@ export default function CompanionApp({
 
   return (
     <div className="wg-app-root">
-      <style>{CSS}</style>
+      <style>{COMPANION_CSS}</style>
       {/* Desktop showcase chrome — the intro and the two toolbars, shown in the
           browser and hidden once the app is installed to the home screen. */}
       <div className="wg-chrome">
@@ -4201,7 +4201,7 @@ const INBOX_KIND_META: Record<string, { glyph: ReactNode; label: string }> = {
  * with. Tap one to open that thread; every client is its own chat, and this is
  * the one place they all live.
  */
-function AdvisorInbox({
+export function AdvisorInbox({
   pendingShare,
   onPendingShareUsed,
   onComposerFocus,
@@ -4563,7 +4563,7 @@ function RenameConversation({ initial, fallback, onSave, onClose }: { initial: s
  */
 const TAP_INLINE = { padding: "13px 8px", margin: "-13px -8px" } as const;
 
-const CSS = `
+export const COMPANION_CSS = `
 @keyframes wgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes wgPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .wg-app-root { min-height: 100dvh; background: #15324b; color: #26323a; }
