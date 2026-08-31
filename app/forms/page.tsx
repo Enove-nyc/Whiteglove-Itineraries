@@ -9,6 +9,7 @@ import { mayServeCompanionClients } from "@/lib/account-limits";
 import { getPlan } from "@/lib/account-plan-store";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
+import TripContextBar from "@/components/TripContextBar";
 
 // Brand-aware, signed-in only: /forms is one of the itineraries domain's
 // own pages, the same as /itinerary, /app, /proposal and /library.
@@ -34,6 +35,8 @@ export default async function FormsPage() {
   return (
     <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal homeHref="/advisor" />
+      {/* Which trip this is, and the trip's other screens. */}
+      <TripContextBar current="/forms" />
       <section className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-14">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Client forms</p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">

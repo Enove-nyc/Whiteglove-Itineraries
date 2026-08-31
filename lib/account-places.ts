@@ -55,3 +55,49 @@ export function advisorPlacesFor(plan: AccountPlan | undefined) {
   const brand = mayBrandOwnItinerary(plan);
   return ADVISOR_PLACES.filter((place) => (place.need === "brand" ? brand : clients));
 }
+
+/**
+ * THE SCREENS THAT ARE ABOUT ONE TRIP, as opposed to the tools above.
+ *
+ * The advisor's work on a trip is spread across separate top-level pages —
+ * /itinerary, /proposal, /addons, /forms, /payments, /group — and each of them
+ * is a standalone screen that operates on whichever trip is currently open on
+ * the account. There was nothing anywhere saying WHICH trip that is, and no way
+ * to get from Payments to Proposals except back out through the global menu.
+ *
+ * So an advisor with twenty clients, halfway through the Harpers' Rome trip,
+ * had to hold "the open trip is the Harpers" in their head across every screen
+ * — and the one screen that names a trip, the pipeline, is the one they had to
+ * leave to get anywhere.
+ *
+ * Split out from ADVISOR_PLACES rather than duplicated: Pipeline, Library and
+ * Agency are tools that span every trip and have no business in a bar about
+ * one, while /addons is trip work that was in no menu at all — reachable only
+ * by typing the address. Labels are the ones already in use above, so nothing
+ * here gains a second name.
+ */
+export const TRIP_PLACES = [
+  // Open to any signed-in account, unlike the five below it — a traveller
+  // planning their own trip has an itinerary and no clients.
+  { label: "Itinerary", href: "/itinerary", need: "any" },
+  { label: "Proposals", href: "/proposal", need: "clients" },
+  { label: "Extras", href: "/addons", need: "clients" },
+  { label: "Client forms", href: "/forms", need: "clients" },
+  { label: "Payments", href: "/payments", need: "clients" },
+  { label: "Group trip", href: "/group", need: "clients" },
+] as const;
+
+export type TripPlace = (typeof TRIP_PLACES)[number];
+
+/**
+ * The trip screens this plan can actually open.
+ *
+ * Gated by the same lib/account-limits function the pages themselves check, so
+ * the bar can never offer a door the plan does not open — the same rule
+ * advisorPlacesFor follows, for the same reason.
+ */
+export function tripPlacesFor(plan: AccountPlan | undefined): TripPlace[] {
+  if (!plan) return [];
+  const clients = mayServeCompanionClients(plan);
+  return TRIP_PLACES.filter((place) => place.need === "any" || clients);
+}

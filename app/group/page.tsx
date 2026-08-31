@@ -10,6 +10,7 @@ import { getPlan } from "@/lib/account-plan-store";
 import { requireSignedIn } from "@/lib/require-signed-in";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
+import TripContextBar from "@/components/TripContextBar";
 
 // Brand-aware, signed-in only: /group is one of the itineraries domain's own
 // pages, the same as /payments, /proposal and /pipeline.
@@ -35,6 +36,8 @@ export default async function GroupPage() {
   return (
     <main className="min-h-screen bg-[var(--cream)]">
       <Navbar minimal />
+      {/* Which trip this is, and the trip's other screens. */}
+      <TripContextBar current="/group" />
       <section className="mx-auto max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
         <PageHeader
           eyebrow="Group trip"

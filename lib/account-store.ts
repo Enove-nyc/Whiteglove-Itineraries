@@ -1,3 +1,9 @@
+import type { AdvisorWelcome } from "@/data/advisor-welcome";
+import { withActivity, type ActivityEntry } from "@/data/trip-activity";
+import { readTeam, type TeamMember } from "@/data/team";
+import { clientsFromTrips, emptyClientProfile, tripsForClient, type ClientProfile, type ClientSummary } from "@/data/clients";
+import type { AddonItem } from "@/data/trip-addons";
+import type { CommissionRecord } from "@/data/trip-commission";
 import { createHmac, pbkdf2Sync, randomBytes } from "crypto";
 import { type AccountPlan, planOf } from "@/lib/account-plans";
 import { travelerAttachments, withoutAttachments } from "@/lib/attachments";
@@ -26,6 +32,10 @@ import { sendPushToSubscriptions } from "@/lib/push-notify";
 type RedisResult<T> = { result?: T };
 
 export type AccountRecord = {
+  /** The owner's roster. Written only by the team functions. */
+  team?: TeamMember[];
+  /** Set on a staff login; absent means the login is its own business. */
+  teamOwnerEmail?: string;
   /**
    * What the account is called and stored under: an email address, or a phone
    * number in E.164.
@@ -96,6 +106,16 @@ export type AccountRecord = {
  * account and saving the second lost the first.
  */
 export type SavedTrip = {
+  /** The advisor's own note and picture, shown at the top of the client app. */
+  advisorWelcome?: AdvisorWelcome;
+  /** The client's own link to the extras on this trip. */
+  addonsShareId?: string;
+  /** What happened on this trip, newest first. */
+  activity?: ActivityEntry[];
+  /** Advisor's own record of what this trip earned. */
+  commissions?: CommissionRecord[];
+  /** Extras offered to the client on this trip, and their answers. */
+  addons?: AddonItem[];
   id: string;
   name: string;
   /**
@@ -220,6 +240,8 @@ export type SavedTrip = {
 };
 
 export type AccountData = {
+  /** What the advisor has written about each client, keyed by clientKey. */
+  clients?: Record<string, ClientProfile>;
   /**
    * The open trip's route and itinerary, kept as they always were.
    *
@@ -2502,4 +2524,309 @@ export async function clearAssistantConversation(email: string): Promise<boolean
   if (!hasAccountStorage()) return false;
   const response = await redis(`del/${encodeURIComponent(assistantKey(email))}`);
   return Boolean(response);
+}
+
+
+function commissionId() {
+  return randomBytes(6).toString("base64url");
+}
+
+function addonId() {
+  return randomBytes(6).toString("base64url");
+}
+
+function addonsShareKey(shareId: string) {
+  return `white-glove:addons-share:${shareId}`;
+}
+
+function activityEntry(kind: ActivityEntry["kind"], message: string): ActivityEntry {
+  return { id: activityId(), kind, message, at: new Date().toISOString() };
+}
+
+function activityId() {
+  return randomBytes(6).toString("base64url");
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * THE ADVISOR'S OWN STORE, MOVED HERE FROM THE KOSHER REPOSITORY.
+ *
+ * Clients, commissions, add-ons and the advisor's welcome note. Every one of
+ * these has the same user — somebody planning a trip for other people — which
+ * is this product, not that one. They were written on the kosher side because
+ * that is where the work happened to start, and were never moved; AGENTS.md
+ * has said all along that an adviser feature "has to be built or ported in the
+ * itineraries repository", and nothing enforced it.
+ *
+ * Lifted rather than rewritten: same names, same shapes, same keys, so a trip
+ * saved by either deployment is read the same way by both. The two files have
+ * drifted about eight hundred lines apart and this closes the advisor-shaped
+ * part of that gap; the rest (packing, translation, push) is not advisor work
+ * and is left where it is.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Whose business a signed-in login actually works against — the one seam
+ * everything about running the business (trips, the pipeline, the library,
+ * payments, proposals, the client inbox) should read instead of the signed-in
+ * identity directly. An identity with no teamOwnerEmail is its own business,
+ * same as every account before staff logins existed.
+ *
+ * THE OWNER'S ROSTER IS THE AUTHORITY, NOT THE MEMBER'S OWN FIELD. An earlier
+ * version of this trusted teamOwnerEmail alone, on the reasoning that
+ * removeTeamMember clears it in the same write that drops the roster row.
+ * That reasoning was wrong: accept and remove each issue TWO independent
+ * writes, so a half-failure (or a raced accept of one token by two logins)
+ * can leave a login carrying teamOwnerEmail that the owner's roster does not
+ * list — a staff grant over trips, payments, clients and commissions that the
+ * team screen cannot revoke, because removeTeamMember refuses somebody who is
+ * not on the roster.
+ *
+ * So the field is only a POINTER, and the owner's own roster is what decides.
+ * Fails closed: a login the owner does not actively list resolves to itself,
+ * which is exactly the access it had before it ever joined.
+ */
+export async function resolveBusinessOwner(email: string): Promise<string> {
+  const normalized = normalizeId(email);
+  const record = await getAccountRecord(normalized);
+  if (!record?.teamOwnerEmail) return normalized;
+  const owner = normalizeId(record.teamOwnerEmail);
+  if (owner === normalized) return normalized;
+  const ownerRecord = await getAccountRecord(owner);
+  const listedActive = readTeam(ownerRecord?.team).some((m) => m.email === normalized && m.status === "active");
+  return listedActive ? owner : normalized;
+}
+
+/**
+ * Whether this login is its own business rather than staff on somebody
+ * else's — the check for the few things only an owner may do (managing the
+ * team, and setting up where the money lands; see the Stripe Connect note in
+ * app/api/account/payments/route.ts). Reads the same authority
+ * resolveBusinessOwner does, so a login the owner no longer lists is its own
+ * business again and passes this, which is correct: it is answering for
+ * itself, not for anybody else.
+ */
+export async function isOwnBusiness(email: string): Promise<boolean> {
+  return (await resolveBusinessOwner(email)) === normalizeId(email);
+}
+
+/** Every distinct client on this account's trips, most recent activity
+ *  first. */
+export async function listClients(email: string, today: string): Promise<ClientSummary[]> {
+  const data = await getAccountData(email);
+  const { trips } = withTrips(data);
+  return clientsFromTrips(
+    trips.map((t) => ({ id: t.id, client: t.client, startDate: t.itinerary?.startDate, endDate: t.itinerary?.endDate, updatedAt: t.updatedAt })),
+    today,
+  );
+}
+
+/** One client's own trips, most recently updated first — the same summary
+ *  shape the trip list itself uses. */
+export async function getClientTrips(email: string, key: string): Promise<TripSummary[]> {
+  const data = await getAccountData(email);
+  const { trips, activeId } = withTrips(data);
+  return summarize(tripsForClient(trips, key), activeId);
+}
+
+/** A client's own notes and preferences, or an empty one if nothing has
+ *  been written yet — a screen should always have something to show. */
+export async function getClientProfile(email: string, key: string): Promise<ClientProfile> {
+  const data = await getAccountData(email);
+  return data.clients?.[key] ?? emptyClientProfile(key);
+}
+
+/** Save a client's notes/preferences. `key` is trusted from the caller — see
+ *  data/clients.ts's clientKey(), which the route computes from the name on
+ *  the URL, never anything the client-side request could substitute a
+ *  different key for while keeping the visible name the same. */
+export async function saveClientProfile(email: string, key: string, patch: { notes?: string; preferences?: string }): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const current = await getAccountData(normalized);
+  const now = new Date().toISOString();
+  const existing = current.clients?.[key] ?? emptyClientProfile(key);
+  const stamped: ClientProfile = { ...existing, ...patch, key, updatedAt: now };
+  const next: AccountData = { ...current, clients: { ...current.clients, [key]: stamped }, updatedAt: now };
+  return writeJson(dataKey(normalized), next);
+}
+
+/** One trip's commission ledger — every supplier booking logged so far. */
+export async function getCommissions(email: string, tripId: string): Promise<CommissionRecord[]> {
+  const data = await getAccountData(email);
+  return withTrips(data).trips.find((t) => t.id === tripId)?.commissions ?? [];
+}
+
+/** Add or update one supplier booking's commission record. */
+export async function saveCommissionRecord(email: string, tripId: string, record: CommissionRecord): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return false;
+  const now = new Date().toISOString();
+  const existing = trip.commissions ?? [];
+  const stamped: CommissionRecord = { ...record, id: record.id || commissionId(), createdAt: record.createdAt || now, updatedAt: now };
+  const nextRecords = existing.some((r) => r.id === stamped.id)
+    ? existing.map((r) => (r.id === stamped.id ? stamped : r))
+    : [...existing, stamped];
+  const next = trips.map((t) => (t.id === tripId ? { ...t, commissions: nextRecords, updatedAt: now } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/** Remove one supplier booking's commission record. */
+export async function deleteCommissionRecord(email: string, tripId: string, id: string): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return false;
+  const nextRecords = (trip.commissions ?? []).filter((r) => r.id !== id);
+  const next = trips.map((t) => (t.id === tripId ? { ...t, commissions: nextRecords, updatedAt: new Date().toISOString() } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/**
+ * Every trip that has at least one commission record — the agency-wide
+ * rollup. One row per trip, not per booking: a trip with three supplier
+ * bookings is one line here, the same way the pipeline is one line per
+ * trip regardless of how many stops are on it.
+ */
+export async function listCommissionSummaries(email: string): Promise<
+  Array<{ tripId: string; tripName: string; client: string; records: CommissionRecord[] }>
+> {
+  const data = await getAccountData(email);
+  const { trips } = withTrips(data);
+  return trips
+    .filter((t) => (t.commissions?.length ?? 0) > 0)
+    .map((t) => ({ tripId: t.id, tripName: t.name, client: t.client?.trim() ?? "", records: t.commissions ?? [] }));
+}
+
+/** Every add-on offered on this trip. */
+export async function getAddons(email: string, tripId: string): Promise<AddonItem[]> {
+  const data = await getAccountData(email);
+  return withTrips(data).trips.find((t) => t.id === tripId)?.addons ?? [];
+}
+
+/** Add or update one add-on. */
+export async function saveAddonItem(email: string, tripId: string, item: AddonItem): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return false;
+  const now = new Date().toISOString();
+  const existing = trip.addons ?? [];
+  const stamped: AddonItem = { ...item, id: item.id || addonId(), createdAt: item.createdAt || now, updatedAt: now };
+  const nextItems = existing.some((i) => i.id === stamped.id)
+    ? existing.map((i) => (i.id === stamped.id ? stamped : i))
+    : [...existing, stamped];
+  const next = trips.map((t) => (t.id === tripId ? { ...t, addons: nextItems, updatedAt: now } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/** Remove one add-on. */
+export async function deleteAddonItem(email: string, tripId: string, id: string): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return false;
+  const nextItems = (trip.addons ?? []).filter((i) => i.id !== id);
+  const next = trips.map((t) => (t.id === tripId ? { ...t, addons: nextItems, updatedAt: new Date().toISOString() } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/** The add-ons list's public link — created once, reused after. */
+export async function ensureAddonsShare(email: string, tripId: string): Promise<string | null> {
+  if (!hasAccountStorage()) return null;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return null;
+  if (trip.addonsShareId) {
+    await writeJson(addonsShareKey(trip.addonsShareId), { ownerEmail: normalized, tripId, createdAt: new Date().toISOString() });
+    return trip.addonsShareId;
+  }
+  const token = shareToken();
+  const wrote = await writeJson(addonsShareKey(token), { ownerEmail: normalized, tripId, createdAt: new Date().toISOString() });
+  if (!wrote) return null;
+  const next = trips.map((t) => (t.id === tripId ? { ...t, addonsShareId: token, updatedAt: new Date().toISOString() } : t));
+  const saved = await writeTrips(normalized, next, activeId);
+  return saved ? token : null;
+}
+
+/** An add-ons list by its public token. */
+export async function getSharedAddons(shareId: string) {
+  const rec = await readJson<{ ownerEmail: string; tripId: string }>(addonsShareKey(shareId));
+  if (!rec) return null;
+  const data = await getAccountData(rec.ownerEmail);
+  const trip = withTrips(data).trips.find((t) => t.id === rec.tripId);
+  if (!trip) return null;
+  const record = await getAccountRecord(rec.ownerEmail);
+  return { items: trip.addons ?? [], tripName: trip.client || trip.name, ownerName: record?.name, advisor: trip.advisor };
+}
+
+/**
+ * What a client may do with an add-on from its public link — accept or
+ * decline one, never more. Answering one that isn't on the list, or one
+ * already answered, is refused rather than silently overwritten.
+ */
+export async function applyAddonClientAction(
+  shareId: string,
+  itemId: string,
+  accepted: boolean,
+): Promise<{ items: AddonItem[]; ownerEmail: string; tripName: string; addon: AddonItem } | null> {
+  const rec = await readJson<{ ownerEmail: string; tripId: string }>(addonsShareKey(shareId));
+  if (!rec) return null;
+  const normalized = normalizeId(rec.ownerEmail);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === rec.tripId);
+  if (!trip) return null;
+  const existing = trip.addons ?? [];
+  const found = existing.find((i) => i.id === itemId);
+  if (!found || found.status !== "offered") return null;
+  const now = new Date().toISOString();
+  const answered: AddonItem = { ...found, status: accepted ? "accepted" : "declined", respondedAt: now, updatedAt: now };
+  const items = existing.map((i) => (i.id === itemId ? answered : i));
+  const activity = withActivity(
+    trip.activity ?? [],
+    activityEntry(accepted ? "addon_accepted" : "addon_declined", `${accepted ? "Accepted" : "Declined"} the add-on: ${answered.name}.`),
+  );
+  const next = trips.map((t) => (t.id === rec.tripId ? { ...t, addons: items, activity, updatedAt: now } : t));
+  const ok = await writeTrips(normalized, next, activeId);
+  return ok ? { items, ownerEmail: rec.ownerEmail, tripName: trip.client || trip.name, addon: answered } : null;
+}
+
+/** The trip's welcome video, or null if none uploaded yet. */
+export async function getAdvisorWelcome(email: string, tripId: string): Promise<AdvisorWelcome | null> {
+  const data = await getAccountData(email);
+  return withTrips(data).trips.find((t) => t.id === tripId)?.advisorWelcome ?? null;
+}
+
+/** Save (or replace) the trip's welcome video. */
+export async function saveAdvisorWelcome(email: string, tripId: string, welcome: AdvisorWelcome): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  if (!trips.some((t) => t.id === tripId)) return false;
+  const next = trips.map((t) => (t.id === tripId ? { ...t, advisorWelcome: welcome, updatedAt: new Date().toISOString() } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/** Remove the trip's welcome video. */
+export async function removeAdvisorWelcome(email: string, tripId: string): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  if (!trips.some((t) => t.id === tripId)) return false;
+  const next = trips.map((t) => (t.id === tripId ? { ...t, advisorWelcome: undefined, updatedAt: new Date().toISOString() } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
 }
