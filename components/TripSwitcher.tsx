@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDeviceClock } from "@/components/TripProgressStrip";
 import { countdownPhrase, tripProgress } from "@/lib/trip-progress";
+import { tripRowMeta } from "@/lib/trip-bar";
 import { isAccountPlan } from "@/lib/account-plans";
 import { mayServeCompanionClients, mayUseTripTemplates } from "@/lib/account-limits";
 
@@ -359,13 +360,21 @@ export default function TripSwitcher({
                 </form>
               ) : (
                 <>
-                  <p className="font-semibold text-[var(--navy)]">
-                    {onOpen ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void openTrip(trip.id)}
-                        className="text-left text-[var(--navy)] underline decoration-[var(--gold-light)] decoration-2 underline-offset-4 transition hover:decoration-[var(--gold)] disabled:opacity-50"
+              {/* THE NAME IS A HEADING THAT HAPPENS TO BE PRESSABLE, not a
+                  link among links. Underlined in gold at rest, beside an
+                  underlined client line and an underlined meta line, every
+                  row read as a paragraph of links and none of them looked
+                  more important than the others — so the trip's own name,
+                  which is the thing you are picking, did not stand out from
+                  the small print under it. Bigger, not underlined until you
+                  reach for it, and Open is still the explicit way in. */}
+              <p className="text-base font-semibold text-[var(--navy)]">
+                {onOpen ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void openTrip(trip.id)}
+                        className="text-left text-[var(--navy)] underline decoration-transparent decoration-2 underline-offset-4 transition hover:decoration-[var(--gold)] disabled:opacity-50"
                       >
                         {trip.name}
                       </button>
@@ -382,17 +391,13 @@ export default function TripSwitcher({
                   {trip.advisor && (
                     <p className="text-xs text-stone-500">Advisor: {trip.advisor}</p>
                   )}
-                  <p className="text-xs text-stone-500">
-                    {[
-                      `${trip.stops} ${trip.stops === 1 ? "stop" : "stops"}`,
-                      trip.days ? `${trip.days} ${trip.days === 1 ? "day" : "days"}` : "no dates yet",
-                      countdownPhrase(tripProgress({ startDate: trip.startDate, endDate: trip.endDate, today })),
-                      trip.places ? `${trip.places} saved` : "",
-                      trip.shared ? "shared" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+              {/* THE DATES LEAD, AND USED NOT TO BE HERE AT ALL. The line
+                  read "3 stops · 8 days · in 2 months · 5 saved · client code
+                  created" — five facts, and the one an advisor picks a trip
+                  out of a list by was not among them. See tripRowMeta. */}
+              <p className="text-xs text-stone-500">
+                {tripRowMeta(trip, countdownPhrase(tripProgress({ startDate: trip.startDate, endDate: trip.endDate, today })))}
+              </p>
                 </>
               )}
             </div>

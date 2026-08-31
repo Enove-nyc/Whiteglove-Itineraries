@@ -15,6 +15,7 @@ import { getVacationDestinations } from "@/lib/vacation-destinations-view";
 import { templatesFrom } from "@/lib/trip-setup";
 import { loadVacationSources } from "@/lib/vacation-sources";
 import { currentBrand } from "@/lib/site-brand";
+import TripContextBar from "@/components/TripContextBar";
 
 // Brand-aware: /itinerary is one of the itineraries domain's own pages too.
 export async function generateMetadata() {
@@ -55,6 +56,8 @@ export default async function ItineraryPage() {
   return (
     <main className="flex min-h-screen flex-col bg-[var(--cream)]">
       <Navbar minimal={itineraries} />
+      {/* Which trip this is, and the trip's other screens. */}
+      <TripContextBar current="/itinerary" />
 
       <section className="border-b border-[var(--gold-light)] px-5 py-9 sm:px-8 sm:py-12">
         <div className="mx-auto max-w-7xl">

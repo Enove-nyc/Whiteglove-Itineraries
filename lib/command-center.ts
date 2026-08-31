@@ -19,6 +19,15 @@
 /** What the site knows about one stop, gathered by the page. */
 export type StopFacts = {
   id: string;
+  /**
+   * The country this stop is in, where it is known.
+   *
+   * From the itinerary where the traveller or the planner recorded one, and
+   * from the beis hachaim's own record otherwise. Used to say what the state
+   * department is currently saying about the places this trip actually goes —
+   * see lib/trip-advisories.ts.
+   */
+  country?: string;
   name: string;
   yiddishName?: string;
   href?: string;
