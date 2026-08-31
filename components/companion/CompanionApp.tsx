@@ -119,6 +119,16 @@ const NAVY = "#14213d";
 const INK = "#17293a";
 
 /**
+ * The gold, lightened, for small text drawn ON the navy.
+ *
+ * The gold itself is 5.13:1 there — legible, but these are 9.5px small caps
+ * and it goes muddy at that size against a dark ground. This is the same hue
+ * carried up to 6.99:1, so the band keeps the brand colour on it and the
+ * eyebrow above every screen title stays readable.
+ */
+const GOLD_ON_DARK = "#c8a76a";
+
+/**
  * The small grey the app writes its labels and times in.
  *
  * IT WAS #78716c, AND THAT IS 4.40:1 ON THE CREAM — under the 4.5 every one of
@@ -1217,7 +1227,7 @@ export default function CompanionApp({
       <div style={{ marginTop: 22, paddingLeft: 20 }}>
         {/* "1 days" read wrong for a one-day trip; the odd hardcoded eight-day
             special case is gone with it. */}
-        <div style={kicker(MUTED)}>{`${trip.days.length} ${trip.days.length === 1 ? "day" : "days"}`}</div>
+        <div style={kicker(NAVY)}>{`${trip.days.length} ${trip.days.length === 1 ? "day" : "days"}`}</div>
       </div>
       <div style={{ display: "flex", gap: 9, overflowX: "auto", padding: "12px 20px 4px", scrollbarWidth: "none" }}>
         {days.map((d, i) => {
@@ -1588,14 +1598,14 @@ export default function CompanionApp({
       )}
       {!open && !settled && handledSteps.length === 0 && (
         <div style={{ padding: "22px 18px", borderRadius: 20, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={kicker(MUTED)}>Changes</span>
+          <span style={kicker(NAVY)}>Changes</span>
           <div style={{ font: `400 20px/1.15 ${serif}` }}>Nothing needs a decision</div>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: "#57534e", textWrap: "pretty" }}>When something on the trip moves, it shows up here — with what changed and what, if anything, it asks of you.</p>
         </div>
       )}
       {handledSteps.length > 0 && (
       <div style={{ padding: "20px 18px", borderRadius: 20, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", display: "flex", flexDirection: "column", gap: 12 }}>
-        <span style={kicker(MUTED)}>Handled for you · Monday 07:20</span>
+        <span style={kicker(NAVY)}>Handled for you · Monday 07:20</span>
         <div style={{ font: `400 21px/1.12 ${serif}` }}>Sunday&apos;s flight home moved to 13:05</div>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: INK, textWrap: "pretty" }}>The airline moved it by an hour and three quarters. Nothing was asked of you; here is what happened.</p>
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1685,7 +1695,7 @@ export default function CompanionApp({
       </p>
       {trip.guideSections.map((g, gi) => (
         <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <div style={{ ...kicker(MUTED), paddingLeft: 4 }}>{g.name}</div>
+          <div style={{ ...kicker(NAVY), paddingLeft: 4 }}>{g.name}</div>
           {g.items.map((it, i) => (
             <div key={i} style={{ padding: "16px 18px", borderRadius: 16, background: it.tint, display: "flex", flexDirection: "column", gap: 5 }}>
               <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.3 }}>{it.title}</span>
@@ -1713,7 +1723,7 @@ export default function CompanionApp({
           className="wg-fade"
           style={{ textAlign: "left", cursor: "pointer", padding: "16px 18px", borderRadius: 16, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", display: "flex", flexDirection: "column", gap: 5 }}
         >
-          <span style={kicker(MUTED)}>Trip balance</span>
+          <span style={kicker(NAVY)}>Trip balance</span>
           <span style={{ font: `400 19px/1.2 ${serif}`, color: "#0b2437" }}>
             {currencyFmt(trip.payment.currency).format(trip.payment.remainingCents / 100)}
             {trip.payment.remainingCents > 0 ? " remaining" : " — paid in full"}
@@ -1729,7 +1739,7 @@ export default function CompanionApp({
       )}
       {trip.walletGroups.map((g, gi) => (
         <div key={gi} style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <div style={{ ...kicker(MUTED), paddingLeft: 4 }}>{g.name}</div>
+          <div style={{ ...kicker(NAVY), paddingLeft: 4 }}>{g.name}</div>
           {g.rows.map((r, i) => (
             <div key={i} style={{ padding: "16px 18px", borderRadius: 16, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", display: "flex", flexDirection: "column", gap: 5 }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
@@ -1824,7 +1834,7 @@ export default function CompanionApp({
   const showGuideSection = (!isClientViewer || guideDays.length > 0) || trip.guideSections.length > 0;
   const guideSection = showGuideSection && (
     <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-      <div style={{ ...kicker(MUTED), paddingLeft: 4 }}>Getting around, day by day</div>
+      <div style={{ ...kicker(NAVY), paddingLeft: 4 }}>Getting around, day by day</div>
       {guideDays.length === 0 && (
         <p style={{ margin: "0 4px", fontSize: 13.5, lineHeight: 1.5, color: "#57534e", textWrap: "pretty" }}>Nothing added yet.</p>
       )}
@@ -1842,7 +1852,7 @@ export default function CompanionApp({
           trip.guideSections is always empty and this renders nothing. */}
       {trip.guideSections.map((g, gi) => (
         <Fragment key={gi}>
-          <div style={{ ...kicker(MUTED), paddingLeft: 4 }}>{g.name}</div>
+          <div style={{ ...kicker(NAVY), paddingLeft: 4 }}>{g.name}</div>
           {g.items.map((it, i) => (
             <div key={i} style={{ padding: "16px 18px", borderRadius: 16, background: it.tint, border: "1px solid rgba(38,50,58,.08)", display: "flex", flexDirection: "column", gap: 5 }}>
               <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.3 }}>{it.title}</span>
@@ -1865,7 +1875,7 @@ export default function CompanionApp({
       </div>
       {trip.prefs.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <div style={{ ...kicker(MUTED), paddingLeft: 4 }}>From your planning answers</div>
+          <div style={{ ...kicker(NAVY), paddingLeft: 4 }}>From your planning answers</div>
           {trip.prefs.map((p, i) => (
             <div key={i} style={{ padding: "15px 18px", borderRadius: 16, background: "#ffffff", border: "1px solid rgba(38,50,58,.08)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 14 }}>
               <span style={{ font: "600 11px/1 Inter,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: MUTED }}>{p.label}</span>
@@ -1880,7 +1890,7 @@ export default function CompanionApp({
           live advisor is attached; a wired trip is read one way. */}
       {showcaseSwitches && (
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <div style={{ ...kicker(MUTED), paddingLeft: 4 }}>How you are reading this trip</div>
+          <div style={{ ...kicker(NAVY), paddingLeft: 4 }}>How you are reading this trip</div>
           <div style={{ display: "flex", gap: 6, padding: 5, background: "#ece8df", borderRadius: 14, alignSelf: "flex-start" }}>
             {tmodeOpts.map((o) => (
               <button key={o.id} onClick={o.pick} style={{ border: 0, cursor: "pointer", font: `400 13px/1 ${serif}`, padding: "10px 16px", borderRadius: 14, background: o.bg, color: o.fg }}>{o.label}</button>
@@ -1964,20 +1974,30 @@ export default function CompanionApp({
   const phone = (
     <div className="wg-phone" style={{ display: "flex", flexDirection: "column", background: CREAM, fontFamily: "Inter,system-ui,sans-serif", overflow: "hidden" }}>
       {/* header */}
-      <div style={{ flexShrink: 0, padding: "calc(20px + env(safe-area-inset-top)) 18px 10px", display: "flex", alignItems: "center", gap: 10, background: CREAM, borderBottom: "1px solid rgba(38,50,58,.08)" }}>
+      {/* THE BAR AT THE TOP IS THE DARK ONE NOW.
+          It was cream, on a cream page, above white cards — so every screen
+          but the first had no dark colour on it at all and nothing to sit
+          against. Navy here gives all of them the anchor the trip screen got
+          from its panel, and it is the same navy, so the app reads as one
+          thing rather than one good screen and four pale ones.
+          Everything on it moved with it: the title and the two round buttons
+          are cream, the eyebrow is the gold lightened for a dark ground, and
+          the bell's badge is ringed in navy rather than cream so it still
+          reads as a dot rather than a smudge. */}
+      <div style={{ flexShrink: 0, padding: "calc(20px + env(safe-area-inset-top)) 18px 12px", display: "flex", alignItems: "center", gap: 10, background: NAVY, color: CREAM, borderBottom: "1px solid rgba(255,255,255,.08)" }}>
         {canBack && (
-          <button onClick={back} aria-label="Back" className="wg-fade" style={{ border: "1px solid rgba(38,50,58,.14)", background: "#ffffff", width: 34, height: 34, borderRadius: 14, cursor: "pointer", fontSize: 15, color: "#57534e", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>
+          <button onClick={back} aria-label="Back" className="wg-fade" style={{ border: "1px solid rgba(255,255,255,.22)", background: "rgba(255,255,255,.08)", width: 34, height: 34, borderRadius: 14, cursor: "pointer", fontSize: 15, color: CREAM, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>
         )}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-          <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: MUTED }}>{kickers[st.screen]}</div>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: GOLD_ON_DARK }}>{kickers[st.screen]}</div>
           <div style={{ font: `400 19px/1.15 ${serif}`, letterSpacing: "-.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{titles[st.screen]}</div>
         </div>
-        <button onClick={() => go("alerts")} aria-label="Changes" title="Changes" className="wg-fade" style={{ position: "relative", border: "1px solid rgba(38,50,58,.14)", background: "#ffffff", width: 34, height: 34, borderRadius: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, color: NAVY }}>
+        <button onClick={() => go("alerts")} aria-label="Changes" title="Changes" className="wg-fade" style={{ position: "relative", border: "1px solid rgba(255,255,255,.22)", background: "rgba(255,255,255,.08)", width: 34, height: 34, borderRadius: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, color: CREAM }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.7 21a2 2 0 0 1-3.4 0" />
           </svg>
-          {(open || unreadAlerts.length > 0) && <span style={{ position: "absolute", top: -3, right: -3, width: 11, height: 11, borderRadius: 14, background: GOLD, border: `2px solid ${CREAM}` }} />}
+          {(open || unreadAlerts.length > 0) && <span style={{ position: "absolute", top: -3, right: -3, width: 11, height: 11, borderRadius: 14, background: GOLD, border: `2px solid ${NAVY}` }} />}
         </button>
       </div>
       {/* Offline, and working from the saved copy — say so plainly, so a blank
