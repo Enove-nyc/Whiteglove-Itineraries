@@ -37,7 +37,10 @@ describe("app/app/page.tsx turns a shared place into a draft, not a crash", () =
 
 describe("a shared place waits for the advisor to pick a client, then lands in that thread's composer", () => {
   it("a shared draft that arrives on the advisor's inbox opens straight to Messages", () => {
-    assert.match(APP, /screen: sharedDraft && advisorInbox \? "messages" : "home"/);
+    // A caller-supplied initialScreen wins (the advisor opening "Messages" from
+    // the dashboard); absent that, a shared draft still opens straight to the
+    // inbox rather than sitting unseen on the Trip tab.
+    assert.match(APP, /screen: initialScreen \?\? \(sharedDraft && advisorInbox \? "messages" : "home"\)/);
   });
 
   it("AdvisorInbox is told about the pending share and how to clear it", () => {

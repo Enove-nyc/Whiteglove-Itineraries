@@ -100,8 +100,9 @@ describe("the advisor tools have a home in the menu too", () => {
   it("gives Pro everything, Agency included", () => {
     const labels = advisorPlacesFor("pro").map((place) => place.label);
     assert.ok(labels.includes("Dashboard"));
+    assert.ok(labels.includes("Messages"));
     assert.ok(labels.includes("Agency"));
-    assert.equal(labels.length, 8);
+    assert.equal(labels.length, 9);
   });
 
   it("only shows the extra section, with a caption, once there is something to show", () => {

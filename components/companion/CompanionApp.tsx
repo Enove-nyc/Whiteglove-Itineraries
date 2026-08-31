@@ -740,11 +740,16 @@ export default function CompanionApp({
   advisorInbox = false,
   advisorShareId,
   sharedDraft,
+  initialScreen,
 }: {
   trip?: CompanionTrip;
   chat?: CompanionChat;
   /** The advisor's own side: a Messages tab that lists every client's chat. */
   advisorInbox?: boolean;
+  /** Which tab to open on — e.g. the advisor arriving from the dashboard's
+   *  "Messages" opens straight on the inbox instead of the trip. Falls back to
+   *  home (or messages when a shared place is waiting). */
+  initialScreen?: Screen;
   /** The share token of the trip the advisor is currently viewing, when it has
    *  a client link. Lets "Ask about this" open THAT client's thread directly
    *  (with the attraction pinned) instead of dropping the advisor on the inbox
@@ -772,7 +777,7 @@ export default function CompanionApp({
     // A shared-in place has nowhere to go but the Messages/Advisor tab, so
     // that's where a shared draft opens straight to — otherwise it would sit
     // unused on the Trip tab until noticed.
-    screen: sharedDraft && advisorInbox ? "messages" : "home",
+    screen: initialScreen ?? (sharedDraft && advisorInbox ? "messages" : "home"),
     prev: null,
     selDay: trip.todayIndex,
     actIdx: 0,

@@ -168,6 +168,12 @@ export default async function AdvisorDashboardPage() {
           >
             Open pipeline
           </Link>
+          <Link
+            href="/app?screen=messages"
+            className="inline-flex min-h-11 items-center rounded-full border border-[var(--gold)] px-5 text-sm font-semibold text-[var(--navy)] transition hover:bg-white"
+          >
+            Messages
+          </Link>
         </div>
 
         {noTrips ? (
@@ -191,7 +197,7 @@ export default async function AdvisorDashboardPage() {
               <DashTile href="/payments" label="Owed to you" value={money(stats.outstandingByCurrency)} tone={stats.outstandingByCurrency.length ? "gold" : "calm"} />
               <DashTile href="/pipeline" label="Needs you" value={String(attentionCount)} sub={attentionCount ? "waiting on a reply" : "all caught up"} tone={attentionCount ? "gold" : "calm"} />
               <DashTile href="/pipeline" label="Active trips" value={String(stats.activeCount)} sub={nextDep ? `next ${nextDep.startDate}` : undefined} tone="calm" />
-              <DashTile href="/pipeline" label="Unread" value={String(unreadCount)} sub={unreadCount ? "client messages" : "no new messages"} tone={unreadCount ? "gold" : "calm"} />
+              <DashTile href="/app?screen=messages" label="Unread" value={String(unreadCount)} sub={unreadCount ? "client messages" : "no new messages"} tone={unreadCount ? "gold" : "calm"} />
             </div>
 
             {(collectedByCurrency.size > 0 || (showAnalytics && stats.commissionByCurrency.length > 0)) && (

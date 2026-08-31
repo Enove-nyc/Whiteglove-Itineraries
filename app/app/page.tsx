@@ -74,7 +74,7 @@ function firstParam(value: string | string[] | undefined): string {
 export default async function AppPage({
   searchParams,
 }: {
-  searchParams: Promise<{ trip?: string | string[]; share_title?: string | string[]; share_text?: string | string[]; share_url?: string | string[] }>;
+  searchParams: Promise<{ trip?: string | string[]; screen?: string | string[]; share_title?: string | string[]; share_text?: string | string[]; share_url?: string | string[] }>;
 }) {
   const cookie = (await cookies()).get(accountCookieName())?.value;
   const account = await getCurrentAccountSummary(cookie);
@@ -202,7 +202,7 @@ export default async function AppPage({
       // and no inbox; the tab simply is not there.
       return (
         <main>
-          <CompanionApp trip={companionTrip} advisorInbox={servesClients} advisorShareId={selected?.shareId || undefined} sharedDraft={sharedDraft || undefined} />
+          <CompanionApp trip={companionTrip} advisorInbox={servesClients} advisorShareId={selected?.shareId || undefined} sharedDraft={sharedDraft || undefined} initialScreen={firstParam(params.screen) === "messages" ? "messages" : undefined} />
         </main>
       );
     }
