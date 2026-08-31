@@ -2751,6 +2751,15 @@ function LiveChat({
   const [draft, setDraft] = useState("");
   const [available, setAvailable] = useState(true);
   const [loaded, setLoaded] = useState(false);
+  // The channels a trip's conversation is split into — General always, plus any
+  // the advisor made. `channel` is the one being read; every read and write
+  // below is scoped to it. Starts and stays General until the advisor adds more.
+  const [channels, setChannels] = useState<{ id: string; name: string }[]>([{ id: "general", name: "General" }]);
+  const [channel, setChannel] = useState("general");
+  // The advisor's "new channel" box — its name while being typed, and whether
+  // the box is open. Client never sees this; only the advisor may create one.
+  const [newChannelOpen, setNewChannelOpen] = useState(false);
+  const [newChannelName, setNewChannelName] = useState("");
   const [sending, setSending] = useState(false);
   const [note, setNote] = useState("");
   const [reported, setReported] = useState<Record<string, boolean>>({});
@@ -2964,9 +2973,14 @@ function LiveChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDraft]);
 
+  // Where this channel's messages are kept on the device for offline reading —
+  // General under the bare share id (what it always was), others suffixed, so
+  // one channel's cache never overwrites another's.
+  const offlineKey = channel === "general" ? shareId : `${shareId}::${channel}`;
+
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`/api/companion/chat?share=${encodeURIComponent(shareId)}`, { cache: "no-store" });
+      const r = await fetch(`/api/companion/chat?share=${encodeURIComponent(shareId)}&channel=${encodeURIComponent(channel)}`, { cache: "no-store" });
       if (!r.ok) {
         // Say why, and stop rendering a blank panel. A non-2xx here used to
         // leave `loaded` false with no note, so the whole thread showed as an
@@ -2989,12 +3003,12 @@ function LiveChat({
       setNote("");
       setLoaded(true);
       // Keep the thread on the device so it still READS with no signal.
-      void saveMessagesOffline(shareId, msgs);
+      void saveMessagesOffline(offlineKey, msgs);
     } catch {
       // No signal: messaging needs the network to SEND, but the conversation
       // itself was saved on the last online open — show it (read-only) rather
       // than a blank panel, and say sending waits for the network.
-      const cached = await readMessagesOffline<LiveMsg>(shareId).catch(() => null);
+      const cached = await readMessagesOffline<LiveMsg>(offlineKey).catch(() => null);
       if (cached && cached.length) setMessages(cached);
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         setNote(cached && cached.length
@@ -3003,7 +3017,7 @@ function LiveChat({
       }
       setLoaded(true);
     }
-  }, [shareId]);
+  }, [shareId, channel, offlineKey]);
 
   // Async wrapper rather than a bare call from the effect body: a bare call
   // enters it synchronously, which the rule counts as a setState during the
@@ -3019,6 +3033,80 @@ function LiveChat({
       clearInterval(t);
     };
   }, [load]);
+
+  // The trip's channels, refreshed on a slow beat — both sides read the same
+  // list. If the channel being viewed is removed (the advisor deleted it),
+  // fall back to General rather than keep asking for a thread that's gone.
+  const loadChannels = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/companion/channels?share=${encodeURIComponent(shareId)}`, { cache: "no-store" });
+      if (!r.ok) return;
+      const d = await r.json().catch(() => null);
+      const list: { id: string; name: string }[] = Array.isArray(d?.channels)
+        ? d.channels.filter((c: unknown): c is { id: string; name: string } =>
+            Boolean(c) && typeof (c as { id?: unknown }).id === "string" && typeof (c as { name?: unknown }).name === "string",
+          )
+        : [];
+      if (list.length) {
+        setChannels(list);
+        setChannel((cur) => (list.some((c) => c.id === cur) ? cur : "general"));
+      }
+    } catch {
+      /* keep whatever channels we last knew */
+    }
+  }, [shareId]);
+  useEffect(() => {
+    // Async wrapper, same as the message loader — a bare call enters
+    // loadChannels synchronously, which the lint rule counts as a setState in
+    // the effect body.
+    let active = true;
+    void (async () => {
+      if (active) await loadChannels();
+    })();
+    const t = setInterval(() => void loadChannels(), 20000);
+    return () => {
+      active = false;
+      clearInterval(t);
+    };
+  }, [loadChannels]);
+
+  // Switching channel is a fresh thread: clear what's shown and re-load, so one
+  // channel's messages never flash under another's header.
+  function switchChannel(id: string) {
+    if (id === channel) return;
+    setMenuOpenAt(null);
+    setReplyingTo(null);
+    setEditingAt(null);
+    setDraft("");
+    setMessages([]);
+    setLoaded(false);
+    setChannel(id);
+  }
+
+  // Make a channel — advisor only, enforced on the server too. On success the
+  // new channel opens straight away.
+  async function createChannel() {
+    const name = newChannelName.trim();
+    if (!name) return;
+    try {
+      const r = await fetch("/api/companion/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ share: shareId, name }),
+      });
+      const d = await r.json().catch(() => null);
+      if (r.ok && d && Array.isArray(d.channels)) {
+        setChannels(d.channels);
+        setNewChannelName("");
+        setNewChannelOpen(false);
+        if (d.created?.id) switchChannel(d.created.id);
+      } else {
+        setNote((d && d.error) || "That channel couldn’t be added.");
+      }
+    } catch {
+      setNote("That channel couldn’t be added.");
+    }
+  }
 
   // Only follows new messages down when the reader was already at the
   // bottom — the way every real messaging app behaves. Scrolled up reading
@@ -3085,6 +3173,7 @@ function LiveChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           share: shareId,
+          channel,
           ...(replyingTo ? { replyToAt: replyingTo.at } : {}),
           ...(itineraryRef ? { itineraryRef } : {}),
           ...payload,
@@ -3145,7 +3234,7 @@ function LiveChat({
     void fetch("/api/companion/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ share: shareId, typing: true }),
+      body: JSON.stringify({ share: shareId, channel, typing: true }),
     }).catch(() => undefined);
   }
 
@@ -3170,7 +3259,7 @@ function LiveChat({
       const r = await fetch("/api/companion/chat", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ share: shareId, at, text }),
+        body: JSON.stringify({ share: shareId, channel, at, text }),
       });
       const d = await r.json().catch(() => null);
       if (r.ok && d) {
@@ -3198,7 +3287,7 @@ function LiveChat({
       const r = await fetch("/api/companion/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ share: shareId, reactAt: at, reaction: emoji }),
+        body: JSON.stringify({ share: shareId, channel, reactAt: at, reaction: emoji }),
       });
       const d = await r.json().catch(() => null);
       if (r.ok && d && Array.isArray(d.messages)) setMessages(d.messages);
@@ -3214,7 +3303,7 @@ function LiveChat({
       const r = await fetch("/api/companion/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ share: shareId, pollVoteAt: at, pollOption: option, voterId: deviceVoterId() }),
+        body: JSON.stringify({ share: shareId, channel, pollVoteAt: at, pollOption: option, voterId: deviceVoterId() }),
       });
       const d = await r.json().catch(() => null);
       if (r.ok && d && Array.isArray(d.messages)) setMessages(d.messages);
@@ -3238,7 +3327,7 @@ function LiveChat({
       const r = await fetch("/api/companion/chat", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ share: shareId, at }),
+        body: JSON.stringify({ share: shareId, channel, at }),
       });
       const d = await r.json().catch(() => null);
       if (r.ok && d) setMessages(Array.isArray(d.messages) ? d.messages : []);
@@ -3490,7 +3579,7 @@ function LiveChat({
       await fetch("/api/companion/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ share: shareId, at }),
+        body: JSON.stringify({ share: shareId, channel, at }),
       });
     } catch {
       /* the flag stands locally; the operator store is best-effort */
@@ -3530,8 +3619,82 @@ function LiveChat({
     }
   }
 
+  // The advisor always sees the channel bar (they can add one); the client
+  // sees it only once there is more than the one General channel to choose
+  // between, so a trip that never grew channels shows the client no new chrome.
+  const showChannelBar = channels.length > 1 || side === "advisor";
+
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", position: "relative", animation: "wgIn .28s ease both" }}>
+      {showChannelBar && (
+        <div style={{ flexShrink: 0, borderBottom: "1px solid rgba(38,50,58,.08)", background: "rgba(247,245,240,.9)" }}>
+          <div className="wg-scroll" style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "7px 10px" }}>
+            {channels.map((c) => {
+              const on = c.id === channel;
+              // Active chip is the app's standard navy pill with cream on it
+              // (legible — cream on navy, never on gold); inactive is ink on
+              // white. Held in a variable so it reads as one choice, not a
+              // colour-on-background pattern.
+              const chipInk = on ? CREAM : INK;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => switchChannel(c.id)}
+                  aria-current={on ? "page" : undefined}
+                  style={{
+                    flexShrink: 0,
+                    border: on ? `1px solid ${NAVY}` : "1px solid rgba(38,50,58,.14)",
+                    background: on ? NAVY : "#ffffff",
+                    color: chipInk,
+                    borderRadius: 999,
+                    padding: "5px 13px",
+                    font: `${on ? 700 : 500} 12.5px/1 Inter,sans-serif`,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+            {side === "advisor" && (
+              <button
+                onClick={() => setNewChannelOpen(true)}
+                aria-label="New channel"
+                style={{ flexShrink: 0, border: "1px dashed rgba(38,50,58,.28)", background: "transparent", color: NAVY, borderRadius: 999, padding: "5px 11px", font: "600 12.5px/1 Inter,sans-serif", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                <span aria-hidden style={{ fontSize: 14, lineHeight: 1, marginTop: -1 }}>+</span> Channel
+              </button>
+            )}
+          </div>
+          {newChannelOpen && side === "advisor" && (
+            <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "0 10px 9px" }}>
+              <input
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value.slice(0, 40))}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void createChannel(); } if (e.key === "Escape") { setNewChannelOpen(false); setNewChannelName(""); } }}
+                autoFocus
+                placeholder="Channel name — Hotel, Flights…"
+                style={{ flex: 1, minWidth: 0, border: "1px solid rgba(38,50,58,.18)", borderRadius: 10, padding: "8px 11px", font: "400 13px/1.2 Inter,sans-serif", color: INK, background: "#fff" }}
+              />
+              <button
+                onClick={() => void createChannel()}
+                disabled={!newChannelName.trim()}
+                style={{ flexShrink: 0, border: 0, background: NAVY, color: CREAM, borderRadius: 10, padding: "8px 14px", font: "600 13px/1 Inter,sans-serif", cursor: newChannelName.trim() ? "pointer" : "default", opacity: newChannelName.trim() ? 1 : 0.5 }}
+              >
+                Add
+              </button>
+              <button
+                onClick={() => { setNewChannelOpen(false); setNewChannelName(""); }}
+                aria-label="Cancel"
+                style={{ flexShrink: 0, border: "1px solid rgba(38,50,58,.14)", background: "#fff", color: MUTED, borderRadius: 10, padding: "8px 11px", font: "500 13px/1 Inter,sans-serif", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       <div ref={scrollerRef} onScroll={noteScrollPosition} className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 3 }}>
         {!available && (
           <div style={{ alignSelf: "center", textAlign: "center", font: "400 12px/1.5 Inter,sans-serif", color: "#765321", background: "#f7eee0", padding: "10px 14px", borderRadius: 14 }}>

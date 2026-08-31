@@ -162,8 +162,9 @@ export default async function AdvisorDashboardPage() {
   return (
     <AdvisorApp trips={tripRows}>
       <section className="mx-auto w-full max-w-3xl px-5 pb-8 pt-5 sm:px-8">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Advisor</p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
+        {/* The navy app header above already says "Advisor · Dashboard", so the
+            hero drops the eyebrow and opens straight on the welcome. */}
+        <h1 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
           {firstName ? `Welcome back, ${firstName}` : "Your dashboard"}
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { accountCookieName, getCurrentAccountData, resolveCompanionShare } from "@/lib/account-store";
-import { appendReport } from "@/lib/companion-chat-store";
+import { appendReport, isKnownChannel, normalizeChannelId } from "@/lib/companion-chat-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { getPlan } from "@/lib/account-plan-store";
 import { identityKey } from "@/lib/identity";
@@ -29,10 +29,11 @@ export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) {
     return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   }
-  const body = (await request.json().catch(() => null)) as { share?: string; at?: string } | null;
+  const body = (await request.json().catch(() => null)) as { share?: string; at?: string; channel?: string } | null;
   const shareId = body?.share?.trim();
   const at = body?.at?.trim();
   if (!shareId || !at) return NextResponse.json({ error: "Nothing to report." }, { status: 400 });
+  const channel = normalizeChannelId(body?.channel);
 
   // Accepts either a whole-trip token or a traveler-scoped one, resolved to
   // the same underlying thread — see resolveCompanionShare and the note on
@@ -45,6 +46,9 @@ export async function POST(request: NextRequest) {
   if (!mayServeCompanionClients(await getPlan(owner))) {
     return NextResponse.json({ error: "That link is not active." }, { status: 404 });
   }
+  if (!(await isKnownChannel(chatKey, channel))) {
+    return NextResponse.json({ error: "That channel doesn't exist on this trip." }, { status: 404 });
+  }
 
   const limited = await rateLimit(`companion-report:${chatKey}`, { limit: 30, windowSeconds: 3600 });
   if (!limited.ok) {
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
   const account = await getCurrentAccountData(cookie);
   const by = account?.email && identityKey(account.email) === identityKey(owner) ? "advisor" : "client";
 
-  const ok = await appendReport(chatKey, { by, messageAt: at, at: new Date().toISOString() });
+  const ok = await appendReport(chatKey, { by, messageAt: at, at: new Date().toISOString() }, channel);
   if (!ok) return NextResponse.json({ error: "Reporting needs the private store connected." }, { status: 503 });
   return NextResponse.json({ ok: true });
 }

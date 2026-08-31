@@ -8,8 +8,10 @@ import {
   chatStoreAvailable,
   deleteMessage,
   editMessageText,
+  isKnownChannel,
   isTyping,
   markRead,
+  normalizeChannelId,
   quoteFor,
   reactMessage,
   readChat,
@@ -112,7 +114,13 @@ export async function GET(request: NextRequest) {
   if (!shareId) return NextResponse.json({ error: "Which trip?" }, { status: 400 });
   const who = await sideFor(shareId);
   if (!who) return NextResponse.json({ error: "That link is not active." }, { status: 404 });
-  const messages = await readChat(who.chatKey);
+  // Which channel of this trip's conversation — General unless a real one is
+  // asked for. A made-up id is never addressed: it must be one this trip has.
+  const channel = normalizeChannelId(request.nextUrl.searchParams.get("channel"));
+  if (!(await isKnownChannel(who.chatKey, channel))) {
+    return NextResponse.json({ error: "That channel doesn't exist on this trip." }, { status: 404 });
+  }
+  const messages = await readChat(who.chatKey, channel);
   // Loading the thread IS reading it — there is no separate "mark as read"
   // action, the same as a phone's messaging app. The other side sees this as
   // soon as their own next poll picks the marker up. The one exception is a
@@ -122,16 +130,16 @@ export async function GET(request: NextRequest) {
   const peek = request.nextUrl.searchParams.get("peek") === "1";
   if (!peek) {
     const latest = messages[messages.length - 1];
-    if (latest) await markRead(who.chatKey, who.side, latest.at);
+    if (latest) await markRead(who.chatKey, who.side, latest.at, channel);
   }
   return NextResponse.json({
     messages,
     side: who.side,
     available: chatStoreAvailable(),
-    readMarkers: await readMarkers(who.chatKey),
+    readMarkers: await readMarkers(who.chatKey, channel),
     // Whether the OTHER side has typed within the last few seconds — never
     // my own, which the composer already knows without asking the server.
-    typing: await isTyping(who.chatKey, otherSideOf(who.side)),
+    typing: await isTyping(who.chatKey, otherSideOf(who.side), channel),
     // The server's real, deploy-specific picture size limit — see
     // effectiveMediaLimit() in lib/media.ts. Read fresh so the composer's
     // own cap never drifts from what the server will actually accept.
@@ -145,7 +153,7 @@ export async function PATCH(request: NextRequest) {
   if (!sameOrigin(request)) {
     return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   }
-  const body = (await request.json().catch(() => null)) as { share?: string; at?: string; text?: string } | null;
+  const body = (await request.json().catch(() => null)) as { share?: string; at?: string; text?: string; channel?: string } | null;
   const shareId = body?.share?.trim();
   const at = body?.at?.trim();
   const text = body?.text?.trim();
@@ -155,6 +163,10 @@ export async function PATCH(request: NextRequest) {
   }
   const who = await sideFor(shareId);
   if (!who) return NextResponse.json({ error: "That link is not active." }, { status: 404 });
+  const channel = normalizeChannelId(body?.channel);
+  if (!(await isKnownChannel(who.chatKey, channel))) {
+    return NextResponse.json({ error: "That channel doesn't exist on this trip." }, { status: 404 });
+  }
 
   const limited = await rateLimit(`companion-edit:${who.chatKey}`, { limit: 30, windowSeconds: 3600 });
   if (!limited.ok) {
@@ -163,7 +175,7 @@ export async function PATCH(request: NextRequest) {
 
   // editMessageText itself re-checks who sent the original — `by` here is
   // only ever this request's own verified side, never anything the body says.
-  const messages = await editMessageText(who.chatKey, at, who.side, text.slice(0, MAX_CHAT_TEXT));
+  const messages = await editMessageText(who.chatKey, at, who.side, text.slice(0, MAX_CHAT_TEXT), channel);
   if (!messages) return NextResponse.json({ error: "That message can't be changed." }, { status: 404 });
   return NextResponse.json({ messages, side: who.side });
 }
@@ -172,7 +184,7 @@ export async function DELETE(request: NextRequest) {
   if (!sameOrigin(request)) {
     return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   }
-  const body = (await request.json().catch(() => null)) as { share?: string; at?: string } | null;
+  const body = (await request.json().catch(() => null)) as { share?: string; at?: string; channel?: string } | null;
   const shareId = body?.share?.trim();
   const at = body?.at?.trim();
   if (!shareId || !at) return NextResponse.json({ error: "Which message?" }, { status: 400 });
@@ -181,8 +193,12 @@ export async function DELETE(request: NextRequest) {
   }
   const who = await sideFor(shareId);
   if (!who) return NextResponse.json({ error: "That link is not active." }, { status: 404 });
+  const channel = normalizeChannelId(body?.channel);
+  if (!(await isKnownChannel(who.chatKey, channel))) {
+    return NextResponse.json({ error: "That channel doesn't exist on this trip." }, { status: 404 });
+  }
 
-  const messages = await deleteMessage(who.chatKey, at, who.side);
+  const messages = await deleteMessage(who.chatKey, at, who.side, channel);
   if (!messages) return NextResponse.json({ error: "That message can't be deleted." }, { status: 404 });
   return NextResponse.json({ messages, side: who.side });
 }
@@ -194,6 +210,7 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as
     | {
         share?: string;
+        channel?: string;
         text?: string;
         dataUrl?: string;
         lat?: number;
@@ -221,12 +238,19 @@ export async function POST(request: NextRequest) {
   // only be added to a thread by somebody who genuinely holds that trip's link.
   const who = await sideFor(shareId);
   if (!who) return NextResponse.json({ error: "That link is not active." }, { status: 404 });
+  // Which channel this message lands in — General unless a real one is named.
+  // Both sides may write to any channel the trip has; only creating channels is
+  // advisor-only (that is the channels route). A made-up id is refused here.
+  const channel = normalizeChannelId(body?.channel);
+  if (!(await isKnownChannel(who.chatKey, channel))) {
+    return NextResponse.json({ error: "That channel doesn't exist on this trip." }, { status: 404 });
+  }
 
   // "I am typing" — a courtesy signal, not a message. No rate limit: it is
   // one cheap Redis SET, the composer already throttles how often it sends
   // one, and the same-origin and plan checks above are the fence that matters.
   if (body?.typing === true) {
-    await setTyping(who.chatKey, who.side);
+    await setTyping(who.chatKey, who.side, channel);
     return NextResponse.json({ ok: true });
   }
 
@@ -239,7 +263,7 @@ export async function POST(request: NextRequest) {
     if (!limited.ok) {
       return NextResponse.json({ error: "That is a lot of reactions at once — try again shortly." }, { status: 429 });
     }
-    const messages = await reactMessage(who.chatKey, body.reactAt, who.side, body.reaction);
+    const messages = await reactMessage(who.chatKey, body.reactAt, who.side, body.reaction, channel);
     if (!messages) return NextResponse.json({ error: "That reaction couldn’t be saved." }, { status: 400 });
     return NextResponse.json({ messages });
   }
@@ -256,7 +280,7 @@ export async function POST(request: NextRequest) {
       who.side === "advisor"
         ? "advisor"
         : `c:${(typeof body.voterId === "string" ? body.voterId : "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40) || "anon"}`;
-    const messages = await votePoll(who.chatKey, body.pollVoteAt, voterId, body.pollOption);
+    const messages = await votePoll(who.chatKey, body.pollVoteAt, voterId, body.pollOption, channel);
     if (!messages) return NextResponse.json({ error: "That vote couldn’t be saved." }, { status: 400 });
     return NextResponse.json({ messages });
   }
@@ -283,7 +307,7 @@ export async function POST(request: NextRequest) {
       text: question.slice(0, MAX_CHAT_LABEL),
       poll: { question: question.slice(0, MAX_CHAT_LABEL), options },
       at: new Date().toISOString(),
-    });
+    }, channel);
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -291,7 +315,7 @@ export async function POST(request: NextRequest) {
   // server-side (quoteFor), never taken as whatever text the client sent
   // alongside replyToAt. A stale or made-up `at` just means the message goes
   // out as an ordinary one rather than failing the whole send over it.
-  const replyTo = typeof body?.replyToAt === "string" && body.replyToAt ? await quoteFor(who.chatKey, body.replyToAt) : undefined;
+  const replyTo = typeof body?.replyToAt === "string" && body.replyToAt ? await quoteFor(who.chatKey, body.replyToAt, channel) : undefined;
 
   // "Ask about this day" / "Ask to move this" — a short label naming the
   // itinerary item the thread was opened from, carried on the one message it
@@ -348,7 +372,7 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
       replyTo,
       itineraryRef,
-    });
+    }, channel);
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -366,7 +390,7 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
       replyTo,
       itineraryRef,
-    });
+    }, channel);
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -382,7 +406,7 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
       replyTo,
       itineraryRef,
-    });
+    }, channel);
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -396,6 +420,6 @@ export async function POST(request: NextRequest) {
     at: new Date().toISOString(),
     replyTo,
     itineraryRef,
-  });
+  }, channel);
   return NextResponse.json({ messages, side: who.side });
 }

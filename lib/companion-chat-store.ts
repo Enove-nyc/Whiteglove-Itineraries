@@ -134,11 +134,65 @@ export const MAX_CHAT_TEXT = 2000;
 export const MAX_CHAT_LABEL = 140;
 const MAX_THREAD = 200;
 
+/* ---- channels -------------------------------------------------------------
+ *
+ * A trip's conversation can be split into channels — "Hotel", "Flights",
+ * "General" — the advisor makes and both sides see, so one topic doesn't bury
+ * another. Each channel is its own thread: its own messages, read markers,
+ * typing signal and reports, keyed the same way the trip's thread always was
+ * but with the channel folded into the key.
+ *
+ * GENERAL IS SPECIAL, AND ON PURPOSE. Every trip has a General channel that
+ * needs no creating and can't be deleted, and its storage keys carry NO channel
+ * suffix — they are the exact keys the trip's single thread used before
+ * channels existed. So every conversation that already exists simply becomes
+ * that trip's General channel, with nothing to migrate: the old key is the new
+ * General key.
+ */
+export type CompanionChannel = { id: string; name: string; createdAt?: string };
+
+export const GENERAL_CHANNEL_ID = "general";
+export const GENERAL_CHANNEL_NAME = "General";
+export const MAX_CHANNELS = 20;
+export const MAX_CHANNEL_NAME = 40;
+
+/** The always-present General channel, the same object shape a stored one has. */
+export function generalChannel(): CompanionChannel {
+  return { id: GENERAL_CHANNEL_ID, name: GENERAL_CHANNEL_NAME };
+}
+
+/** A channel id is a short opaque slug. General is the one fixed id; every other
+ *  is random lowercase alphanumerics, so a value off the wire is only ever
+ *  accepted when it matches one this trip actually has. */
+function makeChannelId(): string {
+  let s = "";
+  while (s.length < 12) s += Math.random().toString(36).slice(2);
+  return s.slice(0, 12);
+}
+
+/** Sanitise a channel id arriving from a request into the shape ids really
+ *  take — lowercase alphanumerics, or "general". Anything else collapses to
+ *  General rather than addressing a key nobody meant. */
+export function normalizeChannelId(raw: unknown): string {
+  if (typeof raw !== "string") return GENERAL_CHANNEL_ID;
+  const v = raw.trim().toLowerCase();
+  if (v === GENERAL_CHANNEL_ID) return GENERAL_CHANNEL_ID;
+  const cleaned = v.replace(/[^a-z0-9]/g, "").slice(0, 24);
+  return cleaned || GENERAL_CHANNEL_ID;
+}
+
 export function chatStoreAvailable(): boolean {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 }
 
-const keyFor = (shareId: string) => `white-glove:companion-chat:${shareId}`;
+/** The channel-scoped part of a key. Empty for General, so General's keys are
+ *  the un-suffixed keys the trip's single thread always used. */
+const channelPart = (channelId: string) => (channelId === GENERAL_CHANNEL_ID ? "" : `:ch:${channelId}`);
+
+const keyFor = (shareId: string, channelId: string = GENERAL_CHANNEL_ID) =>
+  `white-glove:companion-chat:${shareId}${channelPart(channelId)}`;
+
+const channelsKeyFor = (shareId: string) => `white-glove:companion-channels:${shareId}`;
 
 async function command<T>(args: (string | number)[]): Promise<T | null> {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -237,9 +291,9 @@ export function parseChatMessages(rows: string[] | null): CompanionChatMessage[]
   return out;
 }
 
-/** The whole thread for a trip, oldest first. */
-export async function readChat(shareId: string): Promise<CompanionChatMessage[]> {
-  return parseChatMessages(await command<string[]>(["LRANGE", keyFor(shareId), 0, -1]));
+/** The whole thread for a trip's channel, oldest first. */
+export async function readChat(shareId: string, channelId: string = GENERAL_CHANNEL_ID): Promise<CompanionChatMessage[]> {
+  return parseChatMessages(await command<string[]>(["LRANGE", keyFor(shareId, channelId), 0, -1]));
 }
 
 /**
@@ -251,12 +305,13 @@ export async function readChat(shareId: string): Promise<CompanionChatMessage[]>
 export async function appendChat(
   shareId: string,
   message: CompanionChatMessage,
+  channelId: string = GENERAL_CHANNEL_ID,
 ): Promise<CompanionChatMessage[]> {
   if (!chatStoreAvailable()) return [];
-  const key = keyFor(shareId);
+  const key = keyFor(shareId, channelId);
   await command(["RPUSH", key, JSON.stringify(message)]);
   await command(["LTRIM", key, -MAX_THREAD, -1]);
-  return readChat(shareId);
+  return readChat(shareId, channelId);
 }
 
 /** A short label for a message with nothing to show as its own words. */
@@ -280,8 +335,8 @@ const MAX_QUOTE_TEXT = 120;
  * fabricated `at` (the wrong trip, a made-up id) quietly means the reply is
  * sent as a plain message rather than failing the whole send over it.
  */
-export async function quoteFor(shareId: string, at: string): Promise<CompanionChatMessage["replyTo"] | undefined> {
-  const thread = await readChat(shareId);
+export async function quoteFor(shareId: string, at: string, channelId: string = GENERAL_CHANNEL_ID): Promise<CompanionChatMessage["replyTo"] | undefined> {
+  const thread = await readChat(shareId, channelId);
   const original = thread.find((m) => m.at === at);
   if (!original) return undefined;
   return { at: original.at, from: original.from, kind: kindOf(original.kind), text: quoteLabelFor(original).slice(0, MAX_QUOTE_TEXT) };
@@ -300,8 +355,8 @@ export async function quoteFor(shareId: string, at: string): Promise<CompanionCh
  * write landing between them is the same chance as two people editing the
  * same message in the same second, which is not a case worth building for.
  */
-async function findRawIndex(shareId: string, at: string, from: CompanionChatSide): Promise<{ index: number; raw: string } | null> {
-  const rows = await command<string[]>(["LRANGE", keyFor(shareId), 0, -1]);
+async function findRawIndex(shareId: string, at: string, from: CompanionChatSide, channelId: string = GENERAL_CHANNEL_ID): Promise<{ index: number; raw: string } | null> {
+  const rows = await command<string[]>(["LRANGE", keyFor(shareId, channelId), 0, -1]);
   if (!rows) return null;
   for (let i = 0; i < rows.length; i++) {
     try {
@@ -317,8 +372,8 @@ async function findRawIndex(shareId: string, at: string, from: CompanionChatSide
 /** Find a message by its timestamp alone — a reaction can be left by either
  *  side on either side's message, so unlike edit/delete it is not scoped to the
  *  sender. */
-async function findRawIndexByAt(shareId: string, at: string): Promise<{ index: number; raw: string } | null> {
-  const rows = await command<string[]>(["LRANGE", keyFor(shareId), 0, -1]);
+async function findRawIndexByAt(shareId: string, at: string, channelId: string = GENERAL_CHANNEL_ID): Promise<{ index: number; raw: string } | null> {
+  const rows = await command<string[]>(["LRANGE", keyFor(shareId, channelId), 0, -1]);
   if (!rows) return null;
   for (let i = 0; i < rows.length; i++) {
     try {
@@ -341,10 +396,10 @@ async function findRawIndexByAt(shareId: string, at: string): Promise<{ index: n
  * index and only write when it still matches what we meant to change; otherwise
  * report failure and let the caller re-find rather than clobber the wrong turn.
  */
-async function lsetIfUnchanged(shareId: string, index: number, expectedRaw: string, value: string): Promise<boolean> {
-  const current = await command<string>(["LINDEX", keyFor(shareId), index]);
+async function lsetIfUnchanged(shareId: string, index: number, expectedRaw: string, value: string, channelId: string = GENERAL_CHANNEL_ID): Promise<boolean> {
+  const current = await command<string>(["LINDEX", keyFor(shareId, channelId), index]);
   if (current !== expectedRaw) return false;
-  await command(["LSET", keyFor(shareId), index, value]);
+  await command(["LSET", keyFor(shareId, channelId), index, value]);
   return true;
 }
 
@@ -361,13 +416,14 @@ export async function editMessageText(
   at: string,
   by: CompanionChatSide,
   text: string,
+  channelId: string = GENERAL_CHANNEL_ID,
 ): Promise<CompanionChatMessage[] | null> {
   if (!chatStoreAvailable()) return null;
   // Re-find on each attempt so the index is fresh, and only write when the row
   // has not moved (lsetIfUnchanged). A concurrent message that shifts the list
   // costs a retry, never a clobbered message.
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const found = await findRawIndex(shareId, at, by);
+    const found = await findRawIndex(shareId, at, by, channelId);
     if (!found) return null;
     let existing: CompanionChatMessage;
     try {
@@ -377,11 +433,11 @@ export async function editMessageText(
     }
     if (existing.deletedAt || kindOf(existing.kind) !== "text") return null;
     const updated: CompanionChatMessage = { ...existing, text, editedAt: new Date().toISOString() };
-    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated), channelId)) return readChat(shareId, channelId);
   }
   // The row kept moving under concurrent writes — return the thread as it
   // stands rather than risk overwriting the wrong message.
-  return readChat(shareId);
+  return readChat(shareId, channelId);
 }
 
 /**
@@ -397,11 +453,12 @@ export async function reactMessage(
   at: string,
   by: CompanionChatSide,
   emoji: string,
+  channelId: string = GENERAL_CHANNEL_ID,
 ): Promise<CompanionChatMessage[] | null> {
   if (!chatStoreAvailable()) return null;
   if (!REACTION_SET.has(emoji)) return null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const found = await findRawIndexByAt(shareId, at);
+    const found = await findRawIndexByAt(shareId, at, channelId);
     if (!found) return null;
     let existing: CompanionChatMessage;
     try {
@@ -409,15 +466,15 @@ export async function reactMessage(
     } catch {
       return null;
     }
-    if (existing.deletedAt) return readChat(shareId); // nothing to react to
+    if (existing.deletedAt) return readChat(shareId, channelId); // nothing to react to
     const reactions: Partial<Record<CompanionChatSide, string>> = { ...(existing.reactions ?? {}) };
     if (reactions[by] === emoji) delete reactions[by];
     else reactions[by] = emoji;
     const hasAny = Object.keys(reactions).length > 0;
     const updated: CompanionChatMessage = { ...existing, reactions: hasAny ? reactions : undefined };
-    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated), channelId)) return readChat(shareId, channelId);
   }
-  return readChat(shareId);
+  return readChat(shareId, channelId);
 }
 
 /**
@@ -433,13 +490,14 @@ export async function votePoll(
   at: string,
   voterId: string,
   optionIndex: number,
+  channelId: string = GENERAL_CHANNEL_ID,
 ): Promise<CompanionChatMessage[] | null> {
   if (!chatStoreAvailable()) return null;
   if (!voterId || typeof voterId !== "string") return null;
   if (!Number.isInteger(optionIndex) || optionIndex < 0) return null;
   const voter = voterId.slice(0, 64);
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const found = await findRawIndexByAt(shareId, at);
+    const found = await findRawIndexByAt(shareId, at, channelId);
     if (!found) return null;
     let existing: CompanionChatMessage;
     try {
@@ -456,9 +514,9 @@ export async function votePoll(
       ...existing,
       poll: { ...existing.poll, votes: Object.keys(votes).length ? votes : undefined },
     };
-    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated), channelId)) return readChat(shareId, channelId);
   }
-  return readChat(shareId);
+  return readChat(shareId, channelId);
 }
 
 /**
@@ -466,10 +524,10 @@ export async function votePoll(
  * route. The row stays so nothing else in the list shifts position; what it
  * carried is gone the moment parseChatMessages reads it back.
  */
-export async function deleteMessage(shareId: string, at: string, by: CompanionChatSide): Promise<CompanionChatMessage[] | null> {
+export async function deleteMessage(shareId: string, at: string, by: CompanionChatSide, channelId: string = GENERAL_CHANNEL_ID): Promise<CompanionChatMessage[] | null> {
   if (!chatStoreAvailable()) return null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const found = await findRawIndex(shareId, at, by);
+    const found = await findRawIndex(shareId, at, by, channelId);
     if (!found) return null;
     let existing: CompanionChatMessage;
     try {
@@ -477,13 +535,13 @@ export async function deleteMessage(shareId: string, at: string, by: CompanionCh
     } catch {
       return null;
     }
-    if (existing.deletedAt) return readChat(shareId); // already gone; nothing to do
+    if (existing.deletedAt) return readChat(shareId, channelId); // already gone; nothing to do
     const updated: CompanionChatMessage = { from: existing.from, kind: existing.kind, text: "", at: existing.at, deletedAt: new Date().toISOString() };
-    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated))) return readChat(shareId);
+    if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated), channelId)) return readChat(shareId, channelId);
   }
   // The row kept moving under concurrent writes — leave it rather than delete
   // the wrong message.
-  return readChat(shareId);
+  return readChat(shareId, channelId);
 }
 
 /**
@@ -494,13 +552,113 @@ export async function deleteMessage(shareId: string, at: string, by: CompanionCh
  * message either side sends starts a thread as empty as the day it opened.
  */
 export async function deleteConversation(shareId: string): Promise<boolean> {
-  await command(["DEL", keyFor(shareId)]);
-  await command(["DEL", reportKeyFor(shareId)]);
-  await command(["DEL", readKeyFor(shareId, "client")]);
-  await command(["DEL", readKeyFor(shareId, "advisor")]);
-  await command(["DEL", typingKeyFor(shareId, "client")]);
-  await command(["DEL", typingKeyFor(shareId, "advisor")]);
+  // Clear every channel, not just General — each is its own thread with its own
+  // messages, reports, read markers and typing signal — then the channel list
+  // itself, so the trip's next message starts a conversation as empty as the
+  // day it opened, back to a single General channel.
+  const channels = await readChannels(shareId);
+  for (const ch of channels) {
+    await command(["DEL", keyFor(shareId, ch.id)]);
+    await command(["DEL", reportKeyFor(shareId, ch.id)]);
+    await command(["DEL", readKeyFor(shareId, "client", ch.id)]);
+    await command(["DEL", readKeyFor(shareId, "advisor", ch.id)]);
+    await command(["DEL", typingKeyFor(shareId, "client", ch.id)]);
+    await command(["DEL", typingKeyFor(shareId, "advisor", ch.id)]);
+  }
+  await command(["DEL", channelsKeyFor(shareId)]);
   return true;
+}
+
+/* ---- channel list ---------------------------------------------------------
+ *
+ * The channels a trip has, over and above the General one every trip carries.
+ * Stored as a Redis list of JSON `{id, name, createdAt}`; General is never
+ * stored — it is prepended on read — so a trip with no extra channels has no
+ * channel-list key at all, exactly as before channels existed.
+ */
+
+function parseChannels(rows: string[] | null): CompanionChannel[] {
+  if (!rows) return [];
+  const out: CompanionChannel[] = [];
+  for (const row of rows) {
+    try {
+      const c = JSON.parse(row) as CompanionChannel;
+      if (c && typeof c.id === "string" && c.id && c.id !== GENERAL_CHANNEL_ID && typeof c.name === "string" && c.name.trim()) {
+        out.push({ id: c.id, name: c.name, createdAt: typeof c.createdAt === "string" ? c.createdAt : undefined });
+      }
+    } catch {
+      /* skip a corrupt row */
+    }
+  }
+  return out;
+}
+
+/** A trip's channels — General first, always, then the advisor's own, oldest
+ *  first (the order they were made). */
+export async function readChannels(shareId: string): Promise<CompanionChannel[]> {
+  const stored = parseChannels(await command<string[]>(["LRANGE", channelsKeyFor(shareId), 0, -1]));
+  return [generalChannel(), ...stored];
+}
+
+/** Whether `channelId` is one this trip really has — General always is; any
+ *  other must be in the stored list. The gate the route uses before it writes
+ *  to a channel, so a made-up id can never open an orphan thread. */
+export async function isKnownChannel(shareId: string, channelId: string): Promise<boolean> {
+  if (channelId === GENERAL_CHANNEL_ID) return true;
+  return (await readChannels(shareId)).some((c) => c.id === channelId);
+}
+
+/**
+ * Make a new channel on a trip. Named, capped, and de-duplicated by name
+ * (case-insensitive) so an advisor doesn't end up with two "Flights". Returns
+ * the channel list as it now stands and the one just created, or an error the
+ * route can surface. The caller — the route — is what enforces advisor-only;
+ * this is the store, and only knows about shape and limits.
+ */
+export async function createChannel(
+  shareId: string,
+  name: string,
+): Promise<{ channels: CompanionChannel[]; created: CompanionChannel } | { error: string }> {
+  if (!chatStoreAvailable()) return { error: "Channels need the private store connected." };
+  const clean = name.trim().slice(0, MAX_CHANNEL_NAME);
+  if (!clean) return { error: "Give the channel a name." };
+  if (clean.toLowerCase() === GENERAL_CHANNEL_NAME.toLowerCase()) return { error: "Every trip already has a General channel." };
+  const existing = await readChannels(shareId);
+  if (existing.some((c) => c.name.toLowerCase() === clean.toLowerCase())) {
+    return { error: "There's already a channel with that name." };
+  }
+  if (existing.length >= MAX_CHANNELS) return { error: `That's the most channels a trip can have (${MAX_CHANNELS}).` };
+  const created: CompanionChannel = { id: makeChannelId(), name: clean, createdAt: new Date().toISOString() };
+  await command(["RPUSH", channelsKeyFor(shareId), JSON.stringify(created)]);
+  return { channels: [...existing, created], created };
+}
+
+/**
+ * Remove a channel and everything in it. General can't be removed — it is the
+ * one channel a trip always has. Returns the channel list as it now stands.
+ */
+export async function deleteChannel(shareId: string, channelId: string): Promise<CompanionChannel[]> {
+  if (channelId === GENERAL_CHANNEL_ID) return readChannels(shareId);
+  const rows = (await command<string[]>(["LRANGE", channelsKeyFor(shareId), 0, -1])) ?? [];
+  const keep = rows.filter((row) => {
+    try {
+      return (JSON.parse(row) as CompanionChannel).id !== channelId;
+    } catch {
+      return false; // drop a corrupt row while we're here
+    }
+  });
+  // Rewrite the list from scratch — clear, then push what remains. Cheaper and
+  // simpler than an LREM by exact value, and it drops corrupt rows too.
+  await command(["DEL", channelsKeyFor(shareId)]);
+  for (const row of keep) await command(["RPUSH", channelsKeyFor(shareId), row]);
+  // The channel's own thread, reports, markers and typing go with it.
+  await command(["DEL", keyFor(shareId, channelId)]);
+  await command(["DEL", reportKeyFor(shareId, channelId)]);
+  await command(["DEL", readKeyFor(shareId, "client", channelId)]);
+  await command(["DEL", readKeyFor(shareId, "advisor", channelId)]);
+  await command(["DEL", typingKeyFor(shareId, "client", channelId)]);
+  await command(["DEL", typingKeyFor(shareId, "advisor", channelId)]);
+  return readChannels(shareId);
 }
 
 /* ---- read markers ---------------------------------------------------------
@@ -513,19 +671,20 @@ export async function deleteConversation(shareId: string): Promise<boolean> {
  * shows, at a hundredth of the writes.
  */
 
-const readKeyFor = (shareId: string, side: CompanionChatSide) => `white-glove:companion-read:${shareId}:${side}`;
+const readKeyFor = (shareId: string, side: CompanionChatSide, channelId: string = GENERAL_CHANNEL_ID) =>
+  `white-glove:companion-read:${shareId}${channelPart(channelId)}:${side}`;
 
 /** Record that `side` has now seen the thread up to `at`. */
-export async function markRead(shareId: string, side: CompanionChatSide, at: string): Promise<void> {
+export async function markRead(shareId: string, side: CompanionChatSide, at: string, channelId: string = GENERAL_CHANNEL_ID): Promise<void> {
   if (!chatStoreAvailable() || !at) return;
-  await command(["SET", readKeyFor(shareId, side), at]);
+  await command(["SET", readKeyFor(shareId, side, channelId), at]);
 }
 
 /** Both sides' read markers, whichever exist. */
-export async function readMarkers(shareId: string): Promise<Partial<Record<CompanionChatSide, string>>> {
+export async function readMarkers(shareId: string, channelId: string = GENERAL_CHANNEL_ID): Promise<Partial<Record<CompanionChatSide, string>>> {
   const [client, advisor] = await Promise.all([
-    command<string>(["GET", readKeyFor(shareId, "client")]),
-    command<string>(["GET", readKeyFor(shareId, "advisor")]),
+    command<string>(["GET", readKeyFor(shareId, "client", channelId)]),
+    command<string>(["GET", readKeyFor(shareId, "advisor", channelId)]),
   ]);
   const out: Partial<Record<CompanionChatSide, string>> = {};
   if (client) out.client = client;
@@ -544,21 +703,22 @@ export async function readMarkers(shareId: string): Promise<Partial<Record<Compa
  * for a moment, without either side having to say "I stopped."
  */
 
-const typingKeyFor = (shareId: string, side: CompanionChatSide) => `white-glove:companion-typing:${shareId}:${side}`;
+const typingKeyFor = (shareId: string, side: CompanionChatSide, channelId: string = GENERAL_CHANNEL_ID) =>
+  `white-glove:companion-typing:${shareId}${channelPart(channelId)}:${side}`;
 /** How long a "typing" signal lasts without being refreshed. Longer than the
  *  composer's own refresh interval, so a normal pause between keystrokes
  *  doesn't flicker the indicator off and straight back on. */
 const TYPING_TTL_SECONDS = 6;
 
 /** `side` is typing right now (or still within the last few seconds of it). */
-export async function setTyping(shareId: string, side: CompanionChatSide): Promise<void> {
+export async function setTyping(shareId: string, side: CompanionChatSide, channelId: string = GENERAL_CHANNEL_ID): Promise<void> {
   if (!chatStoreAvailable()) return;
-  await command(["SET", typingKeyFor(shareId, side), "1", "EX", TYPING_TTL_SECONDS]);
+  await command(["SET", typingKeyFor(shareId, side, channelId), "1", "EX", TYPING_TTL_SECONDS]);
 }
 
 /** Whether `side` was typing within the last few seconds. */
-export async function isTyping(shareId: string, side: CompanionChatSide): Promise<boolean> {
-  return Boolean(await command<string>(["GET", typingKeyFor(shareId, side)]));
+export async function isTyping(shareId: string, side: CompanionChatSide, channelId: string = GENERAL_CHANNEL_ID): Promise<boolean> {
+  return Boolean(await command<string>(["GET", typingKeyFor(shareId, side, channelId)]));
 }
 
 /* ---- reporting ----------------------------------------------------------- */
@@ -582,21 +742,22 @@ export type CompanionChatReport = {
   at: string;
 };
 
-const reportKeyFor = (shareId: string) => `white-glove:companion-report:${shareId}`;
+const reportKeyFor = (shareId: string, channelId: string = GENERAL_CHANNEL_ID) =>
+  `white-glove:companion-report:${shareId}${channelPart(channelId)}`;
 const MAX_REPORTS = 200;
 
 /** Record a report against a trip's thread. */
-export async function appendReport(shareId: string, report: CompanionChatReport): Promise<boolean> {
+export async function appendReport(shareId: string, report: CompanionChatReport, channelId: string = GENERAL_CHANNEL_ID): Promise<boolean> {
   if (!chatStoreAvailable()) return false;
-  const key = reportKeyFor(shareId);
+  const key = reportKeyFor(shareId, channelId);
   await command(["RPUSH", key, JSON.stringify(report)]);
   await command(["LTRIM", key, -MAX_REPORTS, -1]);
   return true;
 }
 
 /** Every report on a trip's thread, oldest first — for the operator to review. */
-export async function readReports(shareId: string): Promise<CompanionChatReport[]> {
-  const rows = await command<string[]>(["LRANGE", reportKeyFor(shareId), 0, -1]);
+export async function readReports(shareId: string, channelId: string = GENERAL_CHANNEL_ID): Promise<CompanionChatReport[]> {
+  const rows = await command<string[]>(["LRANGE", reportKeyFor(shareId, channelId), 0, -1]);
   if (!rows) return [];
   const out: CompanionChatReport[] = [];
   for (const row of rows) {

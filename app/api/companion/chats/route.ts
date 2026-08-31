@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { accountCookieName, getCurrentAccountData, getTrips } from "@/lib/account-store";
-import { deleteConversation, readChat, readMarkers } from "@/lib/companion-chat-store";
+import { deleteConversation, readChannels, readChat, readMarkers, type CompanionChatMessage } from "@/lib/companion-chat-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { PLAN_LABELS } from "@/lib/account-plans";
 import { getPlan } from "@/lib/account-plan-store";
@@ -33,19 +33,37 @@ export async function GET() {
   const shared = (await getTrips(account.email).catch(() => [])).filter((t) => t.shareId);
   const conversations = await Promise.all(
     shared.map(async (t) => {
-      const [messages, markers] = await Promise.all([readChat(t.shareId!), readMarkers(t.shareId!)]);
-      const last = messages[messages.length - 1];
+      const shareId = t.shareId!;
+      // A trip's conversation is one row here, but it can hold several channels
+      // now — General plus any the advisor made. Read them all: the badge sums
+      // the unread across every channel, and the preview is the newest message
+      // of any channel, so a row still speaks for the whole trip.
+      const channels = await readChannels(shareId);
+      const perChannel = await Promise.all(
+        channels.map(async (ch) => {
+          const [messages, markers] = await Promise.all([readChat(shareId, ch.id), readMarkers(shareId, ch.id)]);
+          const advisorRead = markers.advisor ?? "";
+          const unread = messages.filter((m) => m.from === "client" && !m.deletedAt && m.at > advisorRead).length;
+          const last: CompanionChatMessage | null = messages[messages.length - 1] ?? null;
+          return { last, unread, has: messages.length > 0 };
+        }),
+      );
       // The badge is UNREAD, not the whole history: the client's messages that
-      // arrived after the advisor last opened this thread. Nobody wants to be
-      // told a chat holds 214 messages — they want to know 2 are new.
-      const advisorRead = markers.advisor ?? "";
-      const unread = messages.filter((m) => m.from === "client" && !m.deletedAt && m.at > advisorRead).length;
+      // arrived after the advisor last opened each thread. Summed across
+      // channels so a message on "Flights" still lights the trip up.
+      const unread = perChannel.reduce((n, c) => n + c.unread, 0);
+      const hasMessages = perChannel.some((c) => c.has);
+      // The newest message of any channel is what the row previews.
+      const last = perChannel.reduce<CompanionChatMessage | null>(
+        (best, c) => (c.last && (!best || c.last.at > best.at) ? c.last : best),
+        null,
+      );
       return {
-        shareId: t.shareId!,
+        shareId,
         name: t.name,
         client: t.client,
         count: unread,
-        hasMessages: messages.length > 0,
+        hasMessages,
         lastText: last?.text ?? "",
         // The kind of the last message, so the list can read "Photo" / "Voice
         // message" / "Location" when it has no text of its own — the way a

@@ -153,8 +153,8 @@ describe("reading the thread also marks it read", () => {
   const GET = ROUTE.slice(ROUTE.indexOf("export async function GET"), ROUTE.indexOf("export async function PATCH"));
 
   it("records this side's own marker at the newest message, and returns both sides' markers", () => {
-    assert.match(GET, /markRead\(who\.chatKey, who\.side, latest\.at\)/);
-    assert.match(GET, /readMarkers: await readMarkers\(who\.chatKey\)/);
+    assert.match(GET, /markRead\(who\.chatKey, who\.side, latest\.at, channel\)/);
+    assert.match(GET, /readMarkers: await readMarkers\(who\.chatKey, channel\)/);
     assert.ok(GET.indexOf("markRead") < GET.indexOf("readMarkers:"), "the poll's own read is recorded before the response is built");
   });
 });
@@ -180,7 +180,7 @@ describe("changing or removing a message is fenced", () => {
   });
 
   it("delete proves ownership the same way", () => {
-    assert.match(DEL, /deleteMessage\(who\.chatKey, at, who\.side\)/);
+    assert.match(DEL, /deleteMessage\(who\.chatKey, at, who\.side, channel\)/);
   });
 });
 
@@ -228,7 +228,7 @@ describe("a reply quotes a real message, never a client-supplied one", () => {
   const POST = ROUTE.slice(ROUTE.indexOf("export async function POST"));
 
   it("looks the quote up server-side from replyToAt, never takes quoted text from the body", () => {
-    assert.match(POST, /quoteFor\(who\.chatKey, body\.replyToAt\)/);
+    assert.match(POST, /quoteFor\(who\.chatKey, body\.replyToAt, channel\)/);
     assert.doesNotMatch(POST, /replyTo:\s*body\.replyTo/);
   });
 
@@ -276,7 +276,7 @@ describe("typing is a courtesy signal, not a message", () => {
 
   it("GET reports the OTHER side's typing state, never this side's own", () => {
     const GET = ROUTE.slice(ROUTE.indexOf("export async function GET"), ROUTE.indexOf("export async function PATCH"));
-    assert.match(GET, /isTyping\(who\.chatKey, otherSideOf\(who\.side\)\)/);
+    assert.match(GET, /isTyping\(who\.chatKey, otherSideOf\(who\.side\), channel\)/);
   });
 });
 
@@ -326,9 +326,11 @@ describe("deleting a whole conversation is fenced", () => {
 
   it("clearing a conversation also clears both sides' typing signal, not just the messages", () => {
     const STORE = readFileSync("lib/companion-chat-store.ts", "utf8");
-    const fn = STORE.slice(STORE.indexOf("export async function deleteConversation"), STORE.indexOf("/* ---- read markers"));
-    assert.match(fn, /DEL", typingKeyFor\(shareId, "client"\)/);
-    assert.match(fn, /DEL", typingKeyFor\(shareId, "advisor"\)/);
+    const fn = STORE.slice(STORE.indexOf("export async function deleteConversation"), STORE.indexOf("/* ---- channel list"));
+    // Now channel-aware: deleteConversation walks every channel and clears each
+    // one's typing signal, so the key carries the channel id.
+    assert.match(fn, /DEL", typingKeyFor\(shareId, "client", ch\.id\)/);
+    assert.match(fn, /DEL", typingKeyFor\(shareId, "advisor", ch\.id\)/);
   });
 });
 
@@ -371,7 +373,7 @@ describe("reactions — one emoji per side, both people see both", () => {
   it("the route stores a reaction only through reactMessage, from the link's own side", () => {
     const ROUTE = readFileSync("app/api/companion/chat/route.ts", "utf8");
     const POST = ROUTE.slice(ROUTE.indexOf("export async function POST"));
-    assert.match(POST, /reactMessage\(who\.chatKey, body\.reactAt, who\.side, body\.reaction\)/);
+    assert.match(POST, /reactMessage\(who\.chatKey, body\.reactAt, who\.side, body\.reaction, channel\)/);
     assert.match(POST, /rateLimit\(`companion-react:/);
   });
 
@@ -423,7 +425,7 @@ describe("polls — a question everyone on the link can vote on", () => {
     const ROUTE = readFileSync("app/api/companion/chat/route.ts", "utf8");
     const POST = ROUTE.slice(ROUTE.indexOf("export async function POST"));
     assert.match(POST, /who\.side === "advisor"\s*\?\s*"advisor"/);
-    assert.match(POST, /votePoll\(who\.chatKey, body\.pollVoteAt, voterId, body\.pollOption\)/);
+    assert.match(POST, /votePoll\(who\.chatKey, body\.pollVoteAt, voterId, body\.pollOption, channel\)/);
     assert.match(POST, /rateLimit\(`companion-vote:/);
   });
 });
