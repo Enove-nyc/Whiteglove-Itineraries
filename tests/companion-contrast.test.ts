@@ -126,3 +126,50 @@ describe("the bottom bar says what its four buttons are", () => {
     assert.match(SRC, /aria-label=\{t\.badge \? `\$\{t\.label\} \(unread messages\)` : undefined\}/);
   });
 });
+
+describe("the dark the app is anchored on", () => {
+  /**
+   * THE FIRST SCREEN HAD A NAVY PANEL AND THE OTHER FOUR HAD NOTHING.
+   *
+   * The bar at the top of every screen was cream, on a cream page, above white
+   * cards — so the wallet, the advisor thread and the You screen carried no
+   * dark colour at all and had nothing to sit against. It is navy now, the
+   * same navy as the panel, which is what makes the app read as one thing
+   * rather than one good screen and four pale ones.
+   *
+   * The section headings moved with it. FLIGHTS, WHERE YOU ARE STAYING, HELD
+   * FOR YOU and the rest were written in the same grey as the metadata
+   * underneath them, so a wallet was one flat wash of grey small caps.
+   */
+  const GOLD_ON_DARK = colour("GOLD_ON_DARK");
+
+  it("puts the navy bar at the top of every screen, not only the first", () => {
+    assert.match(SRC, /background: NAVY, color: CREAM, borderBottom/);
+  });
+
+  it("writes on it in things that can be read there", () => {
+    // 9.5px small caps, so 4.5 with no allowance for size.
+    const eyebrow = ratio(GOLD_ON_DARK, NAVY);
+    assert.ok(eyebrow >= AA, `the eyebrow on the navy bar is ${eyebrow.toFixed(2)}:1, under ${AA}`);
+    assert.ok(ratio(CREAM, NAVY) >= AA);
+  });
+
+  it("uses a lifted gold there rather than the flat one", () => {
+    // The brand gold is 5.13:1 on the navy — legible, and muddy at 9.5px
+    // against a dark ground. Same hue, carried up.
+    assert.notEqual(GOLD_ON_DARK, GOLD);
+    assert.ok(ratio(GOLD_ON_DARK, NAVY) > ratio(GOLD, NAVY));
+  });
+
+  it("rings the unread dot in the colour actually behind it", () => {
+    // It was ringed in cream, for the cream bar it used to sit on. On navy
+    // that reads as a smudge rather than a dot.
+    assert.match(SRC, /background: GOLD, border: `2px solid \$\{NAVY\}`/);
+  });
+
+  it("gives the section headings the navy too", () => {
+    // They were the same grey as the metadata under them.
+    assert.doesNotMatch(SRC, /kicker\(MUTED\)/, "a section heading is grey small caps again");
+    assert.match(SRC, /kicker\(NAVY\)/);
+  });
+});
