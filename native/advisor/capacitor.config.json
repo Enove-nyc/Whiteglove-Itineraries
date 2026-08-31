@@ -3,7 +3,7 @@
   "appName": "White Glove Advisor",
   "webDir": "www",
   "server": {
-    "url": "https://whitegloveitineraries.com/app",
+    "url": "https://whitegloveitineraries.com/advisor",
     "androidScheme": "https"
   },
   "android": {
