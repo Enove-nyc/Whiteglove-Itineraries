@@ -47,7 +47,16 @@ describe("the page builds the trip server-side, the same way the client app does
     assert.match(PAGE, /const wantedTripId = firstParam\(params\.trip\)/);
     assert.match(PAGE, /const selected = trips\.find\(\(t\) => t\.id === wantedTripId\)/);
     assert.match(PAGE, /buildCompanionFromItinerary\(/);
-    assert.match(PAGE, /openTrip=\{openTrip\} openScreen=\{openScreen\} openShareId=\{openShareId\}/);
+    assert.match(PAGE, /openTrip=\{openTrip\} openTripInfo=\{openTripInfo\} openScreen=\{openScreen\} openShareId=\{openShareId\}/);
+  });
+
+  it("a trip with no dates opens a real screen here, not a dead end", () => {
+    // openTripInfo is set for any started trip this account owns, even when it
+    // can't build the day-by-day view — so "no dates" shows the NoDatesTrip
+    // screen (with the advisor footer) rather than bouncing to the dashboard.
+    assert.match(PAGE, /openTripInfo = \{ id: selected\.id, name: selected\.name, client:/);
+    assert.match(ADVISOR_APP, /viewingTrip && !openTrip && openTripInfo && \(/);
+    assert.match(ADVISOR_APP, /function NoDatesTrip\(/);
   });
 });
 

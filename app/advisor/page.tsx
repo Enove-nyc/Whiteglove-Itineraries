@@ -181,10 +181,16 @@ export default async function AdvisorDashboardPage({
   const openScreen = firstParam(params.screen) === "wallet" ? ("wallet" as const) : undefined;
   let openTrip: CompanionTrip | null = null;
   let openShareId: string | undefined;
+  // The selected trip's plain facts, set whenever a started trip this account
+  // owns was asked for — even when it has no dates yet and so cannot build the
+  // day-by-day view. That is what turns "no dates" from a dead end (a bounce to
+  // the dashboard) into a real screen the advisor can act from.
+  let openTripInfo: { id: string; name: string; client: string } | null = null;
   if (wantedTripId) {
     const selected = trips.find((t) => t.id === wantedTripId);
     if (selected) {
       openShareId = selected.shareId;
+      openTripInfo = { id: selected.id, name: selected.name, client: (selected.client ?? "").trim() };
       const chosen = await getTripItinerary(account.email, selected.id).catch(() => null);
       if (chosen) {
         const [brand, prefs] = await Promise.all([
@@ -203,7 +209,7 @@ export default async function AdvisorDashboardPage({
   }
 
   return (
-    <AdvisorApp trips={tripRows} openTrip={openTrip} openScreen={openScreen} openShareId={openShareId}>
+    <AdvisorApp trips={tripRows} openTrip={openTrip} openTripInfo={openTripInfo} openScreen={openScreen} openShareId={openShareId}>
       <section className="mx-auto w-full max-w-3xl px-5 pb-8 pt-5 sm:px-8">
         {/* The navy app header above already says "Advisor · Dashboard", so the
             hero drops the eyebrow and opens straight on the welcome. */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons/Icon";
 import CompanionApp, { AdvisorInbox, COMPANION_CSS } from "@/components/companion/CompanionApp";
@@ -59,6 +60,7 @@ export default function AdvisorApp({
   trips,
   children,
   openTrip,
+  openTripInfo,
   openScreen,
   openShareId,
 }: {
@@ -68,6 +70,10 @@ export default function AdvisorApp({
    *  When present, it shows embedded in this shell — the advisor's own four-tab
    *  bar stays below it, so opening a trip never lands them in the client app. */
   openTrip?: CompanionTrip | null;
+  /** The opened trip's plain facts, present even when it has no dates yet and so
+   *  cannot build the day-by-day view. Lets "no dates" open a real screen here
+   *  rather than dead-ending on the dashboard. */
+  openTripInfo?: { id: string; name: string; client: string } | null;
   /** Which of the trip's screens to open on — "wallet" from the Wallet tab. */
   openScreen?: "wallet";
   /** The trip's share token, so "Comment on this" opens that client's thread. */
@@ -76,10 +82,10 @@ export default function AdvisorApp({
   const router = useRouter();
   // Open on the dashboard — the advisor's overview — unless a trip was opened,
   // in which case the shell shows that trip (from Trips, or Wallet).
-  const [tab, setTab] = useState<Tab>(openTrip ? (openScreen === "wallet" ? "wallet" : "trips") : "account");
-  // Whether a trip is showing embedded right now. Set from the server prop;
-  // tapping any bottom tab leaves the trip and returns to normal tabs.
-  const [viewingTrip, setViewingTrip] = useState(Boolean(openTrip));
+  const [tab, setTab] = useState<Tab>(openTrip || openTripInfo ? (openScreen === "wallet" ? "wallet" : "trips") : "account");
+  // Whether a trip is showing right now — the built day-by-day view, or the
+  // no-dates screen. Set from the server props; tapping any bottom tab leaves it.
+  const [viewingTrip, setViewingTrip] = useState(Boolean(openTrip || openTripInfo));
   // While the message composer holds the keyboard, drop the bottom bar out of
   // the way (the inbox bubbles this up), same as the client app does.
   const [composerUp, setComposerUp] = useState(false);
@@ -119,6 +125,17 @@ export default function AdvisorApp({
           </div>
         </div>
       )}
+      {/* The no-dates trip screen brings its own navy header with a back, since
+          the embedded day-by-day view (which normally supplies one) isn't shown. */}
+      {viewingTrip && !openTrip && openTripInfo && (
+        <div style={{ flexShrink: 0, padding: "calc(20px + env(safe-area-inset-top)) 18px 12px", display: "flex", alignItems: "center", gap: 10, background: NAVY, color: CREAM, borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+          <button onClick={exitTrip} aria-label="Back" style={{ border: "1px solid rgba(255,255,255,.22)", background: "rgba(255,255,255,.08)", width: 34, height: 34, borderRadius: 14, cursor: "pointer", fontSize: 15, color: CREAM, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: GOLD_ON_DARK }}>Trip</div>
+            <div style={{ font: `400 19px/1.15 ${serif}`, letterSpacing: "-.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{openTripInfo.client || openTripInfo.name}</div>
+          </div>
+        </div>
+      )}
 
       {/* content */}
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -134,6 +151,14 @@ export default function AdvisorApp({
             advisorShareId={openShareId}
             initialScreen={openScreen}
           />
+        )}
+        {viewingTrip && !openTrip && openTripInfo && (
+          // The trip has no dates yet. Not a dead end — a real screen: the
+          // day-by-day view needs dates (it is organised by day), but planning
+          // a trip before the client's dates are firm is normal, so the trip
+          // opens here with the tools that don't need dates. Chat and wallet
+          // are the tabs below; dates are set in the planner when they firm up.
+          <NoDatesTrip name={openTripInfo.name} client={openTripInfo.client} />
         )}
         {!viewingTrip && tab === "account" && (
           <div className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
@@ -200,6 +225,32 @@ export default function AdvisorApp({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function NoDatesTrip({ name, client }: { name: string; client: string }) {
+  return (
+    <div className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 16px 24px", display: "flex", flexDirection: "column", gap: 12, animation: "wgIn .28s ease both" }}>
+      <div style={{ border: "1px solid rgba(38,50,58,.1)", background: "#fff", borderRadius: 16, padding: "18px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <span style={{ font: "600 10px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#a8a29e" }}>No dates yet</span>
+        <h2 style={{ margin: 0, font: `400 22px/1.2 ${serif}`, color: NAVY }}>{client || name}</h2>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "#57534e" }}>
+          The day-by-day trip view opens once this trip has a start and end date — it&rsquo;s laid out one day at a
+          time. Planning before your client&rsquo;s dates are firm is fine: set the dates in the planner whenever
+          they&rsquo;re settled, and the trip fills in here.
+        </p>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "#57534e" }}>
+          You can still message this client and build their wallet from the tabs below.
+        </p>
+        <Link
+          href="/itinerary"
+          className="wg-warm"
+          style={{ alignSelf: "flex-start", marginTop: 2, border: 0, background: NAVY, color: CREAM, borderRadius: 999, padding: "10px 18px", font: "600 13px/1 Inter,sans-serif", textDecoration: "none" }}
+        >
+          Open the planner
+        </Link>
+      </div>
     </div>
   );
 }
