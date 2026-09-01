@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons/Icon";
 import CompanionApp, { AdvisorInbox, COMPANION_CSS } from "@/components/companion/CompanionApp";
+import AdvisorNotify from "@/components/companion/AdvisorNotify";
 import type { CompanionTrip } from "@/data/companion-demo";
 
 /**
@@ -123,6 +124,7 @@ export default function AdvisorApp({
             <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: GOLD_ON_DARK }}>{meta.eyebrow}</div>
             <div style={{ font: `400 19px/1.15 ${serif}`, letterSpacing: "-.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta.title}</div>
           </div>
+          <AdvisorNotify />
         </div>
       )}
       {/* The no-dates trip screen brings its own navy header with a back, since

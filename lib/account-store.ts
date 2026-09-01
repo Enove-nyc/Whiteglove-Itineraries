@@ -260,6 +260,14 @@ export type AccountData = {
   trips?: SavedTrip[];
   activeTripId?: string;
   /**
+   * The advisor's OWN devices for push — kept on the account, not a trip, so
+   * one opt-in in the advisor app covers every client's trip rather than being
+   * re-armed per trip. A client's device stays on their trip (a client has no
+   * account); this is the other side of that, the advisor being told when a
+   * client writes back. See saveAccountPushSubscription below.
+   */
+  pushSubscriptions?: PushSubscriptionRecord[];
+  /**
    * The planner's own reusable content — hotels, activities, tours,
    * contacts — and the destination packs built from them. Belongs to the
    * ACCOUNT, not one trip, since the whole point is using the same saved
@@ -2000,6 +2008,48 @@ export async function savePushSubscription(shareId: string, subscription: PushSu
   const next = [...existing, subscription].slice(-MAX_PUSH_SUBSCRIPTIONS);
   const nextTrips = trips.map((t) => (t.id === resolved.tripId ? { ...t, pushSubscriptions: next, updatedAt: new Date().toISOString() } : t));
   return Boolean(await writeTrips(resolved.ownerEmail, nextTrips, activeId));
+}
+
+/* ---- the advisor's OWN devices (account-level push) -----------------------
+ *
+ * The advisor opts in once, in their app, and is then told when a client writes
+ * back on ANY of their trips. So the subscription lives on the account, not a
+ * trip — one list of the advisor's devices, read whenever a client message
+ * needs to reach them.
+ */
+
+/** The advisor's subscribed devices. */
+export async function readAccountPushSubscriptions(email: string): Promise<PushSubscriptionRecord[]> {
+  const data = await getAccountData(normalizeId(email));
+  return data.pushSubscriptions ?? [];
+}
+
+/** Add (or refresh) one of the advisor's own devices. */
+export async function saveAccountPushSubscription(email: string, subscription: PushSubscriptionRecord): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const current = await getAccountData(normalized);
+  const existing = (current.pushSubscriptions ?? []).filter((s) => s.endpoint !== subscription.endpoint);
+  const next: AccountData = {
+    ...current,
+    pushSubscriptions: [...existing, subscription].slice(-MAX_PUSH_SUBSCRIPTIONS),
+    updatedAt: new Date().toISOString(),
+  };
+  return Boolean(await writeJson(dataKey(normalized), next));
+}
+
+/** Turn the advisor's notifications off on one device. */
+export async function removeAccountPushSubscription(email: string, endpoint: string): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const current = await getAccountData(normalized);
+  if (!current.pushSubscriptions?.length) return true;
+  const next: AccountData = {
+    ...current,
+    pushSubscriptions: current.pushSubscriptions.filter((s) => s.endpoint !== endpoint),
+    updatedAt: new Date().toISOString(),
+  };
+  return Boolean(await writeJson(dataKey(normalized), next));
 }
 
 /** Turning notifications back off on one device. */

@@ -52,6 +52,44 @@ function ensureConfigured(): boolean {
   return true;
 }
 
+/**
+ * The hosts real browsers hand out push endpoints on. The server later POSTs
+ * to whatever endpoint is stored (web-push), so an endpoint is a URL we will
+ * fetch — an attacker who could set it to an internal address would turn a
+ * subscribe call into a blind SSRF from the server's network. Pinned to https
+ * on a known push service; a browser whose endpoint is elsewhere simply does
+ * not register, which is far cheaper than the hole. Shared by both the client
+ * (per-trip) and advisor (account) subscribe routes so the fence can't drift.
+ */
+const PUSH_HOSTS = [
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "push.services.mozilla.com",
+  "notify.windows.com",
+  "push.apple.com",
+];
+
+export function isAllowedPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:") return false;
+  const host = url.hostname.toLowerCase();
+  return PUSH_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
+export function isValidPushSubscription(v: unknown): v is { endpoint: string; keys: { p256dh: string; auth: string } } {
+  if (!v || typeof v !== "object") return false;
+  const s = v as { endpoint?: unknown; keys?: unknown };
+  if (typeof s.endpoint !== "string" || !s.endpoint.trim()) return false;
+  if (!isAllowedPushEndpoint(s.endpoint)) return false;
+  const keys = s.keys as { p256dh?: unknown; auth?: unknown } | undefined;
+  return Boolean(keys && typeof keys.p256dh === "string" && typeof keys.auth === "string");
+}
+
 export type PushPayload = { title: string; body: string; url?: string };
 
 export type PushSendResult = {

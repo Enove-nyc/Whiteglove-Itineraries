@@ -1,6 +1,13 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { accountCookieName, getCurrentAccountData, resolveCompanionShare } from "@/lib/account-store";
+import {
+  accountCookieName,
+  getCurrentAccountData,
+  readAccountPushSubscriptions,
+  removeAccountPushSubscription,
+  resolveCompanionShare,
+} from "@/lib/account-store";
+import { sendPushToSubscriptions } from "@/lib/push-notify";
 import {
   MAX_CHAT_LABEL,
   MAX_CHAT_TEXT,
@@ -246,6 +253,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "That channel doesn't exist on this trip." }, { status: 404 });
   }
 
+  // When the CLIENT writes, tell the advisor on their phone — best-effort, and
+  // only if they turned notifications on (their devices live on the account,
+  // /api/account/push). Never the other way: the client's own alerts are the
+  // per-trip subscription. Fire-and-forget so it never holds up the reply.
+  const notifyAdvisor = (summary: string) => {
+    if (who.side !== "client") return;
+    void (async () => {
+      try {
+        const subs = await readAccountPushSubscriptions(who.owner);
+        if (!subs.length) return;
+        const result = await sendPushToSubscriptions(subs, {
+          title: "New message from a client",
+          body: summary.slice(0, 140) || "You have a new message.",
+          url: "/advisor",
+        });
+        for (const endpoint of result.expired) await removeAccountPushSubscription(who.owner, endpoint);
+      } catch {
+        /* a failed push is never a failed send */
+      }
+    })();
+  };
+
   // "I am typing" — a courtesy signal, not a message. No rate limit: it is
   // one cheap Redis SET, the composer already throttles how often it sends
   // one, and the same-origin and plan checks above are the fence that matters.
@@ -308,6 +337,7 @@ export async function POST(request: NextRequest) {
       poll: { question: question.slice(0, MAX_CHAT_LABEL), options },
       at: new Date().toISOString(),
     }, channel);
+    notifyAdvisor(`Poll: ${question}`);
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -373,6 +403,7 @@ export async function POST(request: NextRequest) {
       replyTo,
       itineraryRef,
     }, channel);
+    notifyAdvisor(`Sent a ${NOUN_FOR[media.kind]}`);
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -391,6 +422,7 @@ export async function POST(request: NextRequest) {
       replyTo,
       itineraryRef,
     }, channel);
+    notifyAdvisor("Shared a location");
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -407,6 +439,7 @@ export async function POST(request: NextRequest) {
       replyTo,
       itineraryRef,
     }, channel);
+    notifyAdvisor("Shared a location");
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -421,5 +454,6 @@ export async function POST(request: NextRequest) {
     replyTo,
     itineraryRef,
   }, channel);
+  notifyAdvisor(text);
   return NextResponse.json({ messages, side: who.side });
 }
