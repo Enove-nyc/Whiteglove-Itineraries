@@ -178,6 +178,9 @@ function RowCard({
         <button type="button" onClick={() => onOpen(`/forms?trip=${row.id}`)} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
           Forms
         </button>
+        <button type="button" onClick={() => onOpen(`/history?trip=${row.id}`)} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
+          History
+        </button>
         {row.shareId && (
           <a href={`/advisor?trip=${row.id}`} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
             Open in the app

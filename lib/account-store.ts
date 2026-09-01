@@ -1,5 +1,5 @@
 import type { AdvisorWelcome } from "@/data/advisor-welcome";
-import { withActivity, type ActivityEntry } from "@/data/trip-activity";
+import { recentActivity, withActivity, type ActivityEntry } from "@/data/trip-activity";
 import { readTeam, type TeamMember } from "@/data/team";
 import { clientsFromTrips, emptyClientProfile, tripsForClient, type ClientProfile, type ClientSummary } from "@/data/clients";
 import type { AddonItem } from "@/data/trip-addons";
@@ -10,6 +10,7 @@ import { travelerAttachments, withoutAttachments } from "@/lib/attachments";
 import { emptyItinerary, type Itinerary } from "@/data/itinerary";
 import { proposalOptionToItinerary, type Proposal } from "@/data/proposal";
 import type { ManualTripStage } from "@/data/trip-pipeline";
+import { formatCents } from "@/data/trip-payments";
 import type { PaymentRecord, TripBalance } from "@/data/trip-payments";
 import { alertsFromStatusChange, flightRecheckMs, type FlightStatusSnapshot, type TripAlert } from "@/data/trip-alerts";
 import { summarizeItineraryChange, type ItineraryChange } from "@/data/trip-changes";
@@ -1452,9 +1453,20 @@ export async function saveProposal(email: string, tripId: string, proposal: Prop
   const normalized = normalizeId(email);
   const data = await getAccountData(normalized);
   const { trips, activeId } = withTrips(data);
-  if (!trips.some((t) => t.id === tripId)) return false;
+  const existing = trips.find((t) => t.id === tripId);
+  if (!existing) return false;
   const stamped: Proposal = { ...proposal, id: proposal.id || proposalId(), updatedAt: new Date().toISOString() };
-  const next = trips.map((t) => (t.id === tripId ? { ...t, proposal: stamped, updatedAt: new Date().toISOString() } : t));
+  // Log the one transition the planner initiates — putting a proposal in front
+  // of the client. Every other status move (viewed, approved, changes) is the
+  // client's and is logged where the client's action is applied; this write is
+  // also how those persist, so it must not double-log them.
+  const justSent = stamped.status === "sent" && existing.proposal?.status !== "sent";
+  const activity = justSent
+    ? withActivity(existing.activity ?? [], activityEntry("proposal_sent", "Proposal sent to the client."))
+    : existing.activity;
+  const next = trips.map((t) =>
+    t.id === tripId ? { ...t, proposal: stamped, ...(activity ? { activity } : {}), updatedAt: new Date().toISOString() } : t,
+  );
   return Boolean(await writeTrips(normalized, next, activeId));
 }
 
@@ -1530,8 +1542,16 @@ export async function recordPayment(ownerEmail: string, tripId: string, record: 
   // Nothing changed — a genuine duplicate, or a stale failure after success.
   // Idempotent success, exactly as a retried webhook expects.
   if (!merged) return true;
+  // A settled charge is worth a line in the trip's feed; a declined attempt is
+  // not (the ledger keeps it, but it isn't something that happened to the trip).
+  const activity =
+    record.status === "succeeded"
+      ? withActivity(trip.activity ?? [], activityEntry("payment_received", `Payment received: ${formatCents(record.amountCents, record.currency)}.`))
+      : trip.activity;
   const next = trips.map((t) =>
-    t.id === tripId ? { ...t, balance: { ...balance, payments: merged }, updatedAt: new Date().toISOString() } : t,
+    t.id === tripId
+      ? { ...t, balance: { ...balance, payments: merged }, ...(activity ? { activity } : {}), updatedAt: new Date().toISOString() }
+      : t,
   );
   return Boolean(await writeTrips(normalized, next, activeId));
 }
@@ -1809,8 +1829,10 @@ export type ProposalClientAction =
 export async function applyProposalClientAction(shareId: string, action: ProposalClientAction): Promise<Proposal | null> {
   const rec = await readJson<{ ownerEmail: string; tripId: string }>(proposalShareKey(shareId));
   if (!rec) return null;
-  const data = await getAccountData(rec.ownerEmail);
-  const trip = withTrips(data).trips.find((t) => t.id === rec.tripId);
+  const normalized = normalizeId(rec.ownerEmail);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === rec.tripId);
   if (!trip?.proposal) return null;
   const now = new Date().toISOString();
   const current = trip.proposal;
@@ -1836,8 +1858,25 @@ export async function applyProposalClientAction(shareId: string, action: Proposa
     next = { ...current, comments: [...current.comments, { from: "client" as const, text, at: now }] };
   }
 
-  const ok = await saveProposal(rec.ownerEmail, rec.tripId, next);
-  return ok ? next : null;
+  // Log the two client actions that move a proposal to a decision — approving
+  // it, or asking for changes. A bare select or comment is not a decision and
+  // is not logged. Written into the trip's own feed in the same write that
+  // persists the proposal, rather than through saveProposal, so the entry and
+  // the new status land together.
+  const logKind: ActivityEntry["kind"] | null =
+    action.kind === "approve" ? "proposal_approved" : action.kind === "request_changes" ? "proposal_changes_requested" : null;
+  const stamped: Proposal = { ...next, id: next.id || proposalId(), updatedAt: now };
+  const activity = logKind
+    ? withActivity(
+        trip.activity ?? [],
+        activityEntry(logKind, logKind === "proposal_approved" ? "Client approved the proposal." : "Client asked for changes to the proposal."),
+      )
+    : undefined;
+  const updated = trips.map((t) =>
+    t.id === rec.tripId ? { ...t, proposal: stamped, ...(activity ? { activity } : {}), updatedAt: now } : t,
+  );
+  const ok = await writeTrips(normalized, updated, activeId);
+  return ok ? stamped : null;
 }
 
 /**
@@ -2149,7 +2188,10 @@ export async function submitFormResponse(shareId: string, respondentName: string
   }
   const response: ClientFormResponse = { id: formResponseId(), respondentName: name, answers: cleanAnswers, submittedAt: new Date().toISOString() };
   const nextResponses = [...(trip.formResponses ?? []), response];
-  const next = trips.map((t) => (t.id === rec.tripId ? { ...t, formResponses: nextResponses, updatedAt: new Date().toISOString() } : t));
+  const activity = withActivity(trip.activity ?? [], activityEntry("form_submitted", `${name} filled out the pre-trip form.`));
+  const next = trips.map((t) =>
+    t.id === rec.tripId ? { ...t, formResponses: nextResponses, activity, updatedAt: new Date().toISOString() } : t,
+  );
   return Boolean(await writeTrips(normalized, next, activeId));
 }
 
@@ -2158,6 +2200,28 @@ export async function getFormResponses(email: string, tripId: string): Promise<C
   const data = await getAccountData(email);
   const trip = withTrips(data).trips.find((t) => t.id === tripId);
   return trip?.formResponses ?? [];
+}
+
+/**
+ * One trip's own history — proposal, form, payment and add-on events in the
+ * order they should be read (most recent first). Resolves the trip the same
+ * way every per-trip screen does: the one named in `?trip=` when the advisor
+ * opened it from a specific trip, otherwise whichever is open on the account.
+ * The advisor's own read; a client never reaches this.
+ */
+export async function getTripActivity(
+  email: string,
+  wanted?: string,
+): Promise<{ tripId: string; tripName: string; activity: ActivityEntry[] } | null> {
+  const data = await getAccountData(email);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === (wanted || activeId)) ?? trips[0];
+  if (!trip) return null;
+  return {
+    tripId: trip.id,
+    tripName: trip.client?.trim() || trip.name || trip.itinerary.title || "This trip",
+    activity: recentActivity(trip.activity ?? []),
+  };
 }
 
 // ---- Itinerary sharing ------------------------------------------------

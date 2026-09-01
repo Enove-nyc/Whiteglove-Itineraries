@@ -85,6 +85,10 @@ export const TRIP_PLACES = [
   { label: "Client forms", href: "/forms", need: "clients" },
   { label: "Payments", href: "/payments", need: "clients" },
   { label: "Group trip", href: "/group", need: "clients" },
+  // What has actually happened on the trip — proposal sent, form returned,
+  // payment settled — in one place, read-only. Last, because it is the record
+  // of the work above it, not another screen to do work on.
+  { label: "History", href: "/history", need: "clients" },
 ] as const;
 
 export type TripPlace = (typeof TRIP_PLACES)[number];

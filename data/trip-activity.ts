@@ -15,6 +15,7 @@ export type ActivityKind =
   | "proposal_sent"
   | "proposal_approved"
   | "proposal_changes_requested"
+  | "form_submitted"
   | "payment_received"
   | "addon_accepted"
   | "addon_declined"
