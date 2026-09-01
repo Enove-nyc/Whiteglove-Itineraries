@@ -285,69 +285,100 @@ function TripList({
           No trips yet. Build one in the planner and share it — it shows up here.
         </div>
       ) : (
-        trips.map((t) => (
-          <div
-            key={t.id}
-            className="wg-warm"
-            style={{ display: "flex", alignItems: "center", gap: 13, border: "1px solid rgba(38,50,58,.08)", background: "#ffffff", borderRadius: 16, padding: "14px 16px" }}
-          >
-            <a href={hrefFor(t)} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13, textDecoration: "none" }}>
-              <span style={{ flex: "none", width: 42, height: 42, borderRadius: 12, background: "#e7edf1", display: "flex", alignItems: "center", justifyContent: "center", font: `400 18px/1 ${serif}`, color: "#1f3f5c" }}>
-                {(t.client || t.name || "?").charAt(0).toUpperCase()}
-              </span>
-              <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, color: "#26323a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {t.client || t.name}
-                </span>
-                <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {[t.client ? t.name : null, t.stageLabel, t.startDate ? `leaves ${t.startDate}` : null].filter(Boolean).join(" · ")}
-                </span>
-              </span>
-            </a>
-            {actions ? <TripRowActions trip={t} openHref={hrefFor(t)} /> : <Icon name="more" className="h-4 w-4" aria-hidden />}
-          </div>
-        ))
+        trips.map((t) => <TripRow key={t.id} trip={t} openHref={hrefFor(t)} actions={actions} />)
       )}
     </div>
   );
 }
 
 /**
- * The per-trip quick actions: copy the client's code (their app link, the one
- * they open the trip with), open the trip here, and edit it in the planner. The
- * copy only appears once the trip has a share token — before it is shared there
- * is no code to hand out yet.
+ * One trip in the Trips (or Wallet) list, and — on the Trips tab — its own row
+ * of actions: SEE the client's code (reveal the link to share, and copy it),
+ * open the trip here, and edit it in the planner.
+ *
+ * "See the code", not just "copy" — an advisor reading a code out to a client,
+ * or checking they have the right one, needs to see it, not copy it blind. The
+ * three action buttons are one fixed size so the row reads evenly whether or
+ * not a trip has been shared yet; the code button is simply disabled until it
+ * has a share token (nothing to hand out before then).
  */
-function TripRowActions({ trip, openHref }: { trip: AdvisorTripRow; openHref: string }) {
+function TripRow({ trip, openHref, actions }: { trip: AdvisorTripRow; openHref: string; actions: boolean }) {
+  const [showCode, setShowCode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const code = trip.shareId ? `${origin}/i/${trip.shareId}/app` : "";
   const copy = async () => {
-    if (!trip.shareId) return;
+    if (!code) return;
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/i/${trip.shareId}/app`);
+      await navigator.clipboard.writeText(code);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
     } catch {
-      /* clipboard blocked — nothing to show, the button just does nothing */
+      /* clipboard blocked — the code is shown to copy by hand */
     }
   };
   const btn: CSSProperties = { flex: "none", width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(38,50,58,.12)", background: "#fff", color: NAVY, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, textDecoration: "none" };
+
   return (
-    <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 6 }}>
-      {trip.shareId && (
-        <button type="button" onClick={copy} aria-label={copied ? "Code copied" : "Copy the client's code"} title="Copy the client's code" style={{ ...btn, borderColor: copied ? "#4ba36a" : "rgba(38,50,58,.12)", color: copied ? "#4ba36a" : NAVY }}>
-          {copied ? (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-          ) : (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
-          )}
-        </button>
+    <div className="wg-warm" style={{ border: "1px solid rgba(38,50,58,.08)", background: "#ffffff", borderRadius: 16, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "14px 16px" }}>
+        <a href={openHref} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13, textDecoration: "none" }}>
+          <span style={{ flex: "none", width: 42, height: 42, borderRadius: 12, background: "#e7edf1", display: "flex", alignItems: "center", justifyContent: "center", font: `400 18px/1 ${serif}`, color: "#1f3f5c" }}>
+            {(trip.client || trip.name || "?").charAt(0).toUpperCase()}
+          </span>
+          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, color: "#26323a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {trip.client || trip.name}
+            </span>
+            <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {[trip.client ? trip.name : null, trip.stageLabel, trip.startDate ? `leaves ${trip.startDate}` : null].filter(Boolean).join(" · ")}
+            </span>
+          </span>
+        </a>
+        {actions ? (
+          <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => trip.shareId && setShowCode((v) => !v)}
+              disabled={!trip.shareId}
+              aria-label={trip.shareId ? "See the client's code" : "Share this trip first to get a code"}
+              aria-expanded={showCode}
+              title={trip.shareId ? "See the client's code" : "Not shared yet"}
+              style={{ ...btn, cursor: trip.shareId ? "pointer" : "default", opacity: trip.shareId ? 1 : 0.4, borderColor: showCode ? GOLD : "rgba(38,50,58,.12)", color: showCode ? GOLD_ON_DARK : NAVY }}
+            >
+              {/* A QR-ish "code" mark — the same on every row, so the icons line up. */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3M21 14v.01M14 21h.01M21 21v-4M17 21h.01" /></svg>
+            </button>
+            <a href={openHref} aria-label="Open the trip" title="Open the trip" style={btn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+            </a>
+            <Link href="/itinerary" aria-label="Edit in the planner" title="Edit in the planner" style={btn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            </Link>
+          </div>
+        ) : (
+          <Icon name="more" className="h-4 w-4" aria-hidden />
+        )}
+      </div>
+
+      {/* The code itself, shown on tap — readable, to check or read out, with a
+          Copy button beside it. This is the trip's own whole-trip code; a single
+          traveller's own code is made per traveller in the planner. */}
+      {showCode && code && (
+        <div style={{ borderTop: "1px solid rgba(38,50,58,.08)", background: "#faf8f3", padding: "11px 16px 13px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontSize: 11.5, color: "#78716c" }}>Send this to your client — it opens their trip in the app.</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <code style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.4, color: "#26323a", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{code}</code>
+            <button
+              type="button"
+              onClick={copy}
+              style={{ flex: "none", borderRadius: 9, border: `1px solid ${copied ? "#4ba36a" : GOLD}`, background: copied ? "#eef7f0" : "#fff", color: copied ? "#2f7d4f" : NAVY, cursor: "pointer", padding: "7px 12px", font: "700 11.5px/1 Inter,sans-serif" }}
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
       )}
-      <a href={openHref} aria-label="Open the trip" title="Open the trip" style={btn}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
-      </a>
-      <Link href="/itinerary" aria-label="Edit in the planner" title="Edit in the planner" style={btn}>
-        <Icon name="pencil" className="h-[15px] w-[15px]" />
-      </Link>
     </div>
   );
 }
