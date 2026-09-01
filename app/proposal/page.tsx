@@ -2,6 +2,7 @@ import Footer from "@/components/Footer";
 import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
 import ProposalBuilder from "@/components/ProposalBuilder";
+import AdvisorTabBar from "@/components/companion/AdvisorTabBar";
 import { requireSignedIn } from "@/lib/require-signed-in";
 import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
@@ -33,7 +34,7 @@ export default async function ProposalPage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)] pb-24 sm:pb-0">
       <Navbar minimal homeHref="/advisor" />
       {/* Which trip this is, and the trip's other screens. */}
       <TripContextBar current="/proposal" />
@@ -64,6 +65,7 @@ export default async function ProposalPage() {
         )}
       </section>
       <Footer minimal />
+      {allowed && <AdvisorTabBar />}
     </main>
   );
 }

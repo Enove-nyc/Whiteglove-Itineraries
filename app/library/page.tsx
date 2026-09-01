@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
 import LibraryManager from "@/components/LibraryManager";
+import AdvisorTabBar from "@/components/companion/AdvisorTabBar";
 import { requireSignedIn } from "@/lib/require-signed-in";
 import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
@@ -32,7 +33,7 @@ export default async function LibraryPage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)] pb-24 sm:pb-0">
       <Navbar minimal homeHref="/advisor" />
       <section className="mx-auto max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Content library</p>
@@ -61,6 +62,7 @@ export default async function LibraryPage() {
         )}
       </section>
       <Footer minimal />
+      {allowed && <AdvisorTabBar />}
     </main>
   );
 }

@@ -64,6 +64,7 @@ export default function AdvisorApp({
   openTripInfo,
   openScreen,
   openShareId,
+  initialTab,
 }: {
   trips: AdvisorTripRow[];
   children: ReactNode;
@@ -79,11 +80,17 @@ export default function AdvisorApp({
   openScreen?: "wallet";
   /** The trip's share token, so "Comment on this" opens that client's thread. */
   openShareId?: string;
+  /** Which tab to open on when no trip is opened — carried as /advisor?tab=…
+   *  from the app bar on a tool page, so returning lands on the tab it names
+   *  rather than always the dashboard. Ignored when a trip is opening. */
+  initialTab?: Tab;
 }) {
   const router = useRouter();
-  // Open on the dashboard — the advisor's overview — unless a trip was opened,
-  // in which case the shell shows that trip (from Trips, or Wallet).
-  const [tab, setTab] = useState<Tab>(openTrip || openTripInfo ? (openScreen === "wallet" ? "wallet" : "trips") : "account");
+  // Open on the dashboard — the advisor's overview — unless a trip was opened
+  // (show that trip, from Trips or Wallet) or a tab was named in the address.
+  const [tab, setTab] = useState<Tab>(
+    openTrip || openTripInfo ? (openScreen === "wallet" ? "wallet" : "trips") : (initialTab ?? "account"),
+  );
   // Whether a trip is showing right now — the built day-by-day view, or the
   // no-dates screen. Set from the server props; tapping any bottom tab leaves it.
   const [viewingTrip, setViewingTrip] = useState(Boolean(openTrip || openTripInfo));

@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
 import PipelineDashboard from "@/components/PipelineDashboard";
+import AdvisorTabBar from "@/components/companion/AdvisorTabBar";
 import { accountCookieName, getCurrentAccountSummary, readSessionEmail } from "@/lib/account-store";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
@@ -41,7 +42,7 @@ export default async function PipelinePage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="flex min-h-screen flex-col bg-[var(--cream)]">
+    <main className="flex min-h-screen flex-col bg-[var(--cream)] pb-24 sm:pb-0">
       <Navbar minimal homeHref="/advisor" />
       <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--gold-ink)]">Trip pipeline</p>
@@ -70,6 +71,7 @@ export default async function PipelinePage() {
         )}
       </section>
       <Footer minimal />
+      {allowed && <AdvisorTabBar />}
     </main>
   );
 }

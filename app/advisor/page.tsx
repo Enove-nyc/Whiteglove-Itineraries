@@ -49,7 +49,7 @@ function money(pairs: Array<[string, number]>): string {
 export default async function AdvisorDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ trip?: string | string[]; screen?: string | string[] }>;
+  searchParams: Promise<{ trip?: string | string[]; screen?: string | string[]; tab?: string | string[] }>;
 }) {
   await requireSignedIn("/advisor");
   const cookie = (await cookies()).get(accountCookieName())?.value;
@@ -182,6 +182,9 @@ export default async function AdvisorDashboardPage({
   const params = await searchParams;
   const wantedTripId = firstParam(params.trip);
   const openScreen = firstParam(params.screen) === "wallet" ? ("wallet" as const) : undefined;
+  // Which tab to open on when a tool page's app bar sent the advisor back here.
+  const wantedTab = firstParam(params.tab);
+  const initialTab = (["trips", "messages", "wallet", "account"] as const).find((t) => t === wantedTab);
   let openTrip: CompanionTrip | null = null;
   let openShareId: string | undefined;
   // The selected trip's plain facts, set whenever a started trip this account
@@ -212,7 +215,7 @@ export default async function AdvisorDashboardPage({
   }
 
   return (
-    <AdvisorApp trips={tripRows} openTrip={openTrip} openTripInfo={openTripInfo} openScreen={openScreen} openShareId={openShareId}>
+    <AdvisorApp trips={tripRows} openTrip={openTrip} openTripInfo={openTripInfo} openScreen={openScreen} openShareId={openShareId} initialTab={initialTab}>
       <section className="mx-auto w-full max-w-3xl px-5 pb-8 pt-5 sm:px-8">
         {/* The navy app header above already says "Advisor · Dashboard", so the
             hero drops the eyebrow and opens straight on the welcome. */}

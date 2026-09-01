@@ -2,6 +2,7 @@ import Footer from "@/components/Footer";
 import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
 import AddonsEditor from "@/components/AddonsEditor";
+import AdvisorTabBar from "@/components/companion/AdvisorTabBar";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireSignedIn } from "@/lib/require-signed-in";
 import { accountCookieName, getCurrentAccountData, resolveBusinessOwner } from "@/lib/account-store";
@@ -35,7 +36,7 @@ export default async function AddonsPage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="min-h-screen bg-[var(--cream)] pb-24 sm:pb-0">
       <Navbar />
       {/* Which trip this is, and the trip's other screens. Renders nothing
           for a plan that can only reach one of them. */}
@@ -63,6 +64,7 @@ export default async function AddonsPage() {
         )}
       </section>
       <Footer />
+      {allowed && <AdvisorTabBar />}
     </main>
   );
 }
