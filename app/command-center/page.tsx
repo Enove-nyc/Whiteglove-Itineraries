@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import Footer from "@/components/Footer";
+import TripAdvisories from "@/components/TripAdvisories";
+import { BeforeYouGo } from "@/components/BeforeYouGo";
 import Navbar from "@/components/Navbar";
 import MixedText from "@/components/MixedText";
 import TripDocuments from "@/components/TripDocuments";
 import { accountCookieName, getCurrentAccountData, getTripItinerary } from "@/lib/account-store";
 import { daysUntil, tripReadiness, type StopReadiness } from "@/lib/command-center";
 import { stopsForTrip } from "@/lib/command-center-data";
+import { fetchAdvisories } from "@/lib/travel-advisories";
+import { tripAdvisories } from "@/lib/trip-advisories";
 import { tripAlerts } from "@/lib/trip-alerts";
 import { tripDocuments } from "@/lib/trip-documents";
 import { pageMetadata } from "@/lib/seo";
@@ -59,6 +63,13 @@ export default async function CommandCenterPage() {
   const trip = await getTripItinerary(account.email);
   const stops = trip ? await stopsForTrip(trip.itinerary) : [];
   const readiness = tripReadiness(stops);
+  // WHERE THIS TRIP GOES, and what the governments there currently say.
+  // The advisory feed and the roll-up have both existed for months and were
+  // wired to nothing here — and StopFacts.country was never populated, so even
+  // once wired they would have seen a trip with no countries in it. Both are
+  // fixed together, because either alone shows an empty card.
+  const feed = await fetchAdvisories();
+  const advisories = tripAdvisories(stops, feed.available ? feed.advisories : []);
   // Read once, here, rather than while the page renders.
   const today = new Date().toISOString().slice(0, 10);
   const leaving = daysUntil(trip?.itinerary.startDate, today);
@@ -190,6 +201,18 @@ export default async function CommandCenterPage() {
             by which stop they were filed on. The planner's shape is right for
             building a trip; this one is right at half past five at the
             airport. */}
+        <div className="mt-12 border-t border-[var(--gold-light)] pt-10">
+          <TripAdvisories roll={advisories} unavailable={feed.available ? undefined : feed.reason} />
+        </div>
+
+        {/* The official pages for the countries on this trip. Renders nothing
+            when the trip says nowhere it is going, or when the site holds no
+            official page for where it goes — an empty card here would be worse
+            than none, because a reader would take it for "nothing to check". */}
+        <div className="mt-12">
+          <BeforeYouGo countries={advisories.countries.map((c) => c.country)} fetchedAt={feed.available ? feed.fetchedAt : undefined} />
+        </div>
+
         <div className="mt-12 border-t border-[var(--gold-light)] pt-10">
           <TripDocuments documents={documents} today={today} />
         </div>

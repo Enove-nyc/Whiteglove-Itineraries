@@ -36,6 +36,11 @@ async function factsFor(activity: ItinActivity): Promise<StopFacts> {
     address: activity.address,
     contacts: activity.phone ? [{ label: "On the itinerary", phone: activity.phone }] : [],
     isKever: Boolean(activity.keverSlug),
+    // The country the traveller typed on the stop. StopFacts declared this
+    // field and nothing ever filled it, so every trip-level question that
+    // depends on knowing where a stop is — the advisories, and now the
+    // before-you-go card — saw a trip with no countries in it at all.
+    ...(activity.country?.trim() ? { country: activity.country.trim() } : {}),
   };
 
   if (!activity.keverSlug) return base;

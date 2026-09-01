@@ -4,7 +4,7 @@ import type { StopFacts } from "@/lib/command-center";
 /**
  * What is currently being said about the countries THIS trip goes to.
  *
- * The advisory already showed on a beis hachaim's own page, one country at a
+ * The advisory already showed on a destination's own page, one country at a
  * time, which answers "what about Ukraine" for somebody who happens to open
  * the Ukraine page. It never answered the question a person with a trip has:
  * I am going to four places in three countries — is there anything I should
