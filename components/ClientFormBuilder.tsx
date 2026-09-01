@@ -46,7 +46,12 @@ export default function ClientFormBuilder() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/account/client-form", { cache: "no-store" });
+      // Which trip's form — carried in the address (/forms?trip=…) when the
+      // advisor opened it FROM a specific trip, so this screen builds and reads
+      // that trip's form rather than always whichever one is "open". Read off
+      // the URL directly (no useSearchParams, so no Suspense boundary needed).
+      const wanted = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("trip") : null;
+      const res = await fetch(`/api/account/client-form${wanted ? `?trip=${encodeURIComponent(wanted)}` : ""}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as
         | { template: ClientFormTemplate | null; responses: ClientFormResponse[]; tripId: string; tripName: string; error?: string }
         | null;

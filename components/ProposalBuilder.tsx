@@ -325,7 +325,11 @@ export default function ProposalBuilder() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/account/proposal", { cache: "no-store" });
+      // The trip this proposal is for, carried in the address
+      // (/proposal?trip=…) when opened from a specific trip — so it builds and
+      // reads THAT trip's proposal rather than whichever one is "open".
+      const wanted = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("trip") : null;
+      const res = await fetch(`/api/account/proposal${wanted ? `?trip=${encodeURIComponent(wanted)}` : ""}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as
         | { proposal: Proposal | null; tripId: string; tripName: string; error?: string }
         | null;

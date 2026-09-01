@@ -170,11 +170,16 @@ function RowCard({
         <button type="button" onClick={() => onOpen("/itinerary")} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
           Open itinerary
         </button>
-        <button type="button" onClick={() => onOpen("/proposal")} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
+        {/* Carry the trip in the address so the proposal and form screens build
+            and read THIS trip's, not whichever one is otherwise "open". */}
+        <button type="button" onClick={() => onOpen(`/proposal?trip=${row.id}`)} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
           Proposal
         </button>
+        <button type="button" onClick={() => onOpen(`/forms?trip=${row.id}`)} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
+          Forms
+        </button>
         {row.shareId && (
-          <a href={`/app?trip=${row.id}`} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
+          <a href={`/advisor?trip=${row.id}`} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
             Open in the app
           </a>
         )}
@@ -247,7 +252,7 @@ function TravelingRowCard({ row, onOpen }: { row: Row; onOpen: (path: string) =>
           Open itinerary
         </button>
         {row.shareId && (
-          <a href={`/app?trip=${row.id}`} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
+          <a href={`/advisor?trip=${row.id}`} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
             Open in the app
           </a>
         )}
