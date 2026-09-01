@@ -10,7 +10,9 @@ import {
   MAX_PER_ITEM,
   type AttachmentKind,
   describeSize,
+  opensInTheBrowser,
 } from "@/lib/attachments";
+import { PreviewDialog } from "@/components/PreviewDialog";
 
 /**
  * The boarding pass, the ticket, the booking — kept on the stop it belongs to.
@@ -114,6 +116,43 @@ export default function StopAttachments({
               </a>
               <span className="flex items-center gap-2 text-stone-400">
                 <span>{describeSize(a.bytes)}</span>
+                {/* Look at it without leaving the trip. Only a photo or a PDF
+                    has anything to show in a panel; anything else keeps its
+                    download link and no eye. */}
+                {opensInTheBrowser(a.contentType) && (
+                  <PreviewDialog label={`Preview ${a.name}`} title={a.name}>
+                    {a.contentType.startsWith("image/") ? (
+                      /* eslint-disable-next-line @next/next/no-img-element -- an
+                         account-scoped attachment served by our own route, not a
+                         fixed-size asset next/image can optimise. */
+                      <img
+                        src={`/api/account/attachments?id=${encodeURIComponent(a.id)}`}
+                        alt={a.name}
+                        className="mx-auto max-h-[70vh] w-auto max-w-full"
+                      />
+                    ) : (
+                      <object
+                        data={`/api/account/attachments?id=${encodeURIComponent(a.id)}`}
+                        type="application/pdf"
+                        aria-label={a.name}
+                        className="h-[70vh] w-full"
+                      >
+                        <p className="text-sm leading-6 text-stone-600">
+                          This browser will not show the PDF here.{" "}
+                          <a
+                            href={`/api/account/attachments?id=${encodeURIComponent(a.id)}`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="font-semibold underline"
+                          >
+                            Open it in a new tab
+                          </a>
+                          .
+                        </p>
+                      </object>
+                    )}
+                  </PreviewDialog>
+                )}
                 <button
                   type="button"
                   disabled={busy}
