@@ -734,6 +734,172 @@ function WalletDocLink({
   );
 }
 
+function DownloadGlyph({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v12" />
+      <path d="m7 12 5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+
+/**
+ * The full-screen viewer for a shared photo or document, opened from a chat
+ * bubble. A picture can be zoomed — the buttons, the wheel, or a double-tap —
+ * and panned once it is bigger than the screen; a PDF opens inline in a frame.
+ * Both carry Download, and Share where the device offers it, because "see it
+ * bigger" is only half of what a client does with a boarding pass they were
+ * sent.
+ *
+ * WHY IT REPLACED A PLAIN LINK. A document bubble used to be an
+ * <a target="_blank"> — which opens nothing inside the native app's web view,
+ * so a PDF a client was sent simply never opened. Fetching the bytes and
+ * showing them here — a frame for a PDF, this same overlay for an image —
+ * opens it in place instead.
+ */
+function MediaViewer({
+  item,
+  onClose,
+}: {
+  item: { kind: "image" | "file"; mediaId: string; text?: string; name?: string };
+  onClose: () => void;
+}) {
+  const url = `/api/media?id=${encodeURIComponent(item.mediaId)}`;
+  const defaultName = item.name || item.text || (item.kind === "file" ? "document.pdf" : "photo.jpg");
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [note, setNote] = useState("");
+  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+
+  const zoomTo = (s: number) => {
+    const next = Math.min(5, Math.max(1, Math.round(s * 10) / 10));
+    setScale(next);
+    if (next === 1) setPan({ x: 0, y: 0 });
+  };
+
+  // Get the bytes once, then hand them off — to a download, or to the device's
+  // own share sheet. A cancelled share throws and is not worth a message; a
+  // failed fetch is.
+  async function withBlob(hand: (blob: Blob) => void | Promise<void>) {
+    setNote("");
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error("fetch failed");
+      await hand(await r.blob());
+    } catch {
+      setNote("Couldn't fetch that just now.");
+    }
+  }
+
+  function download() {
+    void withBlob((blob) => {
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = defaultName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    });
+  }
+
+  async function share() {
+    const nav = navigator as Navigator & { canShare?: (d?: ShareData) => boolean };
+    await withBlob(async (blob) => {
+      const file = new File([blob], defaultName, { type: blob.type || "application/octet-stream" });
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({ files: [file], title: defaultName });
+        } catch {
+          /* the person dismissed the share sheet — nothing went wrong */
+        }
+        return;
+      }
+      // No file share on this device — fall back to a download.
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = defaultName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    });
+  }
+
+  const controlBtn: CSSProperties = { border: 0, background: "rgba(255,255,255,.14)", color: "#fff", width: 40, height: 40, borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, lineHeight: 1, padding: 0 };
+  const canShare = typeof navigator !== "undefined" && "share" in navigator;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={item.text || (item.kind === "file" ? "Document" : "Photo")}
+      onClick={onClose}
+      style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(15,20,25,.94)", display: "flex", flexDirection: "column" }}
+    >
+      {/* top bar — close on the left, the actions on the right */}
+      <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "calc(12px + env(safe-area-inset-top)) 14px 10px" }}>
+        <button onClick={onClose} title="Close" aria-label="Close" style={controlBtn}><Icon name="close" className="h-4 w-4" /></button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {item.kind === "image" && (
+            <>
+              <button onClick={() => zoomTo(scale - 0.5)} disabled={scale <= 1} aria-label="Zoom out" title="Zoom out" style={{ ...controlBtn, opacity: scale <= 1 ? 0.4 : 1 }}>−</button>
+              <button onClick={() => zoomTo(scale + 0.5)} disabled={scale >= 5} aria-label="Zoom in" title="Zoom in" style={{ ...controlBtn, opacity: scale >= 5 ? 0.4 : 1 }}>+</button>
+            </>
+          )}
+          {canShare && (
+            <button onClick={() => void share()} aria-label="Share" title="Share" style={controlBtn}><Icon name="share" className="h-4 w-4" /></button>
+          )}
+          <button onClick={download} aria-label="Download" title="Download" style={controlBtn}><DownloadGlyph /></button>
+        </div>
+      </div>
+
+      {item.kind === "image" ? (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={() => zoomTo(scale > 1 ? 1 : 2)}
+          onWheel={(e) => zoomTo(scale + (e.deltaY < 0 ? 0.3 : -0.3))}
+          onPointerDown={(e) => {
+            if (scale > 1) {
+              drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+              setDragging(true);
+              (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+            }
+          }}
+          onPointerMove={(e) => {
+            if (drag.current) setPan({ x: drag.current.px + (e.clientX - drag.current.x), y: drag.current.py + (e.clientY - drag.current.y) });
+          }}
+          onPointerUp={() => { drag.current = null; setDragging(false); }}
+          onPointerCancel={() => { drag.current = null; setDragging(false); }}
+          style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", touchAction: scale > 1 ? "none" : "auto", cursor: scale > 1 ? "grab" : "zoom-in" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={item.text || "Shared photo"}
+            draggable={false}
+            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transition: dragging ? "none" : "transform .15s ease", borderRadius: 8 }}
+          />
+        </div>
+      ) : (
+        <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, margin: "0 12px 12px", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+          <iframe src={url} title={item.text || "Document"} style={{ width: "100%", height: "100%", border: 0 }} />
+        </div>
+      )}
+
+      {(item.text || note) && (
+        <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, padding: "0 16px calc(14px + env(safe-area-inset-bottom))", textAlign: "center", color: "#fff", fontSize: 13.5, lineHeight: 1.5 }}>
+          {note ? <span style={{ color: "#ffb4a8" }}>{note}</span> : item.text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CompanionApp({
   trip = COMPANION_DEMO_TRIP,
   chat,
@@ -2910,7 +3076,7 @@ function LiveChat({
   // "Ask about this" without leaving the thread).
   const [itineraryRef, setItineraryRef] = useState<string | null>(subject ?? null);
   // A picture or video opened full-size, over the whole chat panel.
-  const [viewerMedia, setViewerMedia] = useState<{ kind: "image" | "video"; mediaId: string; text: string } | null>(null);
+  const [viewerMedia, setViewerMedia] = useState<{ kind: "image" | "file"; mediaId: string; text: string } | null>(null);
   // Briefly highlighted after tapping a quote to jump to the message it
   // quotes — long enough to catch the eye, not so long it feels stuck.
   const [jumpFlashAt, setJumpFlashAt] = useState<string | null>(null);
@@ -3805,19 +3971,23 @@ function LiveChat({
               </div>
             );
           } else if (m.kind === "file" && m.mediaId) {
+            // A button, not a target="_blank" link: that link opens nothing in
+            // the native web view, which is why documents "wouldn't open". This
+            // opens the PDF in the in-app viewer (a frame, with download/share).
+            const fileMediaId = m.mediaId;
+            const fileName = m.text || "Document";
             content = (
-              <a
-                href={`/api/media?id=${encodeURIComponent(m.mediaId)}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ ...bubble, display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", textDecoration: "none" }}
+              <button
+                type="button"
+                onClick={() => setViewerMedia({ kind: "file", mediaId: fileMediaId, text: fileName })}
+                style={{ ...bubble, display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}
               >
                 <DocGlyph size={20} />
                 <span style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{m.text || "Document"}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{fileName}</span>
                   <span style={{ fontSize: 11.5, opacity: 0.75 }}>PDF · tap to open</span>
                 </span>
-              </a>
+              </button>
             );
           } else if (m.kind === "location" && ((typeof m.lat === "number" && typeof m.lng === "number") || m.address)) {
             const href =
@@ -4338,36 +4508,7 @@ function LiveChat({
       {/* A photo opened full-size, over the whole chat panel — scoped to the
           phone frame (position: absolute against the relatively-positioned
           root above), not the whole browser viewport. */}
-      {viewerMedia && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={viewerMedia.text || "Photo"}
-          onClick={() => setViewerMedia(null)}
-          style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(15,20,25,.94)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); setViewerMedia(null); }}
-            title="Close"
-            aria-label="Close"
-            style={{ position: "absolute", top: 14, right: 14, border: 0, background: "rgba(255,255,255,.14)", color: "#fff", width: 36, height: 36, borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <Icon name="close" className="h-4 w-4" />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/api/media?id=${encodeURIComponent(viewerMedia.mediaId)}`}
-            alt={viewerMedia.text || "Shared photo"}
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "100%", maxHeight: "78%", objectFit: "contain", borderRadius: 8, cursor: "default" }}
-          />
-          {viewerMedia.text && (
-            <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 14, maxWidth: "90%", textAlign: "center", color: "#fff", fontSize: 14, lineHeight: 1.5 }}>
-              {viewerMedia.text}
-            </div>
-          )}
-        </div>
-      )}
+      {viewerMedia && <MediaViewer item={viewerMedia} onClose={() => setViewerMedia(null)} />}
     </div>
   );
 }
