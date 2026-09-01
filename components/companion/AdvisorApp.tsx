@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons/Icon";
@@ -180,6 +180,7 @@ export default function AdvisorApp({
             trips={trips}
             blurb="Every client's trip. Open one to see its itinerary and chat."
             hrefFor={(t) => `/advisor?trip=${encodeURIComponent(t.id)}`}
+            actions
           />
         )}
         {!viewingTrip && tab === "wallet" && (
@@ -261,10 +262,13 @@ function TripList({
   trips,
   blurb,
   hrefFor,
+  actions = false,
 }: {
   trips: AdvisorTripRow[];
   blurb: string;
   hrefFor: (t: AdvisorTripRow) => string;
+  /** Show the per-trip copy / open / edit icons (the Trips tab; not Wallet). */
+  actions?: boolean;
 }) {
   return (
     <div className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 10, animation: "wgIn .28s ease both" }}>
@@ -275,27 +279,68 @@ function TripList({
         </div>
       ) : (
         trips.map((t) => (
-          <a
+          <div
             key={t.id}
-            href={hrefFor(t)}
             className="wg-warm"
-            style={{ display: "flex", alignItems: "center", gap: 13, textDecoration: "none", border: "1px solid rgba(38,50,58,.08)", background: "#ffffff", borderRadius: 16, padding: "14px 16px" }}
+            style={{ display: "flex", alignItems: "center", gap: 13, border: "1px solid rgba(38,50,58,.08)", background: "#ffffff", borderRadius: 16, padding: "14px 16px" }}
           >
-            <span style={{ flex: "none", width: 42, height: 42, borderRadius: 12, background: "#e7edf1", display: "flex", alignItems: "center", justifyContent: "center", font: `400 18px/1 ${serif}`, color: "#1f3f5c" }}>
-              {(t.client || t.name || "?").charAt(0).toUpperCase()}
-            </span>
-            <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, color: "#26323a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {t.client || t.name}
+            <a href={hrefFor(t)} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13, textDecoration: "none" }}>
+              <span style={{ flex: "none", width: 42, height: 42, borderRadius: 12, background: "#e7edf1", display: "flex", alignItems: "center", justifyContent: "center", font: `400 18px/1 ${serif}`, color: "#1f3f5c" }}>
+                {(t.client || t.name || "?").charAt(0).toUpperCase()}
               </span>
-              <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {[t.client ? t.name : null, t.stageLabel, t.startDate ? `leaves ${t.startDate}` : null].filter(Boolean).join(" · ")}
+              <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, color: "#26323a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {t.client || t.name}
+                </span>
+                <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {[t.client ? t.name : null, t.stageLabel, t.startDate ? `leaves ${t.startDate}` : null].filter(Boolean).join(" · ")}
+                </span>
               </span>
-            </span>
-            <Icon name="more" className="h-4 w-4" aria-hidden />
-          </a>
+            </a>
+            {actions ? <TripRowActions trip={t} openHref={hrefFor(t)} /> : <Icon name="more" className="h-4 w-4" aria-hidden />}
+          </div>
         ))
       )}
+    </div>
+  );
+}
+
+/**
+ * The per-trip quick actions: copy the client's code (their app link, the one
+ * they open the trip with), open the trip here, and edit it in the planner. The
+ * copy only appears once the trip has a share token — before it is shared there
+ * is no code to hand out yet.
+ */
+function TripRowActions({ trip, openHref }: { trip: AdvisorTripRow; openHref: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    if (!trip.shareId) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/i/${trip.shareId}/app`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      /* clipboard blocked — nothing to show, the button just does nothing */
+    }
+  };
+  const btn: CSSProperties = { flex: "none", width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(38,50,58,.12)", background: "#fff", color: NAVY, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, textDecoration: "none" };
+  return (
+    <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 6 }}>
+      {trip.shareId && (
+        <button type="button" onClick={copy} aria-label={copied ? "Code copied" : "Copy the client's code"} title="Copy the client's code" style={{ ...btn, borderColor: copied ? "#4ba36a" : "rgba(38,50,58,.12)", color: copied ? "#4ba36a" : NAVY }}>
+          {copied ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
+          )}
+        </button>
+      )}
+      <a href={openHref} aria-label="Open the trip" title="Open the trip" style={btn}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+      </a>
+      <Link href="/itinerary" aria-label="Edit in the planner" title="Edit in the planner" style={btn}>
+        <Icon name="pencil" className="h-[15px] w-[15px]" />
+      </Link>
     </div>
   );
 }
