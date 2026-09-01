@@ -4,18 +4,20 @@ import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
 import { rateLimit } from "@/lib/rate-limit";
 import { sameOrigin } from "@/lib/secure-access";
 import { extractSmartImport } from "@/lib/smart-import";
+import { IMPORT_TYPES, readImportDataUrl } from "@/data/smart-import-files";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-// A confirmation PDF, reasonably sized — this is a booking confirmation, not
-// a scanned book. Kept well under what either provider will accept inline.
-const MAX_PDF_BYTES = 6 * 1024 * 1024;
+// What may be attached, and how big, lives in data/smart-import-files.ts so
+// the rule can be tested without a request and so the panel and the route
+// cannot drift apart about what the file picker offers.
 
 /**
- * Smart Import: paste a confirmation, or upload the confirmation PDF, and get
- * back the flights/hotel/stop rows it describes — a PREVIEW only, never
- * written to a trip by this route. The planner reviews it in
+ * Smart Import: paste a confirmation, or attach one — the airline's PDF, a
+ * screenshot of a booking app, a photo of a printed voucher — and get back the
+ * flights/hotel/stop rows it describes. A PREVIEW only, never written to a
+ * trip by this route. The planner reviews it in
  * components/SmartImportPanel.tsx and the itinerary builder adds only what
  * they keep, the same way any other row is added.
  *
@@ -40,31 +42,39 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = (await request.json().catch(() => null)) as { text?: string; pdfDataUrl?: string } | null;
+  // `fileDataUrl` is the field; `pdfDataUrl` is still read so a page left open
+  // across the deploy that added images keeps working.
+  const body = (await request.json().catch(() => null)) as
+    | { text?: string; fileDataUrl?: string; pdfDataUrl?: string }
+    | null;
   const text = typeof body?.text === "string" ? body.text.trim() : "";
-  const pdfDataUrl = typeof body?.pdfDataUrl === "string" ? body.pdfDataUrl : "";
+  const fileDataUrl =
+    typeof body?.fileDataUrl === "string" ? body.fileDataUrl : typeof body?.pdfDataUrl === "string" ? body.pdfDataUrl : "";
 
-  if (!text && !pdfDataUrl) {
-    return NextResponse.json({ error: "Paste a confirmation, or attach a PDF, first." }, { status: 400 });
+  if (!text && !fileDataUrl) {
+    return NextResponse.json(
+      { error: `Paste a confirmation, or attach one — ${Object.values(IMPORT_TYPES).join(", ")}.` },
+      { status: 400 },
+    );
   }
 
-  let pdfBase64: string | undefined;
-  if (pdfDataUrl) {
-    const match = pdfDataUrl.match(/^data:application\/pdf;base64,([a-zA-Z0-9+/=]+)$/);
-    if (!match) return NextResponse.json({ error: "That doesn't look like a PDF file." }, { status: 400 });
-    pdfBase64 = match[1];
-    const bytes = Math.floor((pdfBase64.length * 3) / 4);
-    if (bytes > MAX_PDF_BYTES) {
-      return NextResponse.json({ error: "That PDF is too large — try a smaller file." }, { status: 413 });
+  let file;
+  if (fileDataUrl) {
+    const read = readImportDataUrl(fileDataUrl);
+    if ("error" in read) {
+      // Too large is its own status so the panel can keep what was typed and
+      // say something specific rather than "that failed".
+      return NextResponse.json({ error: read.error }, { status: read.error.includes("too large") ? 413 : 400 });
     }
+    file = read.file;
   }
 
-  const result = await extractSmartImport({ text: text || undefined, pdfBase64 });
+  const result = await extractSmartImport({ text: text || undefined, file });
   if (result.items.length === 0 && result.warnings.length === 0) {
     return NextResponse.json({
       items: [],
       warnings: [],
-      error: "Could not read a booking out of that. Try pasting the confirmation text directly.",
+      error: "Could not read a booking out of that. Try pasting the confirmation text directly, or a clearer photo.",
     });
   }
   return NextResponse.json(result);

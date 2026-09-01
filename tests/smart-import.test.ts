@@ -119,8 +119,14 @@ describe("the import route keeps the same fences everything else does", () => {
     assert.match(ROUTE, /rateLimit\(`smart-import:/);
   });
 
-  it("caps how large an uploaded PDF may be", () => {
-    assert.match(ROUTE, /MAX_PDF_BYTES/);
+  it("caps how large an attached confirmation may be", () => {
+    // The cap moved into data/smart-import-files.ts when the importer started
+    // taking screenshots and photos as well as PDFs, so that what is accepted
+    // can be tested without a request and the panel and the route cannot drift
+    // apart about it. What matters is that the route still enforces one.
+    assert.match(ROUTE, /readImportDataUrl/);
+    assert.match(readFileSync("data/smart-import-files.ts", "utf8"), /MAX_IMPORT_BYTES/);
+    assert.match(ROUTE, /413/, "an oversized file no longer gets its own status");
   });
 
   it("the system prompt tells the model never to invent a missing field", () => {

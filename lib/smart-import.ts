@@ -2,6 +2,7 @@ import "server-only";
 
 import { emptySmartImportResult, type SmartImportResult } from "@/data/smart-import";
 import { parseModelJson } from "@/lib/smart-import-parse";
+import type { ImportFile } from "@/data/smart-import-files";
 
 /**
  * Turning a pasted confirmation, or an uploaded confirmation PDF, into
@@ -13,11 +14,17 @@ import { parseModelJson } from "@/lib/smart-import-parse";
  * assistant answers a travel question in prose and this reads a document
  * into strict JSON — the prompts and the parsing have nothing in common.
  *
- * PDF FILES: Gemini and Anthropic both accept a PDF inline (base64) as part
- * of the request, so no PDF-parsing library was added for this — the model
- * reads the document directly. OpenAI's chat-completions endpoint used here
- * has no equivalent, so a PDF only ever goes to Gemini/Anthropic; a plain
- * pasted confirmation still tries all three.
+ * FILES: a confirmation arrives as whatever the supplier sent and whatever the
+ * traveller could get into a message — the airline's PDF, a screenshot of a
+ * booking app, a photo of a printed voucher. All three go inline as base64 and
+ * the model reads them directly, so no PDF library and no OCR engine was added
+ * for this.
+ *
+ * The three providers differ in what they will take, and the fallback order
+ * respects it: Gemini takes any of them; Anthropic takes a PDF as a document
+ * block and an image as an image block; OpenAI's chat-completions endpoint
+ * used here takes images but not PDFs. So a PDF tries Gemini then Anthropic,
+ * an image tries all three, and pasted text tries all three.
  *
  * NEVER INVENTS A FIELD. The prompt says so, and the parser below only keeps
  * a field that is a real, correctly-shaped value — a date has to look like
@@ -42,11 +49,11 @@ const SYSTEM = [
 const TRANSIENT = new Set([429, 500, 502, 503, 504]);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type Provider = { text?: string; pdfBase64?: string };
+type Provider = { text?: string; file?: ImportFile };
 
 async function askGemini(key: string, input: Provider): Promise<string | null> {
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
-  if (input.pdfBase64) parts.push({ inlineData: { mimeType: "application/pdf", data: input.pdfBase64 } });
+  if (input.file) parts.push({ inlineData: { mimeType: input.file.mediaType, data: input.file.base64 } });
   parts.push({ text: input.text || "Extract the booking(s) from the attached document." });
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt) await sleep(attempt * 400);
@@ -76,8 +83,14 @@ async function askGemini(key: string, input: Provider): Promise<string | null> {
 
 async function askAnthropic(key: string, input: Provider): Promise<string | null> {
   const content: Array<Record<string, unknown>> = [];
-  if (input.pdfBase64) {
-    content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: input.pdfBase64 } });
+  if (input.file) {
+    // A PDF is a document block; a screenshot or photo is an image block.
+    // Same bytes, different envelope — the API rejects the wrong one.
+    const block = input.file.mediaType === "application/pdf" ? "document" : "image";
+    content.push({
+      type: block,
+      source: { type: "base64", media_type: input.file.mediaType, data: input.file.base64 },
+    });
   }
   content.push({ type: "text", text: input.text || "Extract the booking(s) from the attached document." });
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -104,7 +117,16 @@ async function askAnthropic(key: string, input: Provider): Promise<string | null
   return null;
 }
 
-async function askOpenAI(key: string, text: string): Promise<string | null> {
+async function askOpenAI(key: string, input: Provider): Promise<string | null> {
+  // Images go as a data URL in a content part; PDFs have no equivalent on this
+  // endpoint, so extractSmartImport never routes one here.
+  const userContent: Array<Record<string, unknown>> =
+    input.file && input.file.mediaType !== "application/pdf"
+      ? [
+          { type: "image_url", image_url: { url: `data:${input.file.mediaType};base64,${input.file.base64}` } },
+          { type: "text", text: input.text || "Extract the booking(s) from the attached image." },
+        ]
+      : [{ type: "text", text: input.text ?? "" }];
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt) await sleep(400);
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -116,7 +138,7 @@ async function askOpenAI(key: string, text: string): Promise<string | null> {
         temperature: 0.1,
         messages: [
           { role: "system", content: SYSTEM },
-          { role: "user", content: text },
+          { role: "user", content: userContent },
         ],
       }),
     });
@@ -133,23 +155,25 @@ async function askOpenAI(key: string, text: string): Promise<string | null> {
 }
 
 /**
- * Extract booking(s) from pasted confirmation text, or from an uploaded PDF's
- * base64 bytes (pass exactly one of the two). Returns an empty result — never
- * throws — when no provider is configured or every provider failed, so the
- * caller can say "could not read that" without a special error path.
+ * Extract booking(s) from pasted confirmation text, or from an uploaded
+ * confirmation file — a PDF, a screenshot or a photo. Returns an empty result
+ * — never throws — when no provider is configured or every provider failed, so
+ * the caller can say "could not read that" without a special error path.
  */
-export async function extractSmartImport(input: { text?: string; pdfBase64?: string }): Promise<SmartImportResult> {
+export async function extractSmartImport(input: { text?: string; file?: ImportFile }): Promise<SmartImportResult> {
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
   const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
   const openaiKey = process.env.OPENAI_API_KEY?.trim();
 
   const text = input.text?.slice(0, 12_000);
+  const isPdf = input.file?.mediaType === "application/pdf";
   try {
     let raw: string | null = null;
-    if (geminiKey) raw = await askGemini(geminiKey, { text, pdfBase64: input.pdfBase64 });
-    if (!raw && anthropicKey) raw = await askAnthropic(anthropicKey, { text, pdfBase64: input.pdfBase64 });
-    // A PDF has no OpenAI path — chat completions here takes text only.
-    if (!raw && !input.pdfBase64 && openaiKey && text) raw = await askOpenAI(openaiKey, text);
+    if (geminiKey) raw = await askGemini(geminiKey, { text, file: input.file });
+    if (!raw && anthropicKey) raw = await askAnthropic(anthropicKey, { text, file: input.file });
+    // A PDF has no OpenAI path on this endpoint; an image does, and so does
+    // plain pasted text.
+    if (!raw && !isPdf && openaiKey && (text || input.file)) raw = await askOpenAI(openaiKey, { text, file: input.file });
     if (!raw) return emptySmartImportResult();
     return parseModelJson(raw);
   } catch (err) {
