@@ -167,8 +167,11 @@ export default async function AdvisorDashboardPage({
   });
 
   // The tools grid — reuse the same gated list the account menu shows, minus a
-  // link back to this page, plus the planner as the way to start a new trip.
-  const places = advisorPlacesFor(plan).filter((p) => p.href !== "/advisor");
+  // link back to this page, and minus "Messages": it points at /app (the CLIENT
+  // app) and so dropped the advisor out of their own app into the client's — no
+  // advisor footer, a "You" tab where Account was. Messages is a bottom tab of
+  // this app now, so the tile was both redundant and a trap.
+  const places = advisorPlacesFor(plan).filter((p) => p.href !== "/advisor" && p.href !== "/app?screen=messages");
 
   const firstName = (account.record.name ?? "").trim().split(/\s+/)[0] ?? "";
 

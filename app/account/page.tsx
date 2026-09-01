@@ -177,7 +177,10 @@ export default async function AccountPage() {
                   <span className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">The White Glove app</span>
                   <span className="text-sm leading-6 text-stone-600">The trip in your pocket — a day at a time, with a travel wallet kept for when there is no signal. Add it to your home screen.</span>
                 </div>
-                <Link href="/app" className="rounded-full bg-[var(--navy)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">Open the app</Link>
+                {/* An advisor's app is /advisor (their own four-tab app); only a
+                    traveller's app is the single-trip client view at /app. Sending
+                    an advisor to /app dropped them into the client app. */}
+                <Link href={canServeClients ? "/advisor" : "/app"} className="rounded-full bg-[var(--navy)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">Open the app</Link>
               </div>
               {canServeClients && (
                 <div className="mt-4 border-t border-[var(--gold-light)] pt-4">
