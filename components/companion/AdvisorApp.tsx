@@ -37,6 +37,9 @@ export type AdvisorTripRow = {
   shareId?: string;
   startDate: string;
   stageLabel: string;
+  /** The named travellers on the trip, each with their own code if one's been
+   *  made — for handing one person on a family trip their own link. */
+  travelers?: { id: string; name: string; shareId?: string }[];
 };
 
 type Tab = "trips" | "messages" | "wallet" | "account";
@@ -307,6 +310,11 @@ function TripRow({ trip, openHref, actions }: { trip: AdvisorTripRow; openHref: 
   const [copied, setCopied] = useState(false);
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const code = trip.shareId ? `${origin}/i/${trip.shareId}/app` : "";
+  const travelers = trip.travelers ?? [];
+  // The code panel is reachable when there's a whole-trip code OR named
+  // travellers to give their own codes to — creating a traveller's code makes a
+  // whole-trip one too, so a family trip need not be "shared" first.
+  const hasCodeUI = Boolean(trip.shareId) || travelers.length > 0;
   const copy = async () => {
     if (!code) return;
     try {
@@ -339,12 +347,12 @@ function TripRow({ trip, openHref, actions }: { trip: AdvisorTripRow; openHref: 
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 6 }}>
             <button
               type="button"
-              onClick={() => trip.shareId && setShowCode((v) => !v)}
-              disabled={!trip.shareId}
-              aria-label={trip.shareId ? "See the client's code" : "Share this trip first to get a code"}
+              onClick={() => hasCodeUI && setShowCode((v) => !v)}
+              disabled={!hasCodeUI}
+              aria-label={hasCodeUI ? "See the client's code" : "Add a traveller to give a code"}
               aria-expanded={showCode}
-              title={trip.shareId ? "See the client's code" : "Not shared yet"}
-              style={{ ...btn, cursor: trip.shareId ? "pointer" : "default", opacity: trip.shareId ? 1 : 0.4, borderColor: showCode ? GOLD : "rgba(38,50,58,.12)", color: showCode ? GOLD_ON_DARK : NAVY }}
+              title={hasCodeUI ? "See the client's code" : "No one to share with yet"}
+              style={{ ...btn, cursor: hasCodeUI ? "pointer" : "default", opacity: hasCodeUI ? 1 : 0.4, borderColor: showCode ? GOLD : "rgba(38,50,58,.12)", color: showCode ? GOLD_ON_DARK : NAVY }}
             >
               {/* A QR-ish "code" mark — the same on every row, so the icons line up. */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3M21 14v.01M14 21h.01M21 21v-4M17 21h.01" /></svg>
@@ -361,24 +369,109 @@ function TripRow({ trip, openHref, actions }: { trip: AdvisorTripRow; openHref: 
         )}
       </div>
 
-      {/* The code itself, shown on tap — readable, to check or read out, with a
-          Copy button beside it. This is the trip's own whole-trip code; a single
-          traveller's own code is made per traveller in the planner. */}
-      {showCode && code && (
-        <div style={{ borderTop: "1px solid rgba(38,50,58,.08)", background: "#faf8f3", padding: "11px 16px 13px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11.5, color: "#78716c" }}>Send this to your client — it opens their trip in the app.</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <code style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.4, color: "#26323a", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{code}</code>
-            <button
-              type="button"
-              onClick={copy}
-              style={{ flex: "none", borderRadius: 9, border: `1px solid ${copied ? "#4ba36a" : GOLD}`, background: copied ? "#eef7f0" : "#fff", color: copied ? "#2f7d4f" : NAVY, cursor: "pointer", padding: "7px 12px", font: "700 11.5px/1 Inter,sans-serif" }}
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
+      {/* The codes, shown on tap — readable, to check or read out, each with a
+          Copy button. The whole-trip code opens the trip for anyone; below it,
+          each named traveller can be given THEIR OWN code, which carries their
+          name into the chat so you can tell one person's messages from another's. */}
+      {showCode && hasCodeUI && (
+        <div style={{ borderTop: "1px solid rgba(38,50,58,.08)", background: "#faf8f3", padding: "11px 16px 13px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {code && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 11.5, color: "#78716c" }}>Whole trip — send this to open their trip in the app.</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <code style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.4, color: "#26323a", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{code}</code>
+                <button
+                  type="button"
+                  onClick={copy}
+                  style={{ flex: "none", borderRadius: 9, border: `1px solid ${copied ? "#4ba36a" : GOLD}`, background: copied ? "#eef7f0" : "#fff", color: copied ? "#2f7d4f" : NAVY, cursor: "pointer", padding: "7px 12px", font: "700 11.5px/1 Inter,sans-serif" }}
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
+          {travelers.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ fontSize: 11.5, color: "#78716c" }}>Each traveller&rsquo;s own code — their messages show their name.</span>
+              {travelers.map((tr) => (
+                <TravelerCode key={tr.id} tripId={trip.id} traveler={tr} origin={origin} />
+              ))}
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * One traveller's own code, in the trip's code panel. Shows the link when it
+ * exists, or a "Create code" button that mints one (POST /api/account/traveler-
+ * share) — the same door the planner's traveller list uses, brought to where the
+ * advisor is already looking at the trip. A traveller on this link carries their
+ * name into the chat, which is what tells a family's messages apart.
+ */
+function TravelerCode({ tripId, traveler, origin }: { tripId: string; traveler: { id: string; name: string; shareId?: string }; origin: string }) {
+  const [shareId, setShareId] = useState(traveler.shareId);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState("");
+  const link = shareId ? `${origin}/t/${shareId}/app` : "";
+
+  const create = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/account/traveler-share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tripId, travelerId: traveler.id }),
+      });
+      const d = (await res.json().catch(() => null)) as { shareId?: string; error?: string } | null;
+      if (res.ok && d?.shareId) setShareId(d.shareId);
+      else setErr(d?.error || "Couldn't create that code.");
+    } catch {
+      setErr("Couldn't create that code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      /* clipboard blocked — the link is shown to copy by hand */
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid rgba(38,50,58,.06)", paddingTop: 8 }}>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: NAVY }}>{traveler.name}</span>
+      {link ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 1.4, color: "#26323a", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{link}</code>
+          <button
+            type="button"
+            onClick={copy}
+            style={{ flex: "none", borderRadius: 9, border: `1px solid ${copied ? "#4ba36a" : GOLD}`, background: copied ? "#eef7f0" : "#fff", color: copied ? "#2f7d4f" : NAVY, cursor: "pointer", padding: "6px 11px", font: "700 11px/1 Inter,sans-serif" }}
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={create}
+          disabled={busy}
+          style={{ alignSelf: "flex-start", borderRadius: 9, border: `1px solid ${GOLD}`, background: "#fff", color: NAVY, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, padding: "6px 12px", font: "700 11px/1 Inter,sans-serif" }}
+        >
+          {busy ? "Creating…" : "Create code"}
+        </button>
+      )}
+      {err && <span style={{ fontSize: 11, color: "#b42318" }}>{err}</span>}
     </div>
   );
 }

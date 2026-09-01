@@ -163,6 +163,12 @@ export default async function AdvisorDashboardPage({
       shareId: t.shareId,
       startDate: t.itinerary?.startDate ?? "",
       stageLabel: TRIP_STAGE_LABEL[stage],
+      // Each named traveller on the trip, and their own code if one's been made.
+      // This is what lets the advisor hand one person on a family trip their own
+      // link — the door that carries their name into the chat.
+      travelers: (t.itinerary?.travelers ?? [])
+        .filter((p) => (p.name ?? "").trim())
+        .map((p) => ({ id: p.id, name: p.name.trim(), shareId: t.travelerShares?.[p.id] })),
     };
   });
 
