@@ -40,6 +40,19 @@ export type CompanionPoll = {
   options: string[];
   /** voterId → the index into `options` they chose. */
   votes?: Record<string, number>;
+  /**
+   * voterId → the name to show beside their vote, when the trip has per-traveler
+   * links so a voter has a name at all. Present only on a PUBLIC poll; a private
+   * one never records who chose what, only the running totals. Kept in step with
+   * `votes`: a voter clearing their vote drops their name too.
+   */
+  voterNames?: Record<string, string>;
+  /**
+   * A private poll — the totals are shown, but never who voted for what. The
+   * creator's choice at the moment the poll is asked; it cannot be flipped
+   * afterwards, so a vote cast believing it was secret can never be un-hidden.
+   */
+  secret?: boolean;
 };
 
 /** A poll asks a question with between this many and this many options. */
@@ -102,6 +115,17 @@ export type CompanionChatMessage = {
   reactions?: Partial<Record<CompanionChatSide, string>>;
   /** kind "poll": the question, its options, and who voted for what. */
   poll?: CompanionPoll;
+  /**
+   * WHO on the client side wrote this, when they came in by their own
+   * per-traveler link (lib/account-store.ts, ensureTravelerShare). Several
+   * travellers on one trip are all the "client" side, so the side alone can't
+   * tell a family apart — this is what lets the advisor (and other travellers)
+   * see who said what. Absent on advisor messages and on a whole-trip link that
+   * carries no one traveller's name. Set server-side from the link, never from
+   * the body, so a message can't claim to be from someone it isn't.
+   */
+  senderId?: string;
+  senderName?: string;
   /**
    * A quoted reply — a snapshot taken from the ORIGINAL message at the moment
    * this one was sent, not a live reference. So it survives the original
@@ -223,7 +247,7 @@ function kindOf(raw: unknown): CompanionChatKind {
  *  trusted, so a made-up body can never store a malformed poll. */
 function sanitizePoll(raw: unknown): CompanionPoll | undefined {
   if (!raw || typeof raw !== "object") return undefined;
-  const r = raw as { question?: unknown; options?: unknown; votes?: unknown };
+  const r = raw as { question?: unknown; options?: unknown; votes?: unknown; voterNames?: unknown; secret?: unknown };
   if (typeof r.question !== "string" || !r.question.trim()) return undefined;
   if (!Array.isArray(r.options)) return undefined;
   const options = r.options
@@ -239,7 +263,24 @@ function sanitizePoll(raw: unknown): CompanionPoll | undefined {
       votes[voter.slice(0, 64)] = choice;
     }
   }
-  return { question: r.question.trim().slice(0, MAX_CHAT_LABEL), options, votes: Object.keys(votes).length ? votes : undefined };
+  const secret = r.secret === true;
+  // Names go with votes, and only on a public poll — a private one keeps no
+  // record of who chose what, so revealing it later is not even possible.
+  const voterNames: Record<string, string> = {};
+  if (!secret && r.voterNames && typeof r.voterNames === "object") {
+    for (const [voter, name] of Object.entries(r.voterNames as Record<string, unknown>)) {
+      const key = typeof voter === "string" ? voter.slice(0, 64) : "";
+      if (!key || votes[key] === undefined) continue; // no orphan names
+      if (typeof name === "string" && name.trim()) voterNames[key] = name.trim().slice(0, 80);
+    }
+  }
+  return {
+    question: r.question.trim().slice(0, MAX_CHAT_LABEL),
+    options,
+    votes: Object.keys(votes).length ? votes : undefined,
+    voterNames: Object.keys(voterNames).length ? voterNames : undefined,
+    secret: secret || undefined,
+  };
 }
 
 /** Keep only well-formed reactions: a known side, a known emoji, nothing else. */
@@ -267,11 +308,14 @@ export function parseChatMessages(rows: string[] | null): CompanionChatMessage[]
     try {
       const m = JSON.parse(row) as CompanionChatMessage;
       if (!m || (m.from !== "client" && m.from !== "advisor") || typeof m.text !== "string") continue;
+      const senderId = typeof m.senderId === "string" && m.senderId ? m.senderId.slice(0, 64) : undefined;
+      const senderName = typeof m.senderName === "string" && m.senderName.trim() ? m.senderName.trim().slice(0, 80) : undefined;
       if (typeof m.deletedAt === "string") {
         // Everything the message carried is gone the moment it is deleted —
         // never just hidden client-side, where a curious poke at the network
-        // tab would still find the picture.
-        out.push({ from: m.from, kind: kindOf(m.kind), text: "", at: m.at, deletedAt: m.deletedAt });
+        // tab would still find the picture. Who it was from stays (the side and,
+        // where there is one, the name), so the thread doesn't lose a turn.
+        out.push({ from: m.from, kind: kindOf(m.kind), text: "", at: m.at, deletedAt: m.deletedAt, senderId, senderName });
         continue;
       }
       const kind = kindOf(m.kind);
@@ -283,7 +327,7 @@ export function parseChatMessages(rows: string[] | null): CompanionChatMessage[]
       // A poll with no valid question/options is a broken row, not a message.
       const poll = kind === "poll" ? sanitizePoll(m.poll) : undefined;
       if (kind === "poll" && !poll) continue;
-      out.push({ ...m, kind, poll, reactions: sanitizeReactions(m.reactions) });
+      out.push({ ...m, kind, poll, reactions: sanitizeReactions(m.reactions), senderId, senderName });
     } catch {
       /* skip a corrupt row rather than drop the thread */
     }
@@ -491,11 +535,13 @@ export async function votePoll(
   voterId: string,
   optionIndex: number,
   channelId: string = GENERAL_CHANNEL_ID,
+  voterName?: string,
 ): Promise<CompanionChatMessage[] | null> {
   if (!chatStoreAvailable()) return null;
   if (!voterId || typeof voterId !== "string") return null;
   if (!Number.isInteger(optionIndex) || optionIndex < 0) return null;
   const voter = voterId.slice(0, 64);
+  const name = typeof voterName === "string" && voterName.trim() ? voterName.trim().slice(0, 80) : undefined;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const found = await findRawIndexByAt(shareId, at, channelId);
     if (!found) return null;
@@ -508,11 +554,23 @@ export async function votePoll(
     if (existing.deletedAt || kindOf(existing.kind) !== "poll" || !existing.poll) return null;
     if (optionIndex >= existing.poll.options.length) return null;
     const votes: Record<string, number> = { ...(existing.poll.votes ?? {}) };
-    if (votes[voter] === optionIndex) delete votes[voter];
-    else votes[voter] = optionIndex;
+    const voterNames: Record<string, string> = { ...(existing.poll.voterNames ?? {}) };
+    if (votes[voter] === optionIndex) {
+      // Tapping the same option again clears the vote — and its name with it.
+      delete votes[voter];
+      delete voterNames[voter];
+    } else {
+      votes[voter] = optionIndex;
+      // A private poll keeps no names; a public one records it when there is one.
+      if (!existing.poll.secret && name) voterNames[voter] = name;
+    }
     const updated: CompanionChatMessage = {
       ...existing,
-      poll: { ...existing.poll, votes: Object.keys(votes).length ? votes : undefined },
+      poll: {
+        ...existing.poll,
+        votes: Object.keys(votes).length ? votes : undefined,
+        voterNames: !existing.poll.secret && Object.keys(voterNames).length ? voterNames : undefined,
+      },
     };
     if (await lsetIfUnchanged(shareId, found.index, found.raw, JSON.stringify(updated), channelId)) return readChat(shareId, channelId);
   }

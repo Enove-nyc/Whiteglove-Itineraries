@@ -734,6 +734,172 @@ function WalletDocLink({
   );
 }
 
+function DownloadGlyph({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v12" />
+      <path d="m7 12 5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+
+/**
+ * The full-screen viewer for a shared photo or document, opened from a chat
+ * bubble. A picture can be zoomed — the buttons, the wheel, or a double-tap —
+ * and panned once it is bigger than the screen; a PDF opens inline in a frame.
+ * Both carry Download, and Share where the device offers it, because "see it
+ * bigger" is only half of what a client does with a boarding pass they were
+ * sent.
+ *
+ * WHY IT REPLACED A PLAIN LINK. A document bubble used to be an
+ * <a target="_blank"> — which opens nothing inside the native app's web view,
+ * so a PDF a client was sent simply never opened. Fetching the bytes and
+ * showing them here — a frame for a PDF, this same overlay for an image —
+ * opens it in place instead.
+ */
+function MediaViewer({
+  item,
+  onClose,
+}: {
+  item: { kind: "image" | "file"; mediaId: string; text?: string; name?: string };
+  onClose: () => void;
+}) {
+  const url = `/api/media?id=${encodeURIComponent(item.mediaId)}`;
+  const defaultName = item.name || item.text || (item.kind === "file" ? "document.pdf" : "photo.jpg");
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [note, setNote] = useState("");
+  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+
+  const zoomTo = (s: number) => {
+    const next = Math.min(5, Math.max(1, Math.round(s * 10) / 10));
+    setScale(next);
+    if (next === 1) setPan({ x: 0, y: 0 });
+  };
+
+  // Get the bytes once, then hand them off — to a download, or to the device's
+  // own share sheet. A cancelled share throws and is not worth a message; a
+  // failed fetch is.
+  async function withBlob(hand: (blob: Blob) => void | Promise<void>) {
+    setNote("");
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error("fetch failed");
+      await hand(await r.blob());
+    } catch {
+      setNote("Couldn't fetch that just now.");
+    }
+  }
+
+  function download() {
+    void withBlob((blob) => {
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = defaultName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    });
+  }
+
+  async function share() {
+    const nav = navigator as Navigator & { canShare?: (d?: ShareData) => boolean };
+    await withBlob(async (blob) => {
+      const file = new File([blob], defaultName, { type: blob.type || "application/octet-stream" });
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({ files: [file], title: defaultName });
+        } catch {
+          /* the person dismissed the share sheet — nothing went wrong */
+        }
+        return;
+      }
+      // No file share on this device — fall back to a download.
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = defaultName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    });
+  }
+
+  const controlBtn: CSSProperties = { border: 0, background: "rgba(255,255,255,.14)", color: "#fff", width: 40, height: 40, borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, lineHeight: 1, padding: 0 };
+  const canShare = typeof navigator !== "undefined" && "share" in navigator;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={item.text || (item.kind === "file" ? "Document" : "Photo")}
+      onClick={onClose}
+      style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(15,20,25,.94)", display: "flex", flexDirection: "column" }}
+    >
+      {/* top bar — close on the left, the actions on the right */}
+      <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "calc(12px + env(safe-area-inset-top)) 14px 10px" }}>
+        <button onClick={onClose} title="Close" aria-label="Close" style={controlBtn}><Icon name="close" className="h-4 w-4" /></button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {item.kind === "image" && (
+            <>
+              <button onClick={() => zoomTo(scale - 0.5)} disabled={scale <= 1} aria-label="Zoom out" title="Zoom out" style={{ ...controlBtn, opacity: scale <= 1 ? 0.4 : 1 }}>−</button>
+              <button onClick={() => zoomTo(scale + 0.5)} disabled={scale >= 5} aria-label="Zoom in" title="Zoom in" style={{ ...controlBtn, opacity: scale >= 5 ? 0.4 : 1 }}>+</button>
+            </>
+          )}
+          {canShare && (
+            <button onClick={() => void share()} aria-label="Share" title="Share" style={controlBtn}><Icon name="share" className="h-4 w-4" /></button>
+          )}
+          <button onClick={download} aria-label="Download" title="Download" style={controlBtn}><DownloadGlyph /></button>
+        </div>
+      </div>
+
+      {item.kind === "image" ? (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={() => zoomTo(scale > 1 ? 1 : 2)}
+          onWheel={(e) => zoomTo(scale + (e.deltaY < 0 ? 0.3 : -0.3))}
+          onPointerDown={(e) => {
+            if (scale > 1) {
+              drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+              setDragging(true);
+              (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+            }
+          }}
+          onPointerMove={(e) => {
+            if (drag.current) setPan({ x: drag.current.px + (e.clientX - drag.current.x), y: drag.current.py + (e.clientY - drag.current.y) });
+          }}
+          onPointerUp={() => { drag.current = null; setDragging(false); }}
+          onPointerCancel={() => { drag.current = null; setDragging(false); }}
+          style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", touchAction: scale > 1 ? "none" : "auto", cursor: scale > 1 ? "grab" : "zoom-in" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={item.text || "Shared photo"}
+            draggable={false}
+            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transition: dragging ? "none" : "transform .15s ease", borderRadius: 8 }}
+          />
+        </div>
+      ) : (
+        <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, margin: "0 12px 12px", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+          <iframe src={url} title={item.text || "Document"} style={{ width: "100%", height: "100%", border: 0 }} />
+        </div>
+      )}
+
+      {(item.text || note) && (
+        <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, padding: "0 16px calc(14px + env(safe-area-inset-bottom))", textAlign: "center", color: "#fff", fontSize: 13.5, lineHeight: 1.5 }}>
+          {note ? <span style={{ color: "#ffb4a8" }}>{note}</span> : item.text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CompanionApp({
   trip = COMPANION_DEMO_TRIP,
   chat,
@@ -2172,8 +2338,14 @@ type LiveMsg = {
   itineraryRef?: string;
   /** One emoji per side — both people see both. */
   reactions?: Partial<Record<ChatSide, string>>;
-  /** kind "poll": the question, its options, and votes keyed by voter id. */
-  poll?: { question: string; options: string[]; votes?: Record<string, number> };
+  /** kind "poll": the question, its options, votes keyed by voter id, the names
+   *  to show beside them on a public poll, and whether it is private. */
+  poll?: { question: string; options: string[]; votes?: Record<string, number>; voterNames?: Record<string, string>; secret?: boolean };
+  /** Who on the client side sent this, when they came in by their own
+   *  per-traveler link — so the advisor and the family can see who said what.
+   *  Absent on the advisor's messages and on a whole-trip link. */
+  senderId?: string;
+  senderName?: string;
 };
 
 /** The reactions the chat offers — kept in step with lib/companion-chat-store's
@@ -2706,9 +2878,10 @@ function LocationPicker({
  * sheet rather than an inline row, so a half-typed poll never sits in the
  * message box. Nothing is sent until Create; the options grow up to the cap.
  */
-function PollComposer({ onSend, onClose }: { onSend: (question: string, options: string[]) => Promise<boolean>; onClose: () => void }) {
+function PollComposer({ onSend, onClose }: { onSend: (question: string, options: string[], secret: boolean) => Promise<boolean>; onClose: () => void }) {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
+  const [secret, setSecret] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -2718,11 +2891,12 @@ function PollComposer({ onSend, onClose }: { onSend: (question: string, options:
   const filled = options.filter((o) => o.trim()).length;
   const canSend = question.trim().length > 0 && filled >= MIN_POLL_OPTIONS;
   const field: CSSProperties = { width: "100%", border: "1px solid rgba(38,50,58,.16)", borderRadius: 10, padding: "11px 12px", fontFamily: "Inter,sans-serif", fontSize: 16, color: INK, outline: "none", background: "#fff" };
+  const choice = (on: boolean): CSSProperties => ({ flex: 1, border: `1px solid ${on ? GOLD : "rgba(38,50,58,.16)"}`, background: on ? "rgba(183,138,74,.12)" : "#fff", color: INK, borderRadius: 10, cursor: "pointer", padding: "9px 8px", display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start", textAlign: "left" });
 
   async function submit() {
     if (!canSend || busy) return;
     setBusy(true);
-    const ok = await onSend(question, options);
+    const ok = await onSend(question, options, secret);
     setBusy(false);
     if (ok) onClose();
   }
@@ -2748,6 +2922,18 @@ function PollComposer({ onSend, onClose }: { onSend: (question: string, options:
         {options.length < MAX_POLL_OPTIONS && (
           <button onClick={() => setOptions((prev) => [...prev, ""])} className="wg-link" style={{ alignSelf: "flex-start", border: 0, background: "none", cursor: "pointer", color: ICON_BLUE, fontSize: 13.5, fontWeight: 600, padding: "2px 0" }}>+ Add option</button>
         )}
+        {/* Whether everyone sees who voted for what, or only the totals. Chosen
+            here, once — it can't be flipped after the poll is out. */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" onClick={() => setSecret(false)} aria-pressed={!secret} style={choice(!secret)}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>Show who voted</span>
+            <span style={{ fontSize: 11.5, color: MUTED }}>Everyone sees each other&rsquo;s votes</span>
+          </button>
+          <button type="button" onClick={() => setSecret(true)} aria-pressed={secret} style={choice(secret)}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>Private</span>
+            <span style={{ fontSize: 11.5, color: MUTED }}>Only the totals are shown</span>
+          </button>
+        </div>
         <button onClick={() => void submit()} disabled={!canSend || busy} className="wg-press" style={{ border: 0, cursor: canSend && !busy ? "pointer" : "default", background: GOLD, color: ON_GOLD, borderRadius: 14, minHeight: 50, fontSize: 15, fontWeight: 700, opacity: canSend && !busy ? 1 : 0.5 }}>Create poll</button>
       </div>
     </div>
@@ -2785,6 +2971,10 @@ function LiveChat({
 }) {
   const { shareId, side, advisorName } = chat;
   const [messages, setMessages] = useState<LiveMsg[]>([]);
+  // This viewer's own poll-vote key, told to us by the server (the advisor's is
+  // fixed; a named traveller's is their traveller id). A whole-trip client is
+  // not given one and falls back to its device id below.
+  const [voterKey, setVoterKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [available, setAvailable] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -2910,7 +3100,7 @@ function LiveChat({
   // "Ask about this" without leaving the thread).
   const [itineraryRef, setItineraryRef] = useState<string | null>(subject ?? null);
   // A picture or video opened full-size, over the whole chat panel.
-  const [viewerMedia, setViewerMedia] = useState<{ kind: "image" | "video"; mediaId: string; text: string } | null>(null);
+  const [viewerMedia, setViewerMedia] = useState<{ kind: "image" | "file"; mediaId: string; text: string } | null>(null);
   // Briefly highlighted after tapping a quote to jump to the message it
   // quotes — long enough to catch the eye, not so long it feels stuck.
   const [jumpFlashAt, setJumpFlashAt] = useState<string | null>(null);
@@ -3032,6 +3222,7 @@ function LiveChat({
       const d = await r.json();
       const msgs: LiveMsg[] = Array.isArray(d.messages) ? d.messages : [];
       setMessages(msgs);
+      setVoterKey(typeof d.voterKey === "string" ? d.voterKey : null);
       setAvailable(d.available !== false);
       setReadAt(d.readMarkers && typeof d.readMarkers === "object" ? d.readMarkers : {});
       setOtherTyping(Boolean(d.typing));
@@ -3351,11 +3542,11 @@ function LiveChat({
   }
 
   // Send a new poll. Clears and closes the composer only once it lands.
-  async function sendPoll(question: string, options: string[]): Promise<boolean> {
+  async function sendPoll(question: string, options: string[], secret: boolean): Promise<boolean> {
     const q = question.trim();
     const opts = options.map((o) => o.trim()).filter(Boolean).slice(0, MAX_POLL_OPTIONS);
     if (!q || opts.length < MIN_POLL_OPTIONS) return false;
-    return post({ poll: { question: q, options: opts } });
+    return post({ poll: { question: q, options: opts, secret } });
   }
 
   async function deleteMine(at: string) {
@@ -3805,19 +3996,23 @@ function LiveChat({
               </div>
             );
           } else if (m.kind === "file" && m.mediaId) {
+            // A button, not a target="_blank" link: that link opens nothing in
+            // the native web view, which is why documents "wouldn't open". This
+            // opens the PDF in the in-app viewer (a frame, with download/share).
+            const fileMediaId = m.mediaId;
+            const fileName = m.text || "Document";
             content = (
-              <a
-                href={`/api/media?id=${encodeURIComponent(m.mediaId)}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ ...bubble, display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", textDecoration: "none" }}
+              <button
+                type="button"
+                onClick={() => setViewerMedia({ kind: "file", mediaId: fileMediaId, text: fileName })}
+                style={{ ...bubble, display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}
               >
                 <DocGlyph size={20} />
                 <span style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{m.text || "Document"}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>{fileName}</span>
                   <span style={{ fontSize: 11.5, opacity: 0.75 }}>PDF · tap to open</span>
                 </span>
-              </a>
+              </button>
             );
           } else if (m.kind === "location" && ((typeof m.lat === "number" && typeof m.lng === "number") || m.address)) {
             const href =
@@ -3836,9 +4031,14 @@ function LiveChat({
           } else if (m.kind === "poll" && m.poll) {
             const poll = m.poll;
             const votes = poll.votes ?? {};
+            const voterNames = poll.voterNames ?? {};
             const total = Object.keys(votes).length;
-            const myKey = side === "advisor" ? "advisor" : `c:${deviceVoterId()}`;
+            // My own vote key: the server tells us (advisor, or a named traveller's
+            // id); a whole-trip client falls back to its device id, which is how it
+            // votes too.
+            const myKey = voterKey ?? (side === "advisor" ? "advisor" : `c:${deviceVoterId()}`);
             const myVote = votes[myKey];
+            const secret = poll.secret === true;
             content = (
               <div style={{ maxWidth: "100%", width: 268, alignSelf: mine ? "flex-end" : "flex-start", background: "#ffffff", color: INK, border: "1px solid rgba(38,50,58,.1)", borderRadius: 16, boxShadow: "0 1px 2px rgba(23,45,82,.08)", overflow: "hidden", padding: "13px 14px 11px", display: "flex", flexDirection: "column", gap: 9 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
@@ -3847,25 +4047,41 @@ function LiveChat({
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {poll.options.map((opt, oi) => {
-                    const count = Object.values(votes).filter((v) => v === oi).length;
+                    const voterIds = Object.keys(votes).filter((k) => votes[k] === oi);
+                    const count = voterIds.length;
                     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                     const chosen = myVote === oi;
+                    // On a PUBLIC poll, the names of who chose this option (my own
+                    // shown as "You"); a private poll shows only the running count.
+                    const names = secret
+                      ? []
+                      : voterIds.map((k) => (k === myKey ? "You" : voterNames[k])).filter((n): n is string => Boolean(n));
                     return (
                       <button
                         key={oi}
                         onClick={() => void castVote(m.at, oi)}
                         aria-label={chosen ? `Remove your vote for ${opt}` : `Vote for ${opt}`}
-                        style={{ position: "relative", border: `1px solid ${chosen ? GOLD : "rgba(38,50,58,.14)"}`, background: "#fff", borderRadius: 10, cursor: "pointer", padding: "9px 11px", textAlign: "left", overflow: "hidden", display: "flex", alignItems: "center", gap: 8 }}
+                        style={{ position: "relative", border: `1px solid ${chosen ? GOLD : "rgba(38,50,58,.14)"}`, background: "#fff", borderRadius: 10, cursor: "pointer", padding: "9px 11px", textAlign: "left", overflow: "hidden", display: "flex", flexDirection: "column", gap: 3 }}
                       >
                         <span aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: chosen ? "rgba(183,138,74,.20)" : "rgba(38,50,58,.06)", transition: "width .3s ease" }} />
-                        <span style={{ position: "relative", flex: 1, minWidth: 0, fontSize: 13, fontWeight: chosen ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt}</span>
-                        {chosen && <span style={{ position: "relative", color: GOLD, display: "flex" }}><Icon name="check" className="h-4 w-4" strokeWidth={2.4} /></span>}
-                        <span style={{ position: "relative", fontSize: 12, fontWeight: 600, color: MUTED, minWidth: 16, textAlign: "right" }}>{count}</span>
+                        <span style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: chosen ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt}</span>
+                          {chosen && <span style={{ color: GOLD, display: "flex" }}><Icon name="check" className="h-4 w-4" strokeWidth={2.4} /></span>}
+                          <span style={{ fontSize: 12, fontWeight: 600, color: MUTED, minWidth: 16, textAlign: "right" }}>{count}</span>
+                        </span>
+                        {names.length > 0 && (
+                          <span style={{ position: "relative", fontSize: 11, lineHeight: 1.35, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                            {names.join(", ")}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
-                <span style={{ fontSize: 11, color: FAINT }}>{total === 0 ? "No votes yet — tap to vote" : `${total} vote${total === 1 ? "" : "s"} · tap to change`}</span>
+                <span style={{ fontSize: 11, color: FAINT }}>
+                  {secret ? "Private poll · " : ""}
+                  {total === 0 ? "No votes yet — tap to vote" : `${total} vote${total === 1 ? "" : "s"} · tap to change`}
+                </span>
               </div>
             );
           } else {
@@ -3950,6 +4166,14 @@ function LiveChat({
                 }}
               >
               {itineraryTag}
+              {/* Who sent it — shown above the bubble for a named traveller's
+                  message that isn't mine, so the advisor (and the rest of the
+                  family) can tell one person's messages from another's. Your
+                  own carry no label; an unnamed whole-trip client has none to
+                  show. */}
+              {!mine && m.senderName && (
+                <span style={{ alignSelf: "flex-start", margin: "0 3px 1px", font: "700 11px/1 Inter,sans-serif", color: "#8a6d3b" }}>{m.senderName}</span>
+              )}
               <div className="wg-msgrow" style={{ display: "flex", alignItems: "center", gap: 1, flexDirection: mine ? "row-reverse" : "row", maxWidth: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   {quote}
@@ -4338,36 +4562,7 @@ function LiveChat({
       {/* A photo opened full-size, over the whole chat panel — scoped to the
           phone frame (position: absolute against the relatively-positioned
           root above), not the whole browser viewport. */}
-      {viewerMedia && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={viewerMedia.text || "Photo"}
-          onClick={() => setViewerMedia(null)}
-          style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(15,20,25,.94)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); setViewerMedia(null); }}
-            title="Close"
-            aria-label="Close"
-            style={{ position: "absolute", top: 14, right: 14, border: 0, background: "rgba(255,255,255,.14)", color: "#fff", width: 36, height: 36, borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <Icon name="close" className="h-4 w-4" />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/api/media?id=${encodeURIComponent(viewerMedia.mediaId)}`}
-            alt={viewerMedia.text || "Shared photo"}
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "100%", maxHeight: "78%", objectFit: "contain", borderRadius: 8, cursor: "default" }}
-          />
-          {viewerMedia.text && (
-            <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 14, maxWidth: "90%", textAlign: "center", color: "#fff", fontSize: 14, lineHeight: 1.5 }}>
-              {viewerMedia.text}
-            </div>
-          )}
-        </div>
-      )}
+      {viewerMedia && <MediaViewer item={viewerMedia} onClose={() => setViewerMedia(null)} />}
     </div>
   );
 }

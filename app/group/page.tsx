@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import Footer from "@/components/Footer";
+import AdvisorTabBar from "@/components/companion/AdvisorTabBar";
 import GroupPartiesPanel from "@/components/GroupPartiesPanel";
 import LockedToolCard from "@/components/LockedToolCard";
 import Navbar from "@/components/Navbar";
@@ -34,7 +35,7 @@ export default async function GroupPage() {
   const allowed = mayServeCompanionClients(plan);
 
   return (
-    <main className="min-h-screen bg-[var(--cream)]">
+    <main className="min-h-screen bg-[var(--cream)] pb-24 sm:pb-0">
       <Navbar minimal />
       {/* Which trip this is, and the trip's other screens. */}
       <TripContextBar current="/group" />
@@ -62,6 +63,7 @@ export default async function GroupPage() {
         )}
       </section>
       <Footer />
+      {allowed && <AdvisorTabBar />}
     </main>
   );
 }
