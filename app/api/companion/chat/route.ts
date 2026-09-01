@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   accountCookieName,
   getCurrentAccountData,
+  getSharedTraveler,
   readAccountPushSubscriptions,
   removeAccountPushSubscription,
   resolveCompanionShare,
@@ -97,7 +98,9 @@ const NOUN_FOR: Record<ChatMediaKind, string> = { image: "picture", video: "vide
  * `shareId` the caller sent stays exactly what it was, never upgraded or
  * echoed back as something more powerful than it is.
  */
-async function sideFor(shareId: string): Promise<{ owner: string; side: CompanionChatSide; chatKey: string } | null> {
+async function sideFor(
+  shareId: string,
+): Promise<{ owner: string; side: CompanionChatSide; chatKey: string; traveler?: { id: string; name?: string } } | null> {
   const resolved = await resolveCompanionShare(shareId);
   if (!resolved) return null;
   const { ownerEmail: owner, chatKey } = resolved;
@@ -111,7 +114,17 @@ async function sideFor(shareId: string): Promise<{ owner: string; side: Companio
   const account = await getCurrentAccountData(cookie);
   const side: CompanionChatSide =
     account?.email && identityKey(account.email) === identityKey(owner) ? "advisor" : "client";
-  return { owner, side, chatKey };
+  // WHICH traveller, when the client came in by their own per-traveler link.
+  // Detected without a second read for the common cases: a whole-trip token has
+  // chatKey === shareId, and the advisor never has a traveller identity — only a
+  // client on a /t/ token (chatKey differs) does, and only then is the traveller
+  // record read. This is what lets messages and votes carry a name.
+  let traveler: { id: string; name?: string } | undefined;
+  if (side === "client" && chatKey !== shareId) {
+    const t = await getSharedTraveler(shareId).catch(() => null);
+    if (t?.traveler) traveler = { id: t.traveler.id, name: t.traveler.name?.trim() || undefined };
+  }
+  return { owner, side, chatKey, traveler };
 }
 
 const otherSideOf = (side: CompanionChatSide): CompanionChatSide => (side === "advisor" ? "client" : "advisor");
@@ -142,6 +155,10 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     messages,
     side: who.side,
+    // The caller's own poll-vote key, so the app can mark which option is theirs
+    // — the advisor's is fixed, a named traveller's is their traveller id, and a
+    // whole-trip client has none here and falls back to its own device id.
+    voterKey: who.side === "advisor" ? "advisor" : who.traveler ? `t:${who.traveler.id}` : undefined,
     available: chatStoreAvailable(),
     readMarkers: await readMarkers(who.chatKey, channel),
     // Whether the OTHER side has typed within the last few seconds — never
@@ -229,7 +246,7 @@ export async function POST(request: NextRequest) {
         itineraryRef?: string;
         reactAt?: string;
         reaction?: string;
-        poll?: { question?: string; options?: string[] };
+        poll?: { question?: string; options?: string[]; secret?: boolean };
         pollVoteAt?: string;
         pollOption?: number;
         voterId?: string;
@@ -253,6 +270,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "That channel doesn't exist on this trip." }, { status: 404 });
   }
 
+  // WHO, by name, is writing — resolved from the LINK (in sideFor), never the
+  // body. Only a client on their own per-traveler link (/t/…) has a name; a
+  // whole-trip link and the advisor do not. This is what the advisor (and the
+  // family) read to tell one traveller's messages from another's.
+  const sender = who.traveler ?? null;
+  const senderFields = sender ? { senderId: sender.id, senderName: sender.name } : {};
+
   // When the CLIENT writes, tell the advisor on their phone — best-effort, and
   // only if they turned notifications on (their devices live on the account,
   // /api/account/push). Never the other way: the client's own alerts are the
@@ -264,7 +288,7 @@ export async function POST(request: NextRequest) {
         const subs = await readAccountPushSubscriptions(who.owner);
         if (!subs.length) return;
         const result = await sendPushToSubscriptions(subs, {
-          title: "New message from a client",
+          title: sender?.name ? `New message from ${sender.name}` : "New message from a client",
           body: summary.slice(0, 140) || "You have a new message.",
           url: "/advisor",
         });
@@ -305,11 +329,17 @@ export async function POST(request: NextRequest) {
     if (!limited.ok) {
       return NextResponse.json({ error: "That is a lot of votes at once — try again shortly." }, { status: 429 });
     }
+    // A voter's id: the advisor is the fixed "advisor"; a traveller on their
+    // own link votes under their traveller id (so they count once across
+    // devices and their name can be shown), and a whole-trip link holder falls
+    // back to their device id, prefixed so it can never collide with either.
     const voterId =
       who.side === "advisor"
         ? "advisor"
-        : `c:${(typeof body.voterId === "string" ? body.voterId : "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40) || "anon"}`;
-    const messages = await votePoll(who.chatKey, body.pollVoteAt, voterId, body.pollOption, channel);
+        : sender
+          ? `t:${sender.id}`
+          : `c:${(typeof body.voterId === "string" ? body.voterId : "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40) || "anon"}`;
+    const messages = await votePoll(who.chatKey, body.pollVoteAt, voterId, body.pollOption, channel, sender?.name);
     if (!messages) return NextResponse.json({ error: "That vote couldn’t be saved." }, { status: 400 });
     return NextResponse.json({ messages });
   }
@@ -330,12 +360,14 @@ export async function POST(request: NextRequest) {
     if (!limited.ok) {
       return NextResponse.json({ error: "That is a lot of polls at once — try again shortly." }, { status: 429 });
     }
+    const secret = body.poll.secret === true;
     const messages = await appendChat(who.chatKey, {
       from: who.side,
       kind: "poll",
       text: question.slice(0, MAX_CHAT_LABEL),
-      poll: { question: question.slice(0, MAX_CHAT_LABEL), options },
+      poll: { question: question.slice(0, MAX_CHAT_LABEL), options, secret: secret || undefined },
       at: new Date().toISOString(),
+      ...senderFields,
     }, channel);
     notifyAdvisor(`Poll: ${question}`);
     return NextResponse.json({ messages, side: who.side });
@@ -402,6 +434,7 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
       replyTo,
       itineraryRef,
+      ...senderFields,
     }, channel);
     notifyAdvisor(`Sent a ${NOUN_FOR[media.kind]}`);
     return NextResponse.json({ messages, side: who.side });
@@ -421,6 +454,7 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
       replyTo,
       itineraryRef,
+      ...senderFields,
     }, channel);
     notifyAdvisor("Shared a location");
     return NextResponse.json({ messages, side: who.side });
@@ -438,6 +472,7 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
       replyTo,
       itineraryRef,
+      ...senderFields,
     }, channel);
     notifyAdvisor("Shared a location");
     return NextResponse.json({ messages, side: who.side });
@@ -453,6 +488,7 @@ export async function POST(request: NextRequest) {
     at: new Date().toISOString(),
     replyTo,
     itineraryRef,
+    ...senderFields,
   }, channel);
   notifyAdvisor(text);
   return NextResponse.json({ messages, side: who.side });

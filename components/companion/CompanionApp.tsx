@@ -2338,8 +2338,14 @@ type LiveMsg = {
   itineraryRef?: string;
   /** One emoji per side — both people see both. */
   reactions?: Partial<Record<ChatSide, string>>;
-  /** kind "poll": the question, its options, and votes keyed by voter id. */
-  poll?: { question: string; options: string[]; votes?: Record<string, number> };
+  /** kind "poll": the question, its options, votes keyed by voter id, the names
+   *  to show beside them on a public poll, and whether it is private. */
+  poll?: { question: string; options: string[]; votes?: Record<string, number>; voterNames?: Record<string, string>; secret?: boolean };
+  /** Who on the client side sent this, when they came in by their own
+   *  per-traveler link — so the advisor and the family can see who said what.
+   *  Absent on the advisor's messages and on a whole-trip link. */
+  senderId?: string;
+  senderName?: string;
 };
 
 /** The reactions the chat offers — kept in step with lib/companion-chat-store's
@@ -2872,9 +2878,10 @@ function LocationPicker({
  * sheet rather than an inline row, so a half-typed poll never sits in the
  * message box. Nothing is sent until Create; the options grow up to the cap.
  */
-function PollComposer({ onSend, onClose }: { onSend: (question: string, options: string[]) => Promise<boolean>; onClose: () => void }) {
+function PollComposer({ onSend, onClose }: { onSend: (question: string, options: string[], secret: boolean) => Promise<boolean>; onClose: () => void }) {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
+  const [secret, setSecret] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -2884,11 +2891,12 @@ function PollComposer({ onSend, onClose }: { onSend: (question: string, options:
   const filled = options.filter((o) => o.trim()).length;
   const canSend = question.trim().length > 0 && filled >= MIN_POLL_OPTIONS;
   const field: CSSProperties = { width: "100%", border: "1px solid rgba(38,50,58,.16)", borderRadius: 10, padding: "11px 12px", fontFamily: "Inter,sans-serif", fontSize: 16, color: INK, outline: "none", background: "#fff" };
+  const choice = (on: boolean): CSSProperties => ({ flex: 1, border: `1px solid ${on ? GOLD : "rgba(38,50,58,.16)"}`, background: on ? "rgba(183,138,74,.12)" : "#fff", color: INK, borderRadius: 10, cursor: "pointer", padding: "9px 8px", display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start", textAlign: "left" });
 
   async function submit() {
     if (!canSend || busy) return;
     setBusy(true);
-    const ok = await onSend(question, options);
+    const ok = await onSend(question, options, secret);
     setBusy(false);
     if (ok) onClose();
   }
@@ -2914,6 +2922,18 @@ function PollComposer({ onSend, onClose }: { onSend: (question: string, options:
         {options.length < MAX_POLL_OPTIONS && (
           <button onClick={() => setOptions((prev) => [...prev, ""])} className="wg-link" style={{ alignSelf: "flex-start", border: 0, background: "none", cursor: "pointer", color: ICON_BLUE, fontSize: 13.5, fontWeight: 600, padding: "2px 0" }}>+ Add option</button>
         )}
+        {/* Whether everyone sees who voted for what, or only the totals. Chosen
+            here, once — it can't be flipped after the poll is out. */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" onClick={() => setSecret(false)} aria-pressed={!secret} style={choice(!secret)}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>Show who voted</span>
+            <span style={{ fontSize: 11.5, color: MUTED }}>Everyone sees each other&rsquo;s votes</span>
+          </button>
+          <button type="button" onClick={() => setSecret(true)} aria-pressed={secret} style={choice(secret)}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>Private</span>
+            <span style={{ fontSize: 11.5, color: MUTED }}>Only the totals are shown</span>
+          </button>
+        </div>
         <button onClick={() => void submit()} disabled={!canSend || busy} className="wg-press" style={{ border: 0, cursor: canSend && !busy ? "pointer" : "default", background: GOLD, color: ON_GOLD, borderRadius: 14, minHeight: 50, fontSize: 15, fontWeight: 700, opacity: canSend && !busy ? 1 : 0.5 }}>Create poll</button>
       </div>
     </div>
@@ -2951,6 +2971,10 @@ function LiveChat({
 }) {
   const { shareId, side, advisorName } = chat;
   const [messages, setMessages] = useState<LiveMsg[]>([]);
+  // This viewer's own poll-vote key, told to us by the server (the advisor's is
+  // fixed; a named traveller's is their traveller id). A whole-trip client is
+  // not given one and falls back to its device id below.
+  const [voterKey, setVoterKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [available, setAvailable] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -3198,6 +3222,7 @@ function LiveChat({
       const d = await r.json();
       const msgs: LiveMsg[] = Array.isArray(d.messages) ? d.messages : [];
       setMessages(msgs);
+      setVoterKey(typeof d.voterKey === "string" ? d.voterKey : null);
       setAvailable(d.available !== false);
       setReadAt(d.readMarkers && typeof d.readMarkers === "object" ? d.readMarkers : {});
       setOtherTyping(Boolean(d.typing));
@@ -3517,11 +3542,11 @@ function LiveChat({
   }
 
   // Send a new poll. Clears and closes the composer only once it lands.
-  async function sendPoll(question: string, options: string[]): Promise<boolean> {
+  async function sendPoll(question: string, options: string[], secret: boolean): Promise<boolean> {
     const q = question.trim();
     const opts = options.map((o) => o.trim()).filter(Boolean).slice(0, MAX_POLL_OPTIONS);
     if (!q || opts.length < MIN_POLL_OPTIONS) return false;
-    return post({ poll: { question: q, options: opts } });
+    return post({ poll: { question: q, options: opts, secret } });
   }
 
   async function deleteMine(at: string) {
@@ -4006,9 +4031,14 @@ function LiveChat({
           } else if (m.kind === "poll" && m.poll) {
             const poll = m.poll;
             const votes = poll.votes ?? {};
+            const voterNames = poll.voterNames ?? {};
             const total = Object.keys(votes).length;
-            const myKey = side === "advisor" ? "advisor" : `c:${deviceVoterId()}`;
+            // My own vote key: the server tells us (advisor, or a named traveller's
+            // id); a whole-trip client falls back to its device id, which is how it
+            // votes too.
+            const myKey = voterKey ?? (side === "advisor" ? "advisor" : `c:${deviceVoterId()}`);
             const myVote = votes[myKey];
+            const secret = poll.secret === true;
             content = (
               <div style={{ maxWidth: "100%", width: 268, alignSelf: mine ? "flex-end" : "flex-start", background: "#ffffff", color: INK, border: "1px solid rgba(38,50,58,.1)", borderRadius: 16, boxShadow: "0 1px 2px rgba(23,45,82,.08)", overflow: "hidden", padding: "13px 14px 11px", display: "flex", flexDirection: "column", gap: 9 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
@@ -4017,25 +4047,41 @@ function LiveChat({
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {poll.options.map((opt, oi) => {
-                    const count = Object.values(votes).filter((v) => v === oi).length;
+                    const voterIds = Object.keys(votes).filter((k) => votes[k] === oi);
+                    const count = voterIds.length;
                     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                     const chosen = myVote === oi;
+                    // On a PUBLIC poll, the names of who chose this option (my own
+                    // shown as "You"); a private poll shows only the running count.
+                    const names = secret
+                      ? []
+                      : voterIds.map((k) => (k === myKey ? "You" : voterNames[k])).filter((n): n is string => Boolean(n));
                     return (
                       <button
                         key={oi}
                         onClick={() => void castVote(m.at, oi)}
                         aria-label={chosen ? `Remove your vote for ${opt}` : `Vote for ${opt}`}
-                        style={{ position: "relative", border: `1px solid ${chosen ? GOLD : "rgba(38,50,58,.14)"}`, background: "#fff", borderRadius: 10, cursor: "pointer", padding: "9px 11px", textAlign: "left", overflow: "hidden", display: "flex", alignItems: "center", gap: 8 }}
+                        style={{ position: "relative", border: `1px solid ${chosen ? GOLD : "rgba(38,50,58,.14)"}`, background: "#fff", borderRadius: 10, cursor: "pointer", padding: "9px 11px", textAlign: "left", overflow: "hidden", display: "flex", flexDirection: "column", gap: 3 }}
                       >
                         <span aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: chosen ? "rgba(183,138,74,.20)" : "rgba(38,50,58,.06)", transition: "width .3s ease" }} />
-                        <span style={{ position: "relative", flex: 1, minWidth: 0, fontSize: 13, fontWeight: chosen ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt}</span>
-                        {chosen && <span style={{ position: "relative", color: GOLD, display: "flex" }}><Icon name="check" className="h-4 w-4" strokeWidth={2.4} /></span>}
-                        <span style={{ position: "relative", fontSize: 12, fontWeight: 600, color: MUTED, minWidth: 16, textAlign: "right" }}>{count}</span>
+                        <span style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: chosen ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt}</span>
+                          {chosen && <span style={{ color: GOLD, display: "flex" }}><Icon name="check" className="h-4 w-4" strokeWidth={2.4} /></span>}
+                          <span style={{ fontSize: 12, fontWeight: 600, color: MUTED, minWidth: 16, textAlign: "right" }}>{count}</span>
+                        </span>
+                        {names.length > 0 && (
+                          <span style={{ position: "relative", fontSize: 11, lineHeight: 1.35, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                            {names.join(", ")}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
-                <span style={{ fontSize: 11, color: FAINT }}>{total === 0 ? "No votes yet — tap to vote" : `${total} vote${total === 1 ? "" : "s"} · tap to change`}</span>
+                <span style={{ fontSize: 11, color: FAINT }}>
+                  {secret ? "Private poll · " : ""}
+                  {total === 0 ? "No votes yet — tap to vote" : `${total} vote${total === 1 ? "" : "s"} · tap to change`}
+                </span>
               </div>
             );
           } else {
@@ -4120,6 +4166,14 @@ function LiveChat({
                 }}
               >
               {itineraryTag}
+              {/* Who sent it — shown above the bubble for a named traveller's
+                  message that isn't mine, so the advisor (and the rest of the
+                  family) can tell one person's messages from another's. Your
+                  own carry no label; an unnamed whole-trip client has none to
+                  show. */}
+              {!mine && m.senderName && (
+                <span style={{ alignSelf: "flex-start", margin: "0 3px 1px", font: "700 11px/1 Inter,sans-serif", color: "#8a6d3b" }}>{m.senderName}</span>
+              )}
               <div className="wg-msgrow" style={{ display: "flex", alignItems: "center", gap: 1, flexDirection: mine ? "row-reverse" : "row", maxWidth: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   {quote}

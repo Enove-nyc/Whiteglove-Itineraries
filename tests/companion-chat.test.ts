@@ -414,10 +414,41 @@ describe("polls — a question everyone on the link can vote on", () => {
     assert.equal(m.text, "");
   });
 
+  it("a public poll keeps the names of who voted, only for real voters", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({
+        from: "advisor",
+        kind: "poll",
+        text: "Q",
+        at: "t",
+        poll: { question: "Q", options: ["A", "B"], votes: { "t:a": 0 }, voterNames: { "t:a": "Sarah", "t:ghost": "Nobody" } },
+      }),
+    ]);
+    // Sarah has a vote so her name stays; the orphan name (no vote) is dropped.
+    assert.deepEqual(m.poll?.voterNames, { "t:a": "Sarah" });
+  });
+
+  it("a private poll never carries who voted for what", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({
+        from: "advisor",
+        kind: "poll",
+        text: "Q",
+        at: "t",
+        poll: { question: "Q", options: ["A", "B"], votes: { "t:a": 0 }, voterNames: { "t:a": "Sarah" }, secret: true },
+      }),
+    ]);
+    assert.equal(m.poll?.secret, true);
+    assert.equal(m.poll?.voterNames, undefined);
+    // The tally itself is still there — a private poll hides who, not how many.
+    assert.deepEqual(m.poll?.votes, { "t:a": 0 });
+  });
+
   it("votePoll toggles the same option off and moves a different one", () => {
     const STORE = readFileSync("lib/companion-chat-store.ts", "utf8");
     const fn = STORE.slice(STORE.indexOf("export async function votePoll"), STORE.indexOf("* Delete one message"));
-    assert.match(fn, /if \(votes\[voter\] === optionIndex\) delete votes\[voter\]/);
+    assert.match(fn, /votes\[voter\] === optionIndex/);
+    assert.match(fn, /delete votes\[voter\]/);
     assert.match(fn, /kindOf\(existing\.kind\) !== "poll"/);
   });
 
@@ -425,7 +456,33 @@ describe("polls — a question everyone on the link can vote on", () => {
     const ROUTE = readFileSync("app/api/companion/chat/route.ts", "utf8");
     const POST = ROUTE.slice(ROUTE.indexOf("export async function POST"));
     assert.match(POST, /who\.side === "advisor"\s*\?\s*"advisor"/);
-    assert.match(POST, /votePoll\(who\.chatKey, body\.pollVoteAt, voterId, body\.pollOption, channel\)/);
+    assert.match(POST, /votePoll\(who\.chatKey, body\.pollVoteAt, voterId, body\.pollOption, channel, sender\?\.name\)/);
     assert.match(POST, /rateLimit\(`companion-vote:/);
+  });
+});
+
+describe("a message says who on the client side sent it", () => {
+  it("carries a named traveller's sender through, capped", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "client", kind: "text", text: "hi", at: "t", senderId: "trav-1", senderName: "David" }),
+    ]);
+    assert.equal(m.senderId, "trav-1");
+    assert.equal(m.senderName, "David");
+  });
+
+  it("keeps who it was from even on a deleted message", () => {
+    const [m] = parseChatMessages([
+      JSON.stringify({ from: "client", kind: "text", text: "hi", at: "t", deletedAt: "t2", senderId: "trav-1", senderName: "David" }),
+    ]);
+    assert.equal(m.text, "");
+    assert.equal(m.senderName, "David");
+  });
+
+  it("resolves the sender from the link, never the body", () => {
+    const ROUTE = readFileSync("app/api/companion/chat/route.ts", "utf8");
+    // The name comes off the resolved traveller (sideFor → getSharedTraveler),
+    // and rides on the message as senderFields — not from anything posted.
+    assert.match(ROUTE, /const sender = who\.traveler \?\? null/);
+    assert.match(ROUTE, /senderFields = sender \? \{ senderId: sender\.id, senderName: sender\.name \}/);
   });
 });
