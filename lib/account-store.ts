@@ -5,6 +5,8 @@ import { clientsFromTrips, emptyClientProfile, tripsForClient, type ClientProfil
 import type { AddonItem } from "@/data/trip-addons";
 import type { CommissionRecord } from "@/data/trip-commission";
 import { createHmac, pbkdf2Sync, randomBytes } from "crypto";
+import { accepting, openStatus, withOpen, withRevoked, type OpenStatus, type ShareOpens } from "@/lib/share-opens";
+import { tripTimeZone } from "@/lib/trip-timezone";
 import { type AccountPlan, planOf } from "@/lib/account-plans";
 import { travelerAttachments, withoutAttachments } from "@/lib/attachments";
 import { emptyItinerary, type Itinerary } from "@/data/itinerary";
@@ -145,6 +147,16 @@ export type SavedTrip = {
   route: SavedPlace[];
   /** Public read-only token, when this particular trip is shared. */
   shareId?: string;
+  /**
+   * Tokens this trip has had and stopped.
+   *
+   * Kept because a stopped link is not the same as a link that never existed:
+   * the advisor still needs to see that the client opened it twice before it
+   * was turned off. The token itself opens nothing once its share record is
+   * deleted — this is a label to hang the frozen open-history on, not a
+   * credential.
+   */
+  revokedShareIds?: string[];
   /**
    * Who it is shared with and what each may do.
    *
@@ -893,6 +905,31 @@ export type TripSummary = {
   updatedAt: string;
   /** Whether this trip's client gets automatic reminders — see lib/trip-reminders.ts. */
   autoReminders: boolean;
+  /**
+   * Every link this trip has, live or stopped, with whether it has been
+   * opened. One entry per link because an advisor who sent three travellers
+   * three separate doors needs to know which of the three walked through.
+   */
+  links: TripLinkStatus[];
+};
+
+/** One share link, and the two dates that say whether it has been used. */
+export type TripLinkStatus = {
+  shareId: string;
+  /** "The trip link" or a traveller's name — what the advisor called it. */
+  label: string;
+  /** Live links can still record an open; stopped ones are frozen. */
+  live: boolean;
+  opens: ShareOpens;
+  /**
+   * The line to show, worked out on the server.
+   *
+   * Computed here rather than in the browser for two reasons the codebase
+   * already settled: a component may not read a clock while it renders, and
+   * the day shown has to be the day where the TRIP is — which needs the
+   * itinerary's coordinates, and those never leave the server.
+   */
+  status: OpenStatus;
 };
 
 /** How many days the trip covers, from its dates. Zero until both are set. */
@@ -919,7 +956,62 @@ function summarize(trips: SavedTrip[], activeId: string): TripSummary[] {
     shareId: t.shareId,
     updatedAt: t.updatedAt,
     autoReminders: Boolean(t.autoReminders),
+    links: linksOf(t),
   }));
+}
+
+/**
+ * Every door into one trip, named the way the advisor would name it.
+ *
+ * The trip-wide link first, then each traveller's own, then the ones that have
+ * been stopped. Dates are left empty here — summarize() is synchronous and the
+ * open records are separate keys; withLinkOpens() below fills them in for the
+ * screens that show status, so the many callers that only want trip names pay
+ * nothing for it.
+ */
+/** What a link shows before withLinkOpens has read its record. */
+const BLANK_STATUS: OpenStatus = { text: "Not opened yet", detail: "", state: "unopened" };
+
+function linksOf(t: SavedTrip): TripLinkStatus[] {
+  const links: TripLinkStatus[] = [];
+  if (t.shareId) links.push({ shareId: t.shareId, label: "The trip link", live: true, opens: {}, status: BLANK_STATUS });
+  for (const [travelerId, token] of Object.entries(t.travelerShares ?? {})) {
+    if (!token || token === t.shareId) continue;
+    const traveler = t.itinerary?.travelers?.find((p) => p.id === travelerId);
+    links.push({ shareId: token, label: traveler?.name?.trim() || "A traveller's own link", live: true, opens: {}, status: BLANK_STATUS });
+  }
+  for (const token of t.revokedShareIds ?? []) {
+    if (!token || links.some((l) => l.shareId === token)) continue;
+    links.push({ shareId: token, label: "A stopped link", live: false, opens: {}, status: BLANK_STATUS });
+  }
+  return links;
+}
+
+/**
+ * Fill in when each link was opened, and the line that says so.
+ *
+ * One read per link, and only for trips that have one — an account sharing
+ * nothing costs nothing. Kept out of summarize() deliberately: getTrips is
+ * called by screens that only want names and dates, and none of them should
+ * pay for a status they do not draw.
+ */
+export async function withLinkOpens(email: string, now = new Date().toISOString()): Promise<TripSummary[]> {
+  const data = await getAccountData(email);
+  const { trips, activeId } = withTrips(data);
+  const summaries = summarize(trips, activeId);
+  return Promise.all(
+    summaries.map(async (summary) => {
+      if (summary.links.length === 0) return summary;
+      const zone = tripTimeZone(trips.find((t) => t.id === summary.id)?.itinerary);
+      const links = await Promise.all(
+        summary.links.map(async (link) => {
+          const opens = await readShareOpens(link.shareId).catch(() => ({}) as ShareOpens);
+          return { ...link, opens, status: openStatus(opens, now, zone) };
+        }),
+      );
+      return { ...summary, links };
+    }),
+  );
 }
 
 export async function getTrips(email: string): Promise<TripSummary[]> {
@@ -2226,6 +2318,10 @@ export async function getTripActivity(
 
 // ---- Itinerary sharing ------------------------------------------------
 
+function shareOpensKey(shareId: string) {
+  return `white-glove:share-opens:${shareId}`;
+}
+
 function shareKey(shareId: string) {
   return `white-glove:itinerary-share:${shareId}`;
 }
@@ -2322,6 +2418,49 @@ export async function stopItineraryShare(email: string) {
   return true;
 }
 
+/**
+ * WHETHER THE TRAVELLER HAS OPENED THIS LINK, kept apart from the link itself.
+ *
+ * Its own key rather than a field on the share record, for one reason that
+ * decides the design: stopTripShare DELETES the share record, and the advisor
+ * still needs to see that the client opened it twice before it was stopped. A
+ * field would go with the link; this outlives it, and is where `revokedAt` is
+ * written so a stopped link refuses later opens rather than merely failing to
+ * receive them.
+ *
+ * Two timestamps. Nothing else is stored — see lib/share-opens.ts for what
+ * that promise is and why it is not negotiable.
+ */
+export async function readShareOpens(shareId: string): Promise<ShareOpens> {
+  if (!shareId) return {};
+  return (await readJson<ShareOpens>(shareOpensKey(shareId))) ?? {};
+}
+
+/**
+ * Record that somebody who is not the owner opened this link.
+ *
+ * BEST EFFORT, ALWAYS. A traveller opening their itinerary on a train must
+ * never see an error because a status write failed, so every caller ignores
+ * the result and this never throws. Returns false when nothing was written —
+ * the link is stopped, or the store is not configured.
+ */
+export async function recordShareOpen(shareId: string, at = new Date().toISOString()): Promise<boolean> {
+  if (!shareId || !hasAccountStorage()) return false;
+  const current = await readShareOpens(shareId);
+  if (!accepting(current)) return false;
+  const next = withOpen(current, at);
+  if (next.firstOpenedAt === current.firstOpenedAt && next.lastOpenedAt === current.lastOpenedAt) return false;
+  return writeJson(shareOpensKey(shareId), next);
+}
+
+/** Freeze the record when a link is stopped. Keeps the history, takes no more. */
+export async function markShareRevoked(shareId: string, at = new Date().toISOString()): Promise<void> {
+  if (!shareId || !hasAccountStorage()) return;
+  const current = await readShareOpens(shareId);
+  if (current.revokedAt) return;
+  await writeJson(shareOpensKey(shareId), withRevoked(current, at));
+}
+
 export async function getShareOwnerEmail(shareId: string): Promise<string | null> {
   const rec = await readJson<{ ownerEmail: string }>(shareKey(shareId));
   return rec?.ownerEmail ?? null;
@@ -2405,7 +2544,18 @@ export async function stopTripShare(email: string, tripId: string): Promise<bool
   const { trips, activeId } = withTrips(data);
   const trip = trips.find((t) => t.id === tripId);
   if (!trip) return false;
-  if (trip.shareId) await deleteKey(shareKey(trip.shareId));
+  // Marked revoked BEFORE the link is deleted: after the delete there is no
+  // token left to look up, and the open history has to survive the link it
+  // belongs to (see readShareOpens).
+  if (trip.shareId) {
+    await markShareRevoked(trip.shareId);
+    await deleteKey(shareKey(trip.shareId));
+  }
+  // A traveller's own door is stopped with the trip-wide one — each is a
+  // separate link with its own status, so each gets its own tombstone.
+  for (const token of Object.values(trip.travelerShares ?? {})) {
+    if (token) await markShareRevoked(token);
+  }
   for (const collaborator of readCollaborators(trip.collaborators)) {
     await removeFromSharedWith(collaborator.person, normalized);
   }
@@ -2415,8 +2565,22 @@ export async function stopTripShare(email: string, tripId: string): Promise<bool
   // (called whenever a flight-status check finds something new) would keep
   // sending to it regardless: it reads pushSubscriptions off the trip, not
   // the share token, and never itself checks whether shareId is still set.
+  // The stopped tokens are remembered so the advisor can still see what
+  // happened on them. Capped: this is a short history, not a log.
+  const stopped = [trip.shareId, ...Object.values(trip.travelerShares ?? {})].filter(Boolean) as string[];
+  const remembered = [...stopped, ...(trip.revokedShareIds ?? [])].filter((v, i, all) => all.indexOf(v) === i).slice(0, 10);
   const next = trips.map((t) =>
-    t.id === tripId ? { ...t, shareId: undefined, collaborators: [], pushSubscriptions: [], updatedAt: new Date().toISOString() } : t,
+    t.id === tripId
+      ? {
+          ...t,
+          shareId: undefined,
+          travelerShares: {},
+          revokedShareIds: remembered,
+          collaborators: [],
+          pushSubscriptions: [],
+          updatedAt: new Date().toISOString(),
+        }
+      : t,
   );
   return Boolean(await writeTrips(normalized, next, activeId));
 }

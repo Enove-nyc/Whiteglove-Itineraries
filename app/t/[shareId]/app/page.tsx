@@ -3,6 +3,7 @@ import CompanionApp from "@/components/companion/CompanionApp";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { checkTripFlightStatus, getSharedTraveler, getTripAlerts } from "@/lib/account-store";
+import { noteShareOpened } from "@/lib/share-open-recorder";
 import { emptyItinerary, redactForTraveler, travelerUnitKey } from "@/data/itinerary";
 import { buildCompanionFromItinerary } from "@/lib/companion-build";
 import { readBrand } from "@/lib/business-brand-store";
@@ -53,6 +54,10 @@ export default async function TravelerAppPage({ params }: { params: Promise<{ sh
   const { shareId } = await params;
   const shared = await getSharedTraveler(shareId);
   if (!shared) redirect("/");
+
+  // A traveller's own door is its own link with its own status, so it is this
+  // token that is recorded, not the trip-wide one.
+  await noteShareOpened(shareId, shared.ownerEmail);
 
   const plan = await getPlan(shared.ownerEmail);
   if (!mayServeCompanionClients(plan)) redirect("/");

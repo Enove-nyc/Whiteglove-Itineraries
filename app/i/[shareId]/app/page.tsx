@@ -3,6 +3,7 @@ import CompanionApp from "@/components/companion/CompanionApp";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { checkTripFlightStatus, getSharedItineraryByShareId, getTripAlerts } from "@/lib/account-store";
+import { noteShareOpened } from "@/lib/share-open-recorder";
 import { emptyItinerary, unitsOf } from "@/data/itinerary";
 import { buildCompanionFromItinerary } from "@/lib/companion-build";
 import { readBrand } from "@/lib/business-brand-store";
@@ -51,6 +52,11 @@ export default async function SharedAppPage({ params }: { params: Promise<{ shar
   const { shareId } = await params;
   const shared = await getSharedItineraryByShareId(shareId);
   if (!shared) redirect(`/i/${shareId}`); // the shared view shows the "not available" notice
+
+  // Somebody has opened the link. Recorded only when it is NOT the advisor
+  // (or their colleague) checking their own work — see noteShareOpened.
+  await noteShareOpened(shareId, shared.ownerEmail);
+
 
   // Handing the app to a client is Business-only; a non-Business owner's link
   // is still a real shared trip, just as the document rather than the app.
