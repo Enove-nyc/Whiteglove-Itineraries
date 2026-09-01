@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { readConversation, withTurns, MAX_TURNS, type AssistantTurn } from "@/lib/assistant-conversation";
 import { NOT_ON_THE_SITE, saysNotOnTheSite, siteAssistantSystemFor } from "@/lib/site-assistant";
-import { isCompanionAppView } from "@/components/SiteAssistant";
+import { isCompanionAppView, isAdvisorAppView } from "@/components/SiteAssistant";
 
 const SITE_ASSISTANT_SYSTEM = siteAssistantSystemFor("kosher");
 
@@ -396,12 +396,21 @@ describe("the assistant stays off every companion-app view", () => {
     assert.equal(isCompanionAppView(null), false);
   });
 
+  it("is hidden on the advisor app too — it is a full-screen app with its own chrome now", () => {
+    assert.equal(isAdvisorAppView("/advisor"), true);
+    assert.equal(isAdvisorAppView("/advisor/anything"), true);
+    // Not a false match on a lookalike path, and shown everywhere else.
+    assert.equal(isAdvisorAppView("/advisories"), false);
+    assert.equal(isAdvisorAppView("/"), false);
+    assert.equal(isAdvisorAppView(null), false);
+  });
+
   it("the component bails out only after every hook has already run", () => {
     // usePathname is called unconditionally at the top; the early return
     // sits right before the JSX, after every other hook — never between them.
     const body = PANEL.slice(PANEL.indexOf("export default function SiteAssistant"));
     const pathnameHook = body.indexOf("usePathname()");
-    const earlyReturn = body.indexOf("if (isCompanionAppView(pathname)) return null;");
+    const earlyReturn = body.indexOf("if (isCompanionAppView(pathname) || isAdvisorAppView(pathname)) return null;");
     const finalReturn = body.indexOf("return (\n    <>");
     assert.ok(pathnameHook > -1 && pathnameHook < earlyReturn, "usePathname runs before the bail-out");
     assert.ok(earlyReturn > -1 && earlyReturn < finalReturn, "the bail-out comes before the render, not inside it");

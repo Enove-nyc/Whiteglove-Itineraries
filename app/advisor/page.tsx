@@ -306,6 +306,15 @@ export default async function AdvisorDashboardPage({
           >
             Account &amp; plan
           </Link>
+          {/* A small, non-fixed way to reach the assistant — the floating
+              corner launcher is off inside the app now, so this is where an
+              advisor opens it instead. */}
+          <Link
+            href="/assistant"
+            className="flex min-h-[64px] items-center rounded-2xl border border-[var(--gold-light)] bg-white px-5 py-4 text-sm font-semibold text-[var(--navy)] transition hover:border-[var(--gold)] hover:shadow-sm"
+          >
+            Assistant
+          </Link>
         </div>
       </section>
     </AdvisorApp>

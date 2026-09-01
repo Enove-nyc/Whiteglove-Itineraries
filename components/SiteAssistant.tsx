@@ -53,6 +53,17 @@ export function isCompanionAppView(pathname: string | null): boolean {
   return /^\/(app|(i|t)\/[^/]+\/app)(\/|$)/.test(pathname ?? "");
 }
 
+/**
+ * The advisor app at /advisor is a full-screen app in its own right now — its
+ * own navy header and four-tab bottom bar — so the floating corner launcher has
+ * the same nothing-to-do-here problem it has on the client app, and sat over
+ * the app's own controls. Hidden there too. (The assistant stays reachable off
+ * the app, at /assistant.)
+ */
+export function isAdvisorAppView(pathname: string | null): boolean {
+  return pathname === "/advisor" || (pathname?.startsWith("/advisor/") ?? false);
+}
+
 /** "rgb(a)(…)" → its parts, or null for a value we cannot read. */
 function parseRgb(value: string): { r: number; g: number; b: number; a: number } | null {
   const match = value.match(/rgba?\(([^)]+)\)/);
@@ -198,7 +209,7 @@ export default function SiteAssistant() {
   // All hooks above have already run unconditionally; bailing here, right
   // before the render, is what keeps this a normal early return rather than a
   // rules-of-hooks violation.
-  if (isCompanionAppView(pathname)) return null;
+  if (isCompanionAppView(pathname) || isAdvisorAppView(pathname)) return null;
 
   return (
     <>
