@@ -89,6 +89,10 @@ export default function AdvisorApp({
   initialTab?: Tab;
 }) {
   const router = useRouter();
+  // On a computer, an opened trip is centred as a tidy app-width panel rather
+  // than stretched across the whole window (its content is laid out for a
+  // phone). A phone shows it full-bleed as before.
+  const wide = useMediaQuery("(min-width: 900px)");
   // Open on the dashboard — the advisor's overview — unless a trip was opened
   // (show that trip, from Trips or Wallet) or a tab was named in the address.
   const [tab, setTab] = useState<Tab>(
@@ -150,19 +154,23 @@ export default function AdvisorApp({
       )}
 
       {/* content */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", ...(wide && viewingTrip && openTrip ? { alignItems: "center", background: "#eef1f4" } : {}) }}>
         {viewingTrip && openTrip && (
           // The trip itself, embedded — its own navy header and itinerary,
           // this app's four-tab bar still below it. The advisor is never handed
-          // off to the client app, and Account is always one tap away.
-          <CompanionApp
-            trip={openTrip}
-            embedded
-            onExit={exitTrip}
-            advisorInbox
-            advisorShareId={openShareId}
-            initialScreen={openScreen}
-          />
+          // off to the client app, and Account is always one tap away. On a
+          // computer it's boxed to a comfortable app width and centred; on a
+          // phone it fills the screen.
+          <div style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: wide ? 460 : undefined, display: "flex", flexDirection: "column", ...(wide ? { boxShadow: "0 0 0 1px rgba(38,50,58,.08)" } : {}) }}>
+            <CompanionApp
+              trip={openTrip}
+              embedded
+              onExit={exitTrip}
+              advisorInbox
+              advisorShareId={openShareId}
+              initialScreen={openScreen}
+            />
+          </div>
         )}
         {viewingTrip && !openTrip && openTripInfo && (
           // The trip has no dates yet. Not a dead end — a real screen: the
