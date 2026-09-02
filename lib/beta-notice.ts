@@ -1,13 +1,21 @@
 /**
  * The site notice: one line, said once, before anybody relies on a detail.
  *
- * WHAT IT SAYS — the whole of it: "Travel details change. Confirm kashrus,
- * hours and Shabbos arrangements before travel." Earlier versions led with the
- * site being unfinished, listed the heritage database's uncertainties on every
- * vacation page, explained the checking labels, and carried a feedback
+ * WHAT IT SAYS — the whole of it: "Travel details change. Confirm opening
+ * hours and booking details before you travel." Earlier versions led with the
+ * site being unfinished, explained the checking labels, and carried a feedback
  * paragraph — each cut in its own rewrite. What remains is the one instruction
- * a traveler can act on. The history of why lives in git; the rule it settled
+ * a traveller can act on. The history of why lives in git; the rule it settled
  * on is in tests/beta-notice.test.ts.
+ *
+ * ITS WORDING IS THIS PRODUCT'S OWN, and that is not cosmetic. Both
+ * deployments read one shared store, so the notice the owner writes for the
+ * kosher site — "confirm kashrus, hours and Shabbos arrangements" — was
+ * arriving here and putting kosher wording on every page of a general travel
+ * product, including the home page and the pricing page. The switch and the
+ * version still come from the shared record, so turning the notice off still
+ * turns it off everywhere; the WORDS are this product's, because this product
+ * is not that one.
  *
  * TWO ACTIONS: Verification (how the site checks what it prints) and Close.
  *
@@ -45,7 +53,7 @@ export type BetaNotice = {
 export const DEFAULT_NOTICE: BetaNotice = {
   on: true,
   heading: "Before you travel",
-  body: "Travel details change. Confirm kashrus, hours and Shabbos arrangements before travel.",
+  body: "Travel details change. Confirm opening hours and booking details before you travel.",
   // BUMPED: version 5 carried three paragraphs and three actions; version 6
   // is the one line. A dismissal is per version, so everybody meets this one.
   version: "6",
@@ -120,10 +128,15 @@ export function noticeFrom(stored: Partial<BetaNotice> | null | undefined): Beta
     return text || fallback;
   };
   return {
+    // The switch and the version are the owner's, and shared: turning the
+    // notice off must turn it off on both sites at once.
     on: typeof stored?.on === "boolean" ? stored.on : DEFAULT_NOTICE.on,
-    heading: pick(stored?.heading, DEFAULT_NOTICE.heading),
-    body: pick(stored?.body, DEFAULT_NOTICE.body),
     version: pick(stored?.version, DEFAULT_NOTICE.version),
+    // THE WORDS ARE NOT SHARED. A notice written for a kosher travel guide is
+    // wrong on a general travel product, and the shared store would otherwise
+    // put it on every page here. See the note at the top of this file.
+    heading: DEFAULT_NOTICE.heading,
+    body: DEFAULT_NOTICE.body,
   };
 }
 
