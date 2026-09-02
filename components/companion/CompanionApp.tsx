@@ -984,6 +984,10 @@ export default function CompanionApp({
   // keyboard — the composer stays put on top of the keyboard, the tabs come
   // back the moment the field is dismissed (WhatsApp's own behaviour).
   const [composerUp, setComposerUp] = useState(false);
+  // On a computer a real (non-showcase) trip is not a phone in a frame but a
+  // web app: a side rail of tabs and a wide content column. A phone, the
+  // marketing demo, and the advisor-embedded view all keep the phone layout.
+  const desktopWeb = useMediaQuery("(min-width: 900px)") && !embedded && !trip.concierge;
   useEffect(() => {
     if (!liveChat) return;
     let cancelled = false;
@@ -2267,6 +2271,82 @@ export default function CompanionApp({
       )}
     </div>
   );
+
+  // ── the same app, as a web page on a computer ───────────────────────────
+  // Not the phone stretched wide (its screens are a column) and not a phone in
+  // a frame, but the app re-laid as software you sit at: a navy side rail with
+  // the trip and its tabs down the left, and the chosen screen in a wide
+  // content column. Chat and the inbox fill that column; reading screens sit in
+  // a comfortable measure and scroll. Same screens, same tabs, same actions.
+  const chatty = st.screen === "messages" || st.screen === "chat";
+  const railBtn = (on: boolean): React.CSSProperties => ({
+    display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 14,
+    border: 0, cursor: "pointer", background: on ? GOLD : "transparent", color: on ? ON_GOLD : CREAM,
+    font: `${on ? 600 : 500} 14px/1 Inter,sans-serif`, textAlign: "left", width: "100%", transition: "background .18s ease",
+  });
+  const webShell = (
+    <div style={{ display: "flex", height: "100dvh", background: "#eef1f4", fontFamily: "Inter,system-ui,sans-serif", color: INK }}>
+      {/* side rail — the trip, its tabs, and Changes at the foot */}
+      <aside style={{ width: 268, flexShrink: 0, background: NAVY, color: CREAM, display: "flex", flexDirection: "column", padding: "26px 16px 18px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5, padding: "0 8px 22px" }}>
+          <div style={{ font: "600 10px/1 Inter,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: GOLD_ON_DARK }}>{kickers.home}</div>
+          <div style={{ font: `400 21px/1.2 ${serif}`, letterSpacing: "-.01em" }}>{titles.home}</div>
+        </div>
+        <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {tabs.map((t) => {
+            // Changes has its own rail item at the foot, so the Trip tab must
+            // not also light up while it is open (the phone reaches Changes
+            // from the bell, not a tab, so there the Trip tab staying lit is
+            // right — here it would be two gold pills for one screen).
+            const on = t.on && !(t.id === "home" && st.screen === "alerts");
+            return (
+            <button key={t.id} onClick={() => go(t.id)} aria-current={on ? "page" : undefined} aria-label={t.badge ? `${t.label} (unread messages)` : undefined} style={railBtn(on)}>
+              <span style={{ position: "relative", display: "inline-flex" }}>
+                <Icon name={t.icon} className="h-5 w-5" strokeWidth={on ? 2.1 : 1.7} />
+                {t.badge && <span aria-hidden="true" style={{ position: "absolute", top: -3, right: -4, width: 8, height: 8, borderRadius: 14, background: GOLD, border: `2px solid ${NAVY}` }} />}
+              </span>
+              {t.label}
+            </button>
+            );
+          })}
+        </nav>
+        <button onClick={() => go("alerts")} aria-current={st.screen === "alerts" ? "page" : undefined} style={{ ...railBtn(st.screen === "alerts"), marginTop: "auto" }}>
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+            {(open || unreadAlerts.length > 0) && <span aria-hidden="true" style={{ position: "absolute", top: -2, right: -3, width: 9, height: 9, borderRadius: 14, background: GOLD, border: `2px solid ${NAVY}` }} />}
+          </span>
+          Changes
+        </button>
+      </aside>
+      {/* content — a slim per-screen bar over the screen itself */}
+      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12, padding: "17px 30px", borderBottom: "1px solid rgba(38,50,58,.09)", background: "#fbfaf7" }}>
+          {canBack && <button onClick={back} aria-label="Back" className="wg-fade" style={{ border: "1px solid rgba(38,50,58,.16)", background: "#fff", width: 34, height: 34, borderRadius: 12, cursor: "pointer", fontSize: 15, color: INK, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#b1852f" }}>{kickers[st.screen]}</div>
+            <div style={{ font: `400 20px/1.1 ${serif}`, letterSpacing: "-.01em" }}>{titles[st.screen]}</div>
+          </div>
+        </div>
+        {offline && (
+          <div style={{ flexShrink: 0, padding: "7px 30px", background: "#fef6e7", borderBottom: "1px solid rgba(38,50,58,.08)", display: "flex", alignItems: "center", gap: 7, font: "600 11.5px/1.3 Inter,sans-serif", color: "#765321" }}>
+            <span aria-hidden="true">✈️</span>Offline — showing your saved trip.
+          </div>
+        )}
+        <div className="wg-scroll" style={{ flex: 1, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column" }}>
+          <div style={{ width: "100%", maxWidth: chatty ? "none" : 880, margin: "0 auto", ...(chatty ? { flex: 1, minHeight: 0 } : {}), display: "flex", flexDirection: "column" }}>{body}</div>
+        </div>
+      </main>
+    </div>
+  );
+
+  if (desktopWeb) {
+    return (
+      <>
+        <style>{COMPANION_CSS}</style>
+        {webShell}
+      </>
+    );
+  }
 
   // Embedded in the advisor app: no desktop showcase frame, no second app root
   // — just the phone, filling the advisor app's content area, with the advisor
