@@ -4603,7 +4603,7 @@ const INBOX_KIND_META: Record<string, { glyph: ReactNode; label: string }> = {
  * layout), then it corrects on the client; a layout that flips once on load is
  * fine, a hydration mismatch is not.
  */
-function useMediaQuery(query: string): boolean {
+export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (onChange) => {
       if (typeof window === "undefined" || !window.matchMedia) return () => {};

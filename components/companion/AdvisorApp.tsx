@@ -4,7 +4,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons/Icon";
-import CompanionApp, { AdvisorInbox, COMPANION_CSS } from "@/components/companion/CompanionApp";
+import CompanionApp, { AdvisorInbox, COMPANION_CSS, useMediaQuery } from "@/components/companion/CompanionApp";
 import AdvisorNotify from "@/components/companion/AdvisorNotify";
 import type { CompanionTrip } from "@/data/companion-demo";
 
@@ -280,6 +280,9 @@ function TripList({
   /** Show the per-trip copy / open / edit icons (the Trips tab; not Wallet). */
   actions?: boolean;
 }) {
+  // On a computer the trips lay out as a grid that fills the width, instead of
+  // one tall column of full-width rows; a phone keeps the single column.
+  const wide = useMediaQuery("(min-width: 900px)");
   return (
     <div className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 10, animation: "wgIn .28s ease both" }}>
       <p style={{ margin: "0 2px 2px", fontSize: 13, lineHeight: 1.5, color: "#78716c" }}>{blurb}</p>
@@ -288,7 +291,9 @@ function TripList({
           No trips yet. Build one in the planner and share it — it shows up here.
         </div>
       ) : (
-        trips.map((t) => <TripRow key={t.id} trip={t} openHref={hrefFor(t)} actions={actions} />)
+        <div style={wide ? { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12, alignItems: "start" } : { display: "flex", flexDirection: "column", gap: 10 }}>
+          {trips.map((t) => <TripRow key={t.id} trip={t} openHref={hrefFor(t)} actions={actions} />)}
+        </div>
       )}
     </div>
   );
