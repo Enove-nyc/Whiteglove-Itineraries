@@ -5,7 +5,7 @@ import { summarise, toneFor, worthLeadingWith, type TripAdvisories as Roll } fro
  * What is currently being said about the countries this trip goes to.
  *
  * A server component: everything is decided before it renders, and nothing
- * here fetches. The advisory already showed on a beis hachaim's own page one
+ * here fetches. The advisory already showed on a destination's own page one
  * country at a time; this is the same information arranged around the trip
  * rather than around the place.
  *

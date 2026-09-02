@@ -38,6 +38,8 @@ import { applyTemplate, type TripTemplate } from "@/lib/trip-setup";
 import { BUILT_IN_ASSUMPTIONS, type PlannerAssumptions } from "@/data/planner-assumptions";
 import { correctedEnd, earliestEnd, rangeIsBackwards } from "@/lib/date-range";
 import StopAttachments from "@/components/StopAttachments";
+import { PreviewDialog } from "@/components/PreviewDialog";
+import PrintableItinerary from "@/components/PrintableItinerary";
 import { useViewer } from "@/lib/use-signed-in";
 import { fetchRoadTimes } from "@/lib/road-times";
 import { burialSummary, useKeverBurials } from "@/lib/use-kever-burials";
@@ -611,6 +613,14 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
                 <span aria-hidden="true" className="absolute inset-1.5 rounded-full bg-[var(--navy)] transition-colors group-hover:bg-[var(--gold)]" />
                 <Link href="/itinerary/print" target="_blank" className="relative z-10 inline-flex h-full items-center justify-center px-5 text-xs font-bold text-white">Print / PDF</Link>
               </span>
+              {/* SEE THE WHOLE THING AS THE TRAVELLER DOES, without leaving the
+                  builder. Print/PDF beside it opens a tab and shows the paper
+                  version; this shows the document itself, in place, and changes
+                  nothing — no share token is minted, which is what the old
+                  "Preview as client" on the proposal quietly did. */}
+              <PreviewDialog label="Preview the whole itinerary" title={itin.title?.trim() || "This trip"}>
+                <PrintableItinerary itin={itin} burials={burials} siteBrand={itineraries ? "itineraries" : "kosher"} embedded />
+              </PreviewDialog>
             </div>
           </div>
 

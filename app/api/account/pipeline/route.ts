@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { accountCookieName, getAccountData, getCurrentAccountData, savePipelineStage, withTrips } from "@/lib/account-store";
+import { accountCookieName, getAccountData, getCurrentAccountData, readShareOpens, savePipelineStage, withTrips } from "@/lib/account-store";
+import { openStatus, type OpenStatus } from "@/lib/share-opens";
+import { tripTimeZone } from "@/lib/trip-timezone";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients, mayViewPipelineAnalytics } from "@/lib/account-limits";
 import { readChat, readMarkers } from "@/lib/companion-chat-store";
@@ -26,6 +28,8 @@ export type PipelineRow = {
   shareId?: string;
   /** True when the client's last word in the thread hasn't been read yet. */
   unread: boolean;
+  /** Whether the client has opened the trip link, and when. Only when shared. */
+  openStatus?: OpenStatus;
   updatedAt: string;
   /** What this trip still owes, when a balance has actually been set up. */
   outstandingCents?: number;
@@ -81,10 +85,19 @@ export async function GET() {
   const rows: PipelineRow[] = await Promise.all(
     trips.map(async (t) => {
       let unread = false;
+      // Whether the client has opened the trip link at all — a different
+      // question from whether they have written, and the one an advisor asks
+      // first. Read on the same pass, and only for a trip that has a link.
+      let opened: OpenStatus | undefined;
       if (t.shareId) {
-        const [messages, markers] = await Promise.all([readChat(t.shareId), readMarkers(t.shareId)]);
+        const [messages, markers, opens] = await Promise.all([
+          readChat(t.shareId),
+          readMarkers(t.shareId),
+          readShareOpens(t.shareId).catch(() => ({})),
+        ]);
         const last = messages[messages.length - 1];
         unread = Boolean(last && last.from === "client" && (!markers.advisor || last.at > markers.advisor));
+        opened = openStatus(opens, new Date().toISOString(), tripTimeZone(t.itinerary));
       }
       const stage = tripStage(
         { pipelineStage: t.pipelineStage, proposal: t.proposal, startDate: t.itinerary?.startDate, endDate: t.itinerary?.endDate },
@@ -101,6 +114,7 @@ export async function GET() {
         needsAttention: needsAttention(t.proposal),
         shareId: t.shareId,
         unread,
+        ...(opened ? { openStatus: opened } : {}),
         updatedAt: t.updatedAt,
         ...(t.balance && hasBalance(t.balance) ? { outstandingCents: outstandingCents(t.balance), currency: t.balance.currency } : {}),
         ...(stage === "traveling" && t.itinerary ? { travelDays: travelDaysFor(t.itinerary, borderCost, assume) } : {}),

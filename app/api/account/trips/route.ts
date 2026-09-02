@@ -8,6 +8,7 @@ import {
   ensureTripShare,
   getCurrentAccountData,
   getTrips,
+  withLinkOpens,
   importTrip,
   renameTrip,
   setTripAdvisor,
@@ -34,7 +35,11 @@ async function signedInEmail() {
 export async function GET() {
   const email = await signedInEmail();
   if (!email) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
-  const trips = await getTrips(email);
+  // withLinkOpens rather than getTrips: this is the read the sharing panel and
+  // the trip list draw their "opened / not opened yet" line from, and the
+  // status has to be worked out on the server (the trip's own timezone comes
+  // from coordinates that never leave it).
+  const trips = await withLinkOpens(email);
   return NextResponse.json({ trips, activeId: trips.find((t) => t.active)?.id ?? null });
 }
 

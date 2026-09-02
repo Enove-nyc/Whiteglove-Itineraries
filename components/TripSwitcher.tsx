@@ -6,6 +6,8 @@ import { countdownPhrase, tripProgress } from "@/lib/trip-progress";
 import { tripRowMeta } from "@/lib/trip-bar";
 import { isAccountPlan } from "@/lib/account-plans";
 import { mayServeCompanionClients, mayUseTripTemplates } from "@/lib/account-limits";
+import { ShareOpenStatus } from "@/components/ShareOpenStatus";
+import type { TripLinkStatus } from "@/lib/account-store";
 
 // The traveler's trips, and a way to move between them.
 //
@@ -36,6 +38,12 @@ type Trip = {
   updatedAt: string;
   /** Whether this trip's client gets automatic reminders — see lib/trip-reminders.ts. */
   autoReminders: boolean;
+  /**
+   * Every link on this trip and whether it has been opened, worked out by the
+   * server (the trip's own timezone comes from coordinates that never leave
+   * it). Optional because an older cached response will not carry it.
+   */
+  links?: TripLinkStatus[];
 };
 
 /** An advisor's own saved trip shape — see lib/trip-templates.ts. */
@@ -524,14 +532,34 @@ export default function TripSwitcher({
                         Stop
                       </button>
                     </div>
+                    {/* WHETHER THEY HAVE OPENED IT — the question every advisor
+                        asks after sending a trip, and the one the panel could
+                        not answer. One line per link: this trip's own, plus a
+                        traveller's own door where one was created, plus any
+                        link that has been stopped, because "they opened it
+                        twice before I turned it off" is still the answer. */}
+                    {trip.links?.map((link) => (
+                      <ShareOpenStatus
+                        key={link.shareId}
+                        status={link.status}
+                        className={(trip.links?.length ?? 0) > 1 ? "" : "mt-0.5"}
+                      />
+                    ))}
                     <p className="text-[11px] leading-4 text-stone-500">
                       Send your client the code — they enter it on the app&rsquo;s front page — or the link, which opens their trip directly.
                     </p>
                   </div>
                 ) : (
-                  <button type="button" disabled={busy} onClick={() => void act("share", { id: trip.id })} className={smallButton}>
-                    Create a client code
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button type="button" disabled={busy} onClick={() => void act("share", { id: trip.id })} className={smallButton}>
+                      Create a client code
+                    </button>
+                    {/* A trip with no live link may still have a stopped one,
+                        and what happened on it is worth keeping in view. */}
+                    {trip.links?.map((link) => (
+                      <ShareOpenStatus key={link.shareId} status={link.status} />
+                    ))}
+                  </div>
                 )}
               </div>
             )}

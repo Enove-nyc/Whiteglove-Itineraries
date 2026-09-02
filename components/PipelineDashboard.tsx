@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { pipelineStats, TRIP_STAGE_LABEL, TRIP_STAGE_ORDER, type TripStage } from "@/data/trip-pipeline";
+import { ShareOpenStatus } from "@/components/ShareOpenStatus";
+import type { OpenStatus } from "@/lib/share-opens";
 import { formatCents } from "@/data/trip-payments";
 import { useDeviceClock } from "@/components/TripProgressStrip";
 import { followAlong, tripProgress, type FollowStop } from "@/lib/trip-progress";
@@ -21,6 +23,8 @@ type Row = {
   needsAttention: boolean;
   shareId?: string;
   unread: boolean;
+  /** Whether the client has opened the trip link, and when. Only when shared. */
+  openStatus?: OpenStatus;
   updatedAt: string;
   /** What this trip still owes, when a balance has actually been set up. */
   outstandingCents?: number;
@@ -187,6 +191,10 @@ function RowCard({
           </a>
         )}
       </div>
+      {/* Whether the client has opened what was sent. Scanning the board for
+          the trips nobody has looked at is the reason this is here and not
+          only on the sharing panel. */}
+      {row.openStatus && <ShareOpenStatus status={row.openStatus} className="mt-2" />}
       {showAnalytics && <CommissionField cents={row.commissionCents} currency={row.commissionCurrency} onSave={onCommission} />}
       {onStage && (row.stage === "inquiry" || row.stage === "planning") && (
         <div className="mt-3 flex gap-2 border-t border-[var(--gold-light)] pt-3">

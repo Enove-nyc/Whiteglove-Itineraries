@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import { IMPORTED_KIND_LABEL, type ImportedItem, type ImportedItemKind } from "@/data/smart-import";
+import {
+  IMPORT_ACCEPT,
+  IMPORT_TYPES,
+  MAX_IMPORT_BYTES,
+  importFingerprint,
+  isImportMediaType,
+} from "@/data/smart-import-files";
+import { ANSWER_LABEL } from "@/lib/assistant-disclosure";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-[var(--gold-light)] bg-white px-3 py-2 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
@@ -30,7 +38,15 @@ function summaryLine(item: ImportedItem): string {
 export default function SmartImportPanel({ onImport, onCancel }: { onImport: (items: ImportedItem[]) => void; onCancel: () => void }) {
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("");
-  const [pdfDataUrl, setPdfDataUrl] = useState("");
+  const [fileDataUrl, setFileDataUrl] = useState("");
+  /**
+   * What has already been added in this sitting, so the same confirmation is
+   * not silently added twice. In memory only and for one sitting only, which
+   * is exactly as long as the mistake it prevents — nothing about what anybody
+   * imported is kept or sent anywhere.
+   */
+  const [alreadyAdded, setAlreadyAdded] = useState<Set<string>>(new Set());
+  const [duplicate, setDuplicate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<ImportedItem[] | null>(null);
@@ -40,22 +56,34 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.type !== "application/pdf") {
-      setError("Attach a PDF file.");
+    if (!isImportMediaType(file.type)) {
+      setError(`Attach a ${Object.values(IMPORT_TYPES).join(", ")} — the PDF, a screenshot, or a photo of it.`);
+      return;
+    }
+    if (file.size > MAX_IMPORT_BYTES) {
+      setError("That file is too large — try a screenshot of just the confirmation.");
       return;
     }
     setError("");
+    setDuplicate(false);
     setFileName(file.name);
     const reader = new FileReader();
-    reader.onload = () => setPdfDataUrl(typeof reader.result === "string" ? reader.result : "");
+    // A failed read must not leave the button armed with nothing behind it.
+    reader.onerror = () => {
+      setError("That file could not be read. Try another, or paste the text instead.");
+      setFileName("");
+      setFileDataUrl("");
+    };
+    reader.onload = () => setFileDataUrl(typeof reader.result === "string" ? reader.result : "");
     reader.readAsDataURL(file);
   }
 
   async function extract() {
-    if (!text.trim() && !pdfDataUrl) {
-      setError("Paste a confirmation, or attach a PDF, first.");
+    if (!text.trim() && !fileDataUrl) {
+      setError("Paste a confirmation, or attach one, first.");
       return;
     }
+    setDuplicate(alreadyAdded.has(importFingerprint({ text, base64: fileDataUrl })));
     setLoading(true);
     setError("");
     setItems(null);
@@ -64,7 +92,7 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
       const res = await fetch("/api/account/smart-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pdfDataUrl ? { pdfDataUrl } : { text }),
+        body: JSON.stringify(fileDataUrl ? { fileDataUrl } : { text }),
       });
       const data = (await res.json().catch(() => null)) as { items?: ImportedItem[]; warnings?: string[]; error?: string } | null;
       if (!res.ok || !data) {
@@ -97,6 +125,10 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
     if (!items) return;
     const chosen = items.filter((it) => !excluded.has(it.id));
     if (chosen.length === 0) return;
+    // Remembered so re-reading the same confirmation in this sitting warns
+    // before it is added a second time.
+    const print = importFingerprint({ text, base64: fileDataUrl });
+    if (print) setAlreadyAdded((prev) => new Set(prev).add(print));
     onImport(chosen);
     onCancel();
   }
@@ -105,9 +137,16 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
     <div className="mt-4 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
       <p className="text-sm font-semibold text-[var(--navy)]">Smart Import</p>
       <p className="mt-1 text-xs leading-5 text-stone-600">
-        Paste a confirmation email or reservation text, or attach the confirmation PDF, and it reads out the flight, hotel or
-        reservation details. Nothing is added until you choose to keep it below.
+        Paste a confirmation email or reservation text, or attach one — the PDF, a screenshot, or a photo of a printed
+        voucher — and it reads out the flight, hotel or reservation details. Nothing is added until you choose to keep it
+        below.
       </p>
+      {/* SAID BEFORE ANYTHING IS READ, not after. What comes back is a model's
+          reading of a document, and the planner is about to check it field by
+          field — they should know that is what they are checking. The same
+          wording the assistant uses, from lib/assistant-disclosure.ts, so the
+          site has one phrase for this and not two. */}
+      <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--gold-ink)]">{ANSWER_LABEL}</p>
 
       {!items && (
         <>
@@ -119,20 +158,20 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Paste the confirmation email or reservation text here…"
-              disabled={Boolean(pdfDataUrl)}
+              disabled={Boolean(fileDataUrl)}
             />
           </label>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="text-xs font-semibold text-stone-500">or</span>
-            <label className="cursor-pointer rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)]">
-              {fileName || "Attach a PDF"}
-              <input type="file" accept="application/pdf" className="hidden" onChange={onFile} />
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--gold-light)] bg-white px-3.5 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--gold)]">
+              {fileName || "Attach a PDF, screenshot or photo"}
+              <input type="file" accept={IMPORT_ACCEPT} className="sr-only" onChange={onFile} />
             </label>
-            {pdfDataUrl && (
+            {fileDataUrl && (
               <button
                 type="button"
                 onClick={() => {
-                  setPdfDataUrl("");
+                  setFileDataUrl("");
                   setFileName("");
                 }}
                 className="text-xs font-semibold text-stone-500 underline"
@@ -141,7 +180,19 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
               </button>
             )}
           </div>
-          {error && <p className="mt-2 text-xs font-semibold text-red-700">{error}</p>}
+          {/* Already added once in this sitting. A warning rather than a block:
+              a planner may legitimately want the same voucher on two trips,
+              and the site should not decide that for them. */}
+          {duplicate && (
+            <p className="mt-2 text-xs font-semibold text-[var(--gold-ink)]">
+              You already added this one. Read it again if you meant to.
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="mt-2 text-xs font-semibold text-red-700">
+              {error}
+            </p>
+          )}
           <div className="mt-4 flex gap-2">
             <button
               type="button"

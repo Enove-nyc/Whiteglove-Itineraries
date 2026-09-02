@@ -70,6 +70,7 @@ export function IconButton({
   className = "",
   active = false,
   type = "button",
+  ref,
 }: {
   icon: IconName;
   label: string;
@@ -77,9 +78,22 @@ export function IconButton({
   className?: string;
   active?: boolean;
   type?: "button" | "submit";
+  /**
+   * So a dialog this button opens can hand focus back to it on close.
+   * Without it, closing drops the keyboard at the top of the document and
+   * the next Tab starts the page over — see components/PreviewDialog.tsx.
+   */
+  ref?: React.Ref<HTMLButtonElement>;
 }) {
   return (
-    <button type={type} onClick={onClick} aria-label={label} title={label} className={`${BASE} ${active ? "bg-[var(--cream-deep)] text-[var(--gold-ink)]" : ""} ${className}`}>
+    <button
+      ref={ref}
+      type={type}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`${BASE} ${active ? "bg-[var(--cream-deep)] text-[var(--gold-ink)]" : ""} ${className}`}
+    >
       <Icon name={icon} />
     </button>
   );
