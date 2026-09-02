@@ -34,7 +34,7 @@ describe("what it says when nobody has set anything", () => {
     // The whole body. Anything more is a paragraph creeping back.
     assert.equal(
       DEFAULT_NOTICE.body,
-      "Travel details change. Confirm kashrus, hours and Shabbos arrangements before travel.",
+      "Travel details change. Confirm opening hours and booking details before you travel.",
     );
   });
 
@@ -170,10 +170,21 @@ describe("reading what was stored", () => {
 });
 
 describe("filling in what the owner left blank", () => {
-  it("falls back field by field", () => {
-    const filled = noticeFrom({ heading: "Before you go", body: "   " });
-    assert.equal(filled.heading, "Before you go");
+  it("KEEPS THIS PRODUCT'S OWN WORDING, whatever the shared store says", () => {
+    // Both deployments read one store. A notice written for the kosher guide
+    // — "confirm kashrus, hours and Shabbos arrangements" — was arriving here
+    // and putting kosher wording on every page of a general travel product.
+    // The switch is shared; the words are not.
+    const filled = noticeFrom({ heading: "Before you go", body: "Confirm kashrus and Shabbos arrangements." });
+    assert.equal(filled.heading, DEFAULT_NOTICE.heading);
     assert.equal(filled.body, DEFAULT_NOTICE.body);
+  });
+
+  it("carries no kosher or Jewish wording at all", () => {
+    for (const word of ["kosher", "kashrus", "shabbos", "jewish", "shul", "mikvah", "kever"]) {
+      assert.ok(!DEFAULT_NOTICE.body.toLowerCase().includes(word), `the notice says "${word}"`);
+      assert.ok(!DEFAULT_NOTICE.heading.toLowerCase().includes(word), `the heading says "${word}"`);
+    }
   });
 
   it("keeps off meaning off", () => {
