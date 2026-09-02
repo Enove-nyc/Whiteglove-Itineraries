@@ -138,9 +138,9 @@ describe("the whole journey survives the hand-off", () => {
     // trip arriving as one leg opens a working search for the wrong journey,
     // and nobody reports that as a bug — they just book somewhere else.
     const legs = [
-      { from: "JFK", to: "FCO", date: "2026-09-01" },
-      { from: "FCO", to: "ATH", date: "2026-09-05" },
-      { from: "ATH", to: "JFK", date: "2026-09-12" },
+      { from: "JFK", to: "FCO", date: "2027-09-01" },
+      { from: "FCO", to: "ATH", date: "2027-09-05" },
+      { from: "ATH", to: "JFK", date: "2027-09-12" },
     ];
     const href = goHref({ product: "flight", legs });
     const parsed = readAffiliateRequest(new URLSearchParams(href.slice(href.indexOf("?") + 1)));
@@ -164,19 +164,19 @@ describe("the whole journey survives the hand-off", () => {
     assert.match(SOURCE, /airportCode\(leg\.from\)/);
     assert.match(SOURCE, /airportCode\(leg\.to\)/);
 
-    const legs = [{ from: airportCode("Cluj-Napoca (CLJ)"), to: airportCode("Rome (FCO)"), date: "2026-09-01" }];
-    const href = goHref({ product: "flight", legs, checkOut: "2026-09-08" });
+    const legs = [{ from: airportCode("Cluj-Napoca (CLJ)"), to: airportCode("Rome (FCO)"), date: "2027-09-01" }];
+    const href = goHref({ product: "flight", legs, checkOut: "2027-09-08" });
     const parsed = readAffiliateRequest(new URLSearchParams(href.slice(href.indexOf("?") + 1)));
-    assert.deepEqual(parsed?.legs, [{ from: "CLJ", to: "FCO", date: "2026-09-01" }]);
-    assert.match(resolveLink(parsed!, config)?.url ?? "", /CLJ-FCO\/2026-09-01\/2026-09-08/);
+    assert.deepEqual(parsed?.legs, [{ from: "CLJ", to: "FCO", date: "2027-09-01" }]);
+    assert.match(resolveLink(parsed!, config)?.url ?? "", /CLJ-FCO\/2027-09-01\/2027-09-08/);
   });
 
   it("still reads a leg from a page that has not been reloaded since the fix", () => {
     // A browser holding the previous version of the booking page sends
     // labels. Refusing them would break the search for exactly as long as
     // somebody's tab stayed open, which is not a trade worth making.
-    const parsed = readAffiliateRequest(new URLSearchParams("product=flight&legs=New York (JFK)-Rome (FCO)-2026-09-01"));
-    assert.deepEqual(parsed?.legs, [{ from: "JFK", to: "FCO", date: "2026-09-01" }]);
+    const parsed = readAffiliateRequest(new URLSearchParams("product=flight&legs=New York (JFK)-Rome (FCO)-2027-09-01"));
+    assert.deepEqual(parsed?.legs, [{ from: "JFK", to: "FCO", date: "2027-09-01" }]);
   });
 
   it("refuses a leg that is not three whole fields", () => {
@@ -211,7 +211,7 @@ describe("a link that names its own partner", () => {
   /**
    * DATES THAT DO NOT WALK INTO THE PAST.
    *
-   * This block was pinned to a departure of 2026-08-25, and on 2026-08-26 all
+   * This block was pinned to a departure of 2027-08-25, and on 2027-08-26 all
    * five of its tests broke at once — not because anything regressed, but
    * because the site correctly refuses a flight that has already left, so the
    * request stopped parsing and every `resolved!` in here dereferenced null.

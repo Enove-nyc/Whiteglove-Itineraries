@@ -57,8 +57,8 @@ describe("what the airport list searches on", () => {
 describe("what cannot be searched", () => {
   const round = (over: Partial<{ legs: [ReturnType<typeof leg>]; ret: string }> = {}): SearchShape => ({
     trip: "round-trip",
-    legs: over.legs ?? [leg("JFK", "KRK", "2026-09-01")],
-    ret: over.ret ?? "2026-09-08",
+    legs: over.legs ?? [leg("JFK", "KRK", "2027-09-01")],
+    ret: over.ret ?? "2027-09-08",
   });
 
   it("takes a complete round trip", () => {
@@ -66,15 +66,15 @@ describe("what cannot be searched", () => {
   });
 
   it("says which airport is missing, and how to give it", () => {
-    assert.match(String(searchProblem(round({ legs: [leg("New", "KRK", "2026-09-01")] }))), /pick from the list, or type a code/);
+    assert.match(String(searchProblem(round({ legs: [leg("New", "KRK", "2027-09-01")] }))), /pick from the list, or type a code/);
   });
 
   it("refuses a flight from a place to itself", () => {
-    assert.match(String(searchProblem(round({ legs: [leg("JFK", "JFK", "2026-09-01")] }))), /the same/i);
+    assert.match(String(searchProblem(round({ legs: [leg("JFK", "JFK", "2027-09-01")] }))), /the same/i);
   });
 
   it("refuses a return before the departure", () => {
-    assert.match(String(searchProblem(round({ ret: "2026-08-01" }))), /before the departure/);
+    assert.match(String(searchProblem(round({ ret: "2027-08-01" }))), /before the departure/);
   });
 
   it("refuses a round trip with no return, and says what to do instead", () => {
@@ -82,7 +82,7 @@ describe("what cannot be searched", () => {
   });
 
   it("takes a one way with no return at all", () => {
-    assert.equal(searchProblem({ trip: "one-way", legs: [leg("JFK", "KRK", "2026-09-01")] }), null);
+    assert.equal(searchProblem({ trip: "one-way", legs: [leg("JFK", "KRK", "2027-09-01")] }), null);
   });
 
   it("refuses a date that has already passed", () => {
@@ -90,21 +90,21 @@ describe("what cannot be searched", () => {
   });
 
   it("names which leg of a multi-city is wrong", () => {
-    const shape: SearchShape = { trip: "multi-city", legs: [leg("JFK", "KRK", "2026-09-01"), leg("KRK", "", "2026-09-05")] };
+    const shape: SearchShape = { trip: "multi-city", legs: [leg("JFK", "KRK", "2027-09-01"), leg("KRK", "", "2027-09-05")] };
     assert.match(String(searchProblem(shape)), /flight 2/);
   });
 
   it("refuses multi-city legs that are out of order", () => {
     // Almost always a typo, and Kayak takes the dates as given — so it would
     // search a journey nobody could fly and show nothing.
-    const shape: SearchShape = { trip: "multi-city", legs: [leg("JFK", "KRK", "2026-09-05"), leg("KRK", "BUD", "2026-09-01")] };
+    const shape: SearchShape = { trip: "multi-city", legs: [leg("JFK", "KRK", "2027-09-05"), leg("KRK", "BUD", "2027-09-01")] };
     assert.match(String(searchProblem(shape)), /leaves before/);
   });
 
   it("takes multi-city legs in order", () => {
     const shape: SearchShape = {
       trip: "multi-city",
-      legs: [leg("JFK", "KRK", "2026-09-01"), leg("KRK", "BUD", "2026-09-05"), leg("BUD", "JFK", "2026-09-09")],
+      legs: [leg("JFK", "KRK", "2027-09-01"), leg("KRK", "BUD", "2027-09-05"), leg("BUD", "JFK", "2027-09-09")],
     };
     assert.equal(searchProblem(shape), null);
   });
@@ -112,32 +112,32 @@ describe("what cannot be searched", () => {
 
 describe("the address it opens", () => {
   it("writes a round trip as one route and two dates", () => {
-    const url = kayakUrl({ trip: "round-trip", legs: [leg("JFK", "KRK", "2026-09-01")], ret: "2026-09-08" });
-    assert.match(url, /^https:\/\/www\.kayak\.com\/flights\/JFK-KRK\/2026-09-01\/2026-09-08\?/);
+    const url = kayakUrl({ trip: "round-trip", legs: [leg("JFK", "KRK", "2027-09-01")], ret: "2027-09-08" });
+    assert.match(url, /^https:\/\/www\.kayak\.com\/flights\/JFK-KRK\/2027-09-01\/2027-09-08\?/);
   });
 
   it("writes a one way with no return date on it", () => {
     // A stray date here is a return flight nobody asked for.
-    const url = kayakUrl({ trip: "one-way", legs: [leg("JFK", "KRK", "2026-09-01")] });
-    assert.match(url, /flights\/JFK-KRK\/2026-09-01\?/);
-    assert.ok(!/2026-09-08/.test(url));
+    const url = kayakUrl({ trip: "one-way", legs: [leg("JFK", "KRK", "2027-09-01")] });
+    assert.match(url, /flights\/JFK-KRK\/2027-09-01\?/);
+    assert.ok(!/2027-09-08/.test(url));
   });
 
   it("writes multi-city as the legs in order", () => {
     const url = kayakUrl({
       trip: "multi-city",
-      legs: [leg("JFK", "KRK", "2026-09-01"), leg("KRK", "BUD", "2026-09-05")],
+      legs: [leg("JFK", "KRK", "2027-09-01"), leg("KRK", "BUD", "2027-09-05")],
     });
-    assert.match(url, /flights\/JFK-KRK\/2026-09-01\/KRK-BUD\/2026-09-05\?/);
+    assert.match(url, /flights\/JFK-KRK\/2027-09-01\/KRK-BUD\/2027-09-05\?/);
   });
 
   it("uses the code, not the label the box holds", () => {
-    const url = kayakUrl({ trip: "one-way", legs: [leg("New York — all airports (NYC)", "Kraków (KRK)", "2026-09-01")] });
+    const url = kayakUrl({ trip: "one-way", legs: [leg("New York — all airports (NYC)", "Kraków (KRK)", "2027-09-01")] });
     assert.match(url, /flights\/NYC-KRK\//);
   });
 
   it("carries the nonstop filter only when it was asked for", () => {
-    const shape: SearchShape = { trip: "one-way", legs: [leg("JFK", "KRK", "2026-09-01")] };
+    const shape: SearchShape = { trip: "one-way", legs: [leg("JFK", "KRK", "2027-09-01")] };
     assert.match(kayakUrl(shape, { nonstop: true }), /fs=stops%3D0|fs=stops=0/);
     assert.ok(!/fs=/.test(kayakUrl(shape)));
   });
@@ -145,7 +145,7 @@ describe("the address it opens", () => {
   it("appends the affiliate key without losing the filters", () => {
     // A search that opens without it earns nothing, and the page looks exactly
     // the same — so nobody would ever notice.
-    const url = kayakUrl({ trip: "one-way", legs: [leg("JFK", "KRK", "2026-09-01")] }, { nonstop: true, affiliate: "a=wg&b=1" });
+    const url = kayakUrl({ trip: "one-way", legs: [leg("JFK", "KRK", "2027-09-01")] }, { nonstop: true, affiliate: "a=wg&b=1" });
     assert.match(url, /a=wg&b=1$/);
     assert.match(url, /sort=bestflight_a/);
     assert.match(url, /fs=stops/);
@@ -161,12 +161,12 @@ describe("the address it opens", () => {
 describe("how the search reads back", () => {
   it("says the journey in codes", () => {
     assert.equal(
-      describeSearch({ trip: "round-trip", legs: [leg("JFK", "KRK", "2026-09-01")], ret: "2026-09-08" }),
-      "JFK → KRK, 2026-09-01 and back 2026-09-08",
+      describeSearch({ trip: "round-trip", legs: [leg("JFK", "KRK", "2027-09-01")], ret: "2027-09-08" }),
+      "JFK → KRK, 2027-09-01 and back 2027-09-08",
     );
     assert.equal(
-      describeSearch({ trip: "multi-city", legs: [leg("JFK", "KRK", "2026-09-01"), leg("KRK", "BUD", "2026-09-05")] }),
-      "JFK → KRK, 2026-09-01; KRK → BUD, 2026-09-05",
+      describeSearch({ trip: "multi-city", legs: [leg("JFK", "KRK", "2027-09-01"), leg("KRK", "BUD", "2027-09-05")] }),
+      "JFK → KRK, 2027-09-01; KRK → BUD, 2027-09-05",
     );
   });
 });

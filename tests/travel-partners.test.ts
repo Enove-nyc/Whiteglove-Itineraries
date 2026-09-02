@@ -33,13 +33,13 @@ const flights = (key: string) => TRAVEL_PARTNERS.find((p) => p.slot === "flights
 const cars = (key: string) => TRAVEL_PARTNERS.find((p) => p.slot === "cars" && p.key === key)!;
 
 const journey = {
-  shape: { trip: "one-way" as const, legs: [{ from: "JFK", to: "KRK", date: "2026-09-01" }] as [{ from: string; to: string; date: string }] },
+  shape: { trip: "one-way" as const, legs: [{ from: "JFK", to: "KRK", date: "2027-09-01" }] as [{ from: string; to: string; date: string }] },
 };
 const roundTrip = {
   shape: {
     trip: "round-trip" as const,
-    legs: [{ from: "JFK", to: "KRK", date: "2026-09-01" }] as [{ from: string; to: string; date: string }],
-    ret: "2026-09-08",
+    legs: [{ from: "JFK", to: "KRK", date: "2027-09-01" }] as [{ from: string; to: string; date: string }],
+    ret: "2027-09-08",
   },
 };
 
@@ -134,7 +134,7 @@ describe("the flight address", () => {
 
   it("refuses to build a results path out of a broken date", () => {
     assert.equal(aviasalesResultsUrl({ from: "JFK", to: "KRK", depart: "soon" }), null);
-    assert.equal(aviasalesResultsUrl({ from: "New York", to: "KRK", depart: "2026-09-01" }), null);
+    assert.equal(aviasalesResultsUrl({ from: "New York", to: "KRK", depart: "2027-09-01" }), null);
   });
 
   it("builds Kiwi on its own host, with the path joined properly", () => {
@@ -142,7 +142,7 @@ describe("the flight address", () => {
     assert.equal(url.host, "www.kiwi.com");
     // The bug this caught: filtering a leading "" out of the parts produced
     // "www.kiwi.comsearch/results", a host that does not exist.
-    assert.equal(url.pathname, "/search/results/JFK/KRK/2026-09-01/2026-09-08");
+    assert.equal(url.pathname, "/search/results/JFK/KRK/2027-09-01/2027-09-08");
   });
 
   it("sends Aviasales and Kiwi the first leg of a multi-city, which is what they accept", () => {
@@ -150,8 +150,8 @@ describe("the flight address", () => {
       shape: {
         trip: "multi-city" as const,
         legs: [
-          { from: "JFK", to: "KRK", date: "2026-09-01" },
-          { from: "KRK", to: "FCO", date: "2026-09-05" },
+          { from: "JFK", to: "KRK", date: "2027-09-01" },
+          { from: "KRK", to: "FCO", date: "2027-09-05" },
         ],
       },
     };
@@ -160,14 +160,14 @@ describe("the flight address", () => {
     // stuck on the end of it, which would be a different journey entirely.
     assert.equal(aviasales.pathname, "/search/JFK0109KRK1");
     const kiwi = new URL(flightUrl(flights("kiwi"), multi)!);
-    assert.match(kiwi.pathname, /\/search\/results\/JFK\/KRK\/2026-09-01$/);
+    assert.match(kiwi.pathname, /\/search\/results\/JFK\/KRK\/2027-09-01$/);
     assert.doesNotMatch(kiwi.pathname, /FCO/);
   });
 
   it("refuses a journey with a piece missing", () => {
     const noDate = { shape: { trip: "one-way" as const, legs: [{ from: "JFK", to: "KRK", date: "" }] as [{ from: string; to: string; date: string }] } };
     assert.equal(flightUrl(flights("aviasales"), noDate), null);
-    const noTo = { shape: { trip: "one-way" as const, legs: [{ from: "JFK", to: "", date: "2026-09-01" }] as [{ from: string; to: string; date: string }] } };
+    const noTo = { shape: { trip: "one-way" as const, legs: [{ from: "JFK", to: "", date: "2027-09-01" }] as [{ from: string; to: string; date: string }] } };
     assert.equal(flightUrl(flights("aviasales"), noTo), null);
   });
 
@@ -191,15 +191,15 @@ describe("the car address", () => {
   it("INVENTS NO DATE PARAMETERS for a partner whose format has none", () => {
     // The temptation is a date_from= because every other partner has one. It
     // would look right, open, and drop the dates in silence.
-    const url = new URL(carUrl(cars("economybookings"), { where: "Krakow", pickup: "2026-09-01", dropoff: "2026-09-05" })!);
+    const url = new URL(carUrl(cars("economybookings"), { where: "Krakow", pickup: "2027-09-01", dropoff: "2027-09-05" })!);
     assert.equal(url.searchParams.has("date_from"), false);
-    assert.doesNotMatch(url.search, /2026-09-01/);
+    assert.doesNotMatch(url.search, /2027-09-01/);
   });
 
   it("still needs both dates for Kayak, which puts them in the path", () => {
     assert.equal(carUrl(cars("kayak"), { where: "Krakow" }), null);
-    const url = carUrl(cars("kayak"), { where: "Krakow", pickup: "2026-09-01", dropoff: "2026-09-05" })!;
-    assert.equal(url, "https://www.kayak.com/cars/Krakow/2026-09-01/2026-09-05");
+    const url = carUrl(cars("kayak"), { where: "Krakow", pickup: "2027-09-01", dropoff: "2027-09-05" })!;
+    assert.equal(url, "https://www.kayak.com/cars/Krakow/2027-09-01/2027-09-05");
   });
 
   it("refuses a pick-up nobody named", () => {
@@ -207,7 +207,7 @@ describe("the car address", () => {
   });
 
   it("encodes a place with a space in it", () => {
-    const url = carUrl(cars("kayak"), { where: "Tel Aviv", pickup: "2026-09-01", dropoff: "2026-09-05" })!;
+    const url = carUrl(cars("kayak"), { where: "Tel Aviv", pickup: "2027-09-01", dropoff: "2027-09-05" })!;
     assert.doesNotMatch(new URL(url).pathname, / /);
   });
 });
