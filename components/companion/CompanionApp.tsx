@@ -2281,27 +2281,34 @@ export default function CompanionApp({
   }
 
   return (
-    <div className="wg-app-root">
+    // "showcase" is the marketing demo (concierge): a phone stood in a device
+    // frame on navy. "web" is a real, opened trip: on a computer it becomes a
+    // clean, full-height web-app panel on a light page — a genuine web version,
+    // not a toy phone — while a phone still shows it full-screen either way.
+    <div className="wg-app-root" data-mode={hasConcierge ? "showcase" : "web"}>
       <style>{COMPANION_CSS}</style>
       {/* Desktop showcase chrome — the intro and the two toolbars, shown in the
-          browser and hidden once the app is installed to the home screen. */}
-      <div className="wg-chrome">
-        <div className="wg-chrome-head">
-          <div className="wg-chrome-intro">
-            <div style={{ font: "600 11px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#c8a76a" }}>White Glove · app</div>
-          </div>
-          {showcaseSwitches && (
-            <div className="wg-toolbar-group">
-              <div className="wg-toolbar-label">Trip kind</div>
-              <div className="wg-toolbar">
-                {tmodeOpts.map((o) => (
-                  <button key={o.id} onClick={o.pick} style={{ border: 0, cursor: "pointer", font: `400 13px/1 ${serif}`, padding: "9px 15px", borderRadius: 14, background: o.bg, color: o.fg }}>{o.label}</button>
-                ))}
-              </div>
+          browser and hidden once the app is installed to the home screen. Only
+          the demo carries it; a real app is just the app. */}
+      {hasConcierge && (
+        <div className="wg-chrome">
+          <div className="wg-chrome-head">
+            <div className="wg-chrome-intro">
+              <div style={{ font: "600 11px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#c8a76a" }}>White Glove · app</div>
             </div>
-          )}
+            {showcaseSwitches && (
+              <div className="wg-toolbar-group">
+                <div className="wg-toolbar-label">Trip kind</div>
+                <div className="wg-toolbar">
+                  {tmodeOpts.map((o) => (
+                    <button key={o.id} onClick={o.pick} style={{ border: 0, cursor: "pointer", font: `400 13px/1 ${serif}`, padding: "9px 15px", borderRadius: 14, background: o.bg, color: o.fg }}>{o.label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="wg-stage">
         <div className="wg-frame">{phone}</div>
@@ -5079,5 +5086,14 @@ export const COMPANION_CSS = `
   .wg-frame { width: 402px; height: 812px; border-radius: 44px; overflow: hidden; box-shadow: 0 40px 80px rgba(0,0,0,0.28), 0 0 0 10px #0c1c2b, 0 0 0 11px rgba(255,255,255,.06); }
   .wg-phone { height: 812px; }
   .wg-hint { display: block; max-width: 620px; margin: 0; text-align: center; font-size: 13px; line-height: 1.6; color: #cdd6dd; text-wrap: pretty; }
+
+  /* A real, opened trip on a computer: not a phone posed in a device frame on
+   * navy, but a proper web page — a clean, full-height app panel centred on a
+   * soft neutral ground. It uses the height of the screen and reads as software
+   * you sit down to, not a picture of a phone. The phone-width column is kept
+   * (the client screens are laid out for it) but framed as a web app card. */
+  .wg-app-root[data-mode="web"] { padding: 24px; background: #eef1f4; justify-content: center; }
+  .wg-app-root[data-mode="web"] .wg-frame { width: min(460px, 100%); height: min(880px, calc(100dvh - 48px)); border-radius: 24px; box-shadow: 0 14px 44px rgba(16,32,48,.16), 0 0 0 1px rgba(38,50,58,.08); }
+  .wg-app-root[data-mode="web"] .wg-phone { height: min(880px, calc(100dvh - 48px)); }
 }
 `;
