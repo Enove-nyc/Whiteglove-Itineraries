@@ -61,7 +61,9 @@ describe("a shared place waits for the advisor to pick a client, then lands in t
   });
 
   it("opening a client's thread carries the pending share into its composer", () => {
-    const openBlock = APP.slice(APP.indexOf("if (open) {"), APP.indexOf("return (\n    <div style={{ padding: \"16px 16px 28px\""));
+    // The open thread is built by threadPanel now (shared between the phone's
+    // one-at-a-time view and the desktop two-pane), so read that block.
+    const openBlock = APP.slice(APP.indexOf("const threadPanel"), APP.indexOf("const overlays"));
     assert.match(openBlock, /initialDraft=\{pendingShare\}/);
     assert.match(openBlock, /onInitialDraftUsed=\{onPendingShareUsed\}/);
   });

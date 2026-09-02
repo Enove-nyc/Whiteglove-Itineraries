@@ -4596,6 +4596,26 @@ const INBOX_KIND_META: Record<string, { glyph: ReactNode; label: string }> = {
  * with. Tap one to open that thread; every client is its own chat, and this is
  * the one place they all live.
  */
+/**
+ * True when the viewport matches `query` — the one bit of "am I on a desktop"
+ * the app reads, so a screen can lay itself out as a real web page on a computer
+ * and a phone screen on a phone. SSR and the first paint report false (the phone
+ * layout), then it corrects on the client; a layout that flips once on load is
+ * fine, a hydration mismatch is not.
+ */
+function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof window === "undefined" || !window.matchMedia) return () => {};
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    () => (typeof window !== "undefined" && window.matchMedia ? window.matchMedia(query).matches : false),
+    () => false,
+  );
+}
+
 export function AdvisorInbox({
   pendingShare,
   onPendingShareUsed,
@@ -4758,13 +4778,23 @@ export function AdvisorInbox({
     if (match) setOpen(match);
   });
 
-  if (open) {
-    return (
+  // A computer gets a two-pane inbox — the conversation list beside the open
+  // thread — so an advisor at their office desk reads and replies on the whole
+  // screen; a phone keeps the one-at-a-time swap. Same data, same actions, laid
+  // out for the screen it is on.
+  const isWide = useMediaQuery("(min-width: 900px)");
+
+  // The open thread, with or without the phone's back button (a computer shows
+  // both panes, so there is nothing to go "back" to).
+  const threadPanel = (withBack: boolean) =>
+    open ? (
       <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", animation: "wgIn .28s ease both" }}>
-        <button onClick={() => setOpen(null)} className="wg-warm" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, border: 0, borderBottom: "1px solid rgba(38,50,58,.08)", background: "#ece8df", cursor: "pointer", padding: "12px 16px", textAlign: "left" }}>
-          <span style={{ fontSize: 15, color: "#57534e" }}>←</span>
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid rgba(38,50,58,.08)", background: "#ece8df", padding: "12px 16px" }}>
+          {withBack && (
+            <button onClick={() => setOpen(null)} aria-label="Back to conversations" className="wg-fade" style={{ border: 0, background: "none", cursor: "pointer", fontSize: 15, color: "#57534e", padding: 0, display: "flex" }}>←</button>
+          )}
           <span style={{ font: `400 17px/1.1 ${serif}` }}>{nameOf(open)}</span>
-        </button>
+        </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <LiveChat
             chat={{ shareId: open.shareId, side: "advisor", advisorName: nameOf(open) }}
@@ -4777,11 +4807,56 @@ export function AdvisorInbox({
           />
         </div>
       </div>
-    );
-  }
+    ) : null;
 
-  return (
-    <div style={{ padding: "16px 16px 28px", display: "flex", flexDirection: "column", gap: 10, animation: "wgIn .28s ease both" }}>
+  const overlays = (
+    <>
+      {/* Long-press actions — a sheet, since there is no per-row button to hang
+          a menu off any more. Pin, Rename (the advisor's own private label) and
+          Delete. */}
+      {menuFor && (() => {
+        const c = (convos ?? []).find((x) => x.shareId === menuFor);
+        if (!c) return null;
+        const isPinned = pinned.has(c.shareId);
+        const item: CSSProperties = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "14px 18px", fontSize: 14.5, color: INK };
+        return (
+          <div
+            onPointerDown={() => { swallowTap.current = false; }}
+            onClick={() => { if (swallowTap.current) { swallowTap.current = false; return; } setMenuFor(null); }}
+            style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(15,20,25,.4)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+          >
+            <div onClick={(e) => e.stopPropagation()} style={{ background: CREAM, borderRadius: "20px 20px 0 0", padding: "8px 8px calc(8px + env(safe-area-inset-bottom))", animation: "wgIn .2s ease both" }}>
+              <div style={{ padding: "10px 18px 8px", font: `400 15px/1.1 ${serif}`, color: "#57534e", borderBottom: "1px solid rgba(38,50,58,.08)" }}>{nameOf(c)}</div>
+              <button role="menuitem" className="wg-warm" onClick={() => togglePin(c.shareId)} style={item}>
+                <Icon name="map-pin" className="h-[18px] w-[18px]" /> {isPinned ? "Unpin" : "Pin to top"}
+              </button>
+              <button role="menuitem" className="wg-warm" onClick={() => { setMenuFor(null); setRenaming(c); }} style={item}>
+                <Icon name="pencil" className="h-[18px] w-[18px]" /> Rename
+              </button>
+              <button role="menuitem" className="wg-warm" onClick={() => { setMenuFor(null); void deleteConvo(c.shareId); }} disabled={deleting === c.shareId} style={{ ...item, color: "#b5442e", opacity: deleting === c.shareId ? 0.5 : 1 }}>
+                <Icon name="trash" className="h-[18px] w-[18px]" /> Delete conversation
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Rename — the advisor's own name for this conversation, kept on the
+          device. The client never sees it; on their side the chat stays the
+          advisor's own name. */}
+      {renaming && (
+        <RenameConversation
+          initial={nameOf(renaming)}
+          fallback={renaming.client || renaming.name}
+          onSave={(v) => { saveName(renaming.shareId, v); setRenaming(null); }}
+          onClose={() => setRenaming(null)}
+        />
+      )}
+    </>
+  );
+
+  const listBody = (
+    <>
       {pendingShare && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, font: "400 11.5px/1 ui-monospace,Menlo,monospace", color: "#1f3f5c", background: "#e7edf1", padding: "10px 14px", borderRadius: 14 }}>
           <Icon name="map-pin" className="h-3.5 w-3.5" /> Shared in — tap a client below to send it
@@ -4852,52 +4927,45 @@ export function AdvisorInbox({
         );
       })}
 
-      {/* Long-press actions — a sheet, since there is no per-row button to hang
-          a menu off any more. Pin, Rename (the advisor's own private label) and
-          Delete. */}
-      {menuFor && (() => {
-        const c = (convos ?? []).find((x) => x.shareId === menuFor);
-        if (!c) return null;
-        const isPinned = pinned.has(c.shareId);
-        const item: CSSProperties = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", border: 0, background: "none", cursor: "pointer", padding: "14px 18px", fontSize: 14.5, color: INK };
-        return (
-          <div
-            // A fresh press anywhere on the dim area clears the one-tap guard,
-            // so a deliberate tap to dismiss always closes — the guard only
-            // exists to eat the click the finger-lift synthesises the instant
-            // the sheet opens, never a real tap-outside.
-            onPointerDown={() => { swallowTap.current = false; }}
-            onClick={() => { if (swallowTap.current) { swallowTap.current = false; return; } setMenuFor(null); }}
-            style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(15,20,25,.4)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
-          >
-            <div onClick={(e) => e.stopPropagation()} style={{ background: CREAM, borderRadius: "20px 20px 0 0", padding: "8px 8px calc(8px + env(safe-area-inset-bottom))", animation: "wgIn .2s ease both" }}>
-              <div style={{ padding: "10px 18px 8px", font: `400 15px/1.1 ${serif}`, color: "#57534e", borderBottom: "1px solid rgba(38,50,58,.08)" }}>{nameOf(c)}</div>
-              <button role="menuitem" className="wg-warm" onClick={() => togglePin(c.shareId)} style={item}>
-                <Icon name="map-pin" className="h-[18px] w-[18px]" /> {isPinned ? "Unpin" : "Pin to top"}
-              </button>
-              <button role="menuitem" className="wg-warm" onClick={() => { setMenuFor(null); setRenaming(c); }} style={item}>
-                <Icon name="pencil" className="h-[18px] w-[18px]" /> Rename
-              </button>
-              <button role="menuitem" className="wg-warm" onClick={() => { setMenuFor(null); void deleteConvo(c.shareId); }} disabled={deleting === c.shareId} style={{ ...item, color: "#b5442e", opacity: deleting === c.shareId ? 0.5 : 1 }}>
-                <Icon name="trash" className="h-[18px] w-[18px]" /> Delete conversation
-              </button>
-            </div>
-          </div>
-        );
-      })()}
+    </>
+  );
 
-      {/* Rename — the advisor's own name for this conversation, kept on the
-          device. The client never sees it; on their side the chat stays the
-          advisor's own name. */}
-      {renaming && (
-        <RenameConversation
-          initial={nameOf(renaming)}
-          fallback={renaming.client || renaming.name}
-          onSave={(v) => { saveName(renaming.shareId, v); setRenaming(null); }}
-          onClose={() => setRenaming(null)}
-        />
-      )}
-    </div>
+  if (isWide) {
+    return (
+      <div style={{ height: "100%", minHeight: 0, display: "flex", position: "relative", animation: "wgIn .28s ease both" }}>
+        <div className="wg-scroll" style={{ width: 340, flex: "none", minHeight: 0, overflowY: "auto", borderRight: "1px solid rgba(38,50,58,.1)", background: "#f4f1ea" }}>
+          <div style={{ padding: "16px 14px 28px", display: "flex", flexDirection: "column", gap: 10 }}>{listBody}</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", background: CREAM }}>
+          {open ? (
+            threadPanel(false)
+          ) : (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", color: FAINT, fontSize: 14 }}>
+              Select a conversation to read and reply.
+            </div>
+          )}
+        </div>
+        {overlays}
+      </div>
+    );
+  }
+
+  if (open) {
+    return (
+      <>
+        {threadPanel(true)}
+        {overlays}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ padding: "16px 16px 28px", display: "flex", flexDirection: "column", gap: 10, animation: "wgIn .28s ease both" }}>
+        {listBody}
+      </div>
+      {overlays}
+    </>
   );
 }
 
