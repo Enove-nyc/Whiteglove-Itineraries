@@ -987,7 +987,7 @@ export default function CompanionApp({
   // On a computer a real (non-showcase) trip is not a phone in a frame but a
   // web app: a side rail of tabs and a wide content column. A phone, the
   // marketing demo, and the advisor-embedded view all keep the phone layout.
-  const desktopWeb = useMediaQuery("(min-width: 900px)") && !embedded && !trip.concierge;
+  const desktopWeb = useMediaQuery("(min-width: 768px)") && !embedded && !trip.concierge;
   useEffect(() => {
     if (!liveChat) return;
     let cancelled = false;
