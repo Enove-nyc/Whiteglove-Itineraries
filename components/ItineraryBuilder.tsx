@@ -81,7 +81,7 @@ const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.r
 type Tab = "flight" | "hotel" | "activity" | "import" | null;
 type ItineraryView = "days" | "calendar";
 
-export default function ItineraryBuilder({ crossings = [], today: serverToday = "", assume = BUILT_IN_ASSUMPTIONS, templates = [], itineraries = false }: {
+export default function ItineraryBuilder({ crossings = [], today: serverToday = "", assume = BUILT_IN_ASSUMPTIONS, templates = [], itineraries = false, kosher = false }: {
   /** What is known about the borders this trip crosses. Read on the server. */
   crossings?: Crossing[];
   /**
@@ -105,7 +105,18 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
    * food nearby, whatever a trip's own data happens to hold.
    */
   itineraries?: boolean;
+  /**
+   * Whether this account turned the kosher & Shabbos layer on — AppPrefs
+   * .kosherFeatures, the switch on /account. On the kosher deployment every
+   * traveller wants zmanim, so `itineraries` is false there and this is not
+   * consulted; on Itineraries it is what decides, instead of the brand deciding
+   * for everybody. Off is the default and the honest one for a general product.
+   */
+  kosher?: boolean;
 }) {
+  // Zmanim are shown where the product is kosher travel, or where a general
+  // account has asked for them. Never merely because a trip holds the data.
+  const showZmanimHere = !itineraries || kosher;
   const [itin, setItin] = useState<Itinerary>(emptyItinerary());
   const [tab, setTab] = useState<Tab>(null);
   // Which flight the top form is editing, if any. Null means adding a new one.
@@ -312,7 +323,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
     [days],
   );
   useEffect(() => {
-    if (itineraries || !itin.showZmanim || !days.length) return;
+    if (!showZmanimHere || !itin.showZmanim || !days.length) return;
     let current = true;
     fetchTripZmanim(days).then((result) => {
       if (current) setZmanim({ key: zmanimKey, days: result });
@@ -323,8 +334,8 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
     // days is rebuilt on every keystroke; zmanimKey is what actually moves the
     // times, so the fetch follows that instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itin.showZmanim, zmanimKey]);
-  const zmanimForToday = !itineraries && itin.showZmanim && zmanim.key === zmanimKey ? zmanim.days : null;
+  }, [itin.showZmanim, zmanimKey, showZmanimHere]);
+  const zmanimForToday = showZmanimHere && itin.showZmanim && zmanim.key === zmanimKey ? zmanim.days : null;
   const unscheduled = useMemo(() => unscheduledActivities(itin), [itin]);
   // Who is buried at each beis hachaim on the trip, looked up by slug. Never
   // looked up on Itineraries — that brand has no kever directory to look up.
@@ -458,6 +469,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           everything below stays usable with this ignored or collapsed. See
           lib/trip-setup.ts. */}
       <TripSetupPanel
+        itineraries={itineraries}
         itin={itin}
         templates={templates}
         signedIn={viewer === null ? null : Boolean(viewer.signedIn)}
@@ -583,8 +595,11 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
               {/* Off until asked for. Somebody keeping the times wants them on
                   every day of the trip and on whichever phone they open it on,
                   so the answer is saved with the trip rather than the browser.
-                  Not offered on Itineraries — no zmanim on that brand. */}
-              {!itineraries && (
+                  On Itineraries it is not offered at all until the account
+                  turns the kosher & Shabbos layer on — a general travel agency
+                  should not be shown a zmanim button, and one that plans kosher
+                  trips flips one switch and has it. */}
+              {showZmanimHere && (
                 <button
                   type="button"
                   onClick={() => set({ showZmanim: !itin.showZmanim })}

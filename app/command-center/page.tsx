@@ -12,6 +12,7 @@ import { stopsForTrip } from "@/lib/command-center-data";
 import { fetchAdvisories } from "@/lib/travel-advisories";
 import { tripAdvisories } from "@/lib/trip-advisories";
 import { tripAlerts } from "@/lib/trip-alerts";
+import { getAppPrefs } from "@/lib/app-prefs-store";
 import { tripDocuments } from "@/lib/trip-documents";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
@@ -81,13 +82,28 @@ export default async function CommandCenterPage() {
   // references the itinerary already holds, and each one opens only for the
   // account that uploaded it.
   const documents = tripDocuments(trip?.itinerary);
+  /**
+   * SHABBOS IS BEHIND THE SWITCH, AND OFF UNTIL AN ACCOUNT ASKS FOR IT.
+   *
+   * This is a general itinerary product. "Kraków is planned for Shabbos" is a
+   * real warning for an agency that plans kosher travel and noise on somebody
+   * else's screen — and until now every account got it whether they wanted it
+   * or not, with nothing to turn it off. The same one setting that already
+   * decides whether the app shows candle-lighting decides this
+   * (AppPrefs.kosherFeatures, the switch on /account).
+   *
+   * Dropped HERE rather than inside tripAlerts, which stays the pure "what is
+   * true about this trip" answer and is shared with the deployment whose
+   * travellers all want it.
+   */
+  const kosher = (await getAppPrefs(account.email).catch(() => ({ kosherFeatures: false }))).kosherFeatures;
   const alerts = tripAlerts({
     stops,
     readiness,
     startDate: trip?.itinerary.startDate,
     today,
     timesById,
-  });
+  }).filter((alert) => kosher || alert.kind !== "shabbos");
 
   if (!stops.length) {
     return (

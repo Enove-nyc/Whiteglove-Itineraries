@@ -71,17 +71,18 @@ export default function CompanionSettings() {
   return (
     <div className="mt-4 flex flex-wrap items-start justify-between gap-4 border-t border-[var(--gold-light)] pt-4">
       <div className="min-w-0 max-w-md">
-        <p className="text-sm font-semibold text-[var(--navy)]">Kosher &amp; Shabbos in the app</p>
+        <p className="text-sm font-semibold text-[var(--navy)]">Kosher &amp; Shabbos</p>
         <p className="mt-1 text-xs leading-5 text-stone-600">
-          Off by default. Turn it on to show each day&apos;s candle-lighting, when Shabbos ends, and
-          the kosher places near the trip — in the app, and on any trip you share from it.
+          Off by default. Turn it on to show each day&apos;s candle-lighting and when Shabbos ends, the
+          kosher places near the trip, and a warning when a stop falls on Shabbos — in the planner, on
+          your trip page, in the app, and on any trip you share.
         </p>
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={on}
-        aria-label="Kosher and Shabbos features in the app"
+        aria-label="Kosher and Shabbos features"
         onClick={toggle}
         disabled={busy}
         className={`relative h-6 w-11 flex-none rounded-full border transition disabled:opacity-60 ${
