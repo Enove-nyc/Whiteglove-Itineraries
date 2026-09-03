@@ -34,6 +34,14 @@ What follows from that:
 
 This section is the memory that carries across chats. It is loaded at the start of every session, so a decision recorded here is not re-litigated in a later one. When the owner settles something — a decision or a standing preference — write it here in plain terms, in his words where they are clear, so the next chat starts already knowing it and he does not have to say it twice.
 
+- **Which repository a trip feature belongs in is decided BEFORE it is written, not after.** This has gone wrong repeatedly and always the same way: the work happens in whichever repository the session happened to open, and Itineraries — the product whose entire job is building, organising and managing a trip — ends up behind on its own features. Forwarding a confirmation in by email was built on Kosher Travel first. So were the packing list, itinerary optimisation, itinerary translation, offline documents and trip updates.
+
+  THE TEST IS WHOSE JOB THE FEATURE IS, NOT WHICH FOLDER IS OPEN. Anything that BUILDS, ORGANISES or MANAGES a trip — flights, hotels, transport, documents, day-by-day, confirmations, reminders, what changed since it was planned — is Itineraries work and is built in the itineraries repository FIRST. Anything that helps somebody DISCOVER or PLAN — destinations, kosher food, shuls, mikvaos, heritage, maps, local services — is Kosher Travel work and is built here. A feature that genuinely serves both is still built in Itineraries first and then ported, because that is the direction the drift never goes on its own.
+
+  AND THE PORT IS PART OF THE JOB, NOT A FOLLOW-UP. The two deployments run from two codebases, so merging here does not put anything on whitegloveitineraries.com. A trip feature is not finished until it exists on the side it is for. When only one side can be done in a sitting, say so in plain words in the same message — never leave it implied.
+
+  THE ONE THING THAT STAYS ONE-DIRECTIONAL is the marketing link: `ContinueInItineraries` and `lib/itineraries-handoff.ts` are Kosher Travel's alone and must never be ported. Their absence from the itineraries repository is correct, not drift.
+
 - **Two platforms, one White Glove.** White Glove is a travel technology company with two distinct but connected platforms.
 
   WHITE GLOVE KOSHER TRAVEL — the other repository — is a free travel information and planning platform for kosher and Jewish travel. Its customer is the traveller, and its job is DISCOVER & PLAN: destinations, kosher food, shuls, mikvaos, places to stay, attractions, heritage, maps and local services, so a traveller can work out where to go and what to include.

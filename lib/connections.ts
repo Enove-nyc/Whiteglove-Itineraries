@@ -131,6 +131,15 @@ export const CONNECTIONS: Connection[] = [
       "Resend. RESEND_FROM_EMAIL_ITINERARIES is what this site should send as: without it, its email arrives from the kosher travel address, which tells a recipient who never asked about kosher travel that there is another business behind the one they signed up to. It needs its own verified domain in Resend. Left unset, everything still sends — from the shared address.",
   },
   {
+    vars: ["INBOUND_EMAIL_SECRET", "INBOUND_EMAIL_DOMAIN"],
+    what: "Forwarding a booking confirmation in by email instead of pasting it.",
+    without:
+      "The forwarding address is never offered, and the webhook refuses everything rather than accepting anything — so nothing arrives and nothing can be posted to it by somebody who found the URL. Smart Import still reads a confirmation you paste, attach as a PDF, screenshot or photograph; forwarding is the third way in, not the only one.",
+    weight: "feature",
+    where:
+      "Your mail provider's inbound-email settings — the signing secret it uses when it posts a parsed message to /api/inbound/confirmation. It also needs an MX record on the domain receiving the mail, which is a DNS change rather than a setting here. INBOUND_EMAIL_DOMAIN names that domain and is only needed when it is not the site's own: receiving takes over every address at whichever domain carries the record, so putting it on the bare site domain would take over your own mail — a subdomain leaves that alone. Left unset the address is built on the site domain. Until the secret is in place the address is simply not shown, which is better than printing one that goes nowhere.",
+  },
+  {
     vars: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
     what: "Taking a subscription or one-time payment for a paid plan.",
     without:
