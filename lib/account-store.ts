@@ -1,5 +1,11 @@
 import type { AdvisorWelcome } from "@/data/advisor-welcome";
 import { recentActivity, withActivity, type ActivityEntry } from "@/data/trip-activity";
+import { emptyPackingList, toggleItem, tripSignature, type PackingItem, type PackingList } from "@/data/packing-list";
+import { suggestPackingList } from "@/lib/packing-ai";
+import { dismissSuggestion, itinerarySignature, type OptimizationResult } from "@/data/itinerary-optimization";
+import { emptyTranslation, type TranslatedItinerary } from "@/data/itinerary-translation";
+import { suggestItineraryOptimizations } from "@/lib/itinerary-optimization-ai";
+import { translateFields, type TranslationField } from "@/lib/itinerary-translation-ai";
 import { readTeam, type TeamMember } from "@/data/team";
 import { clientsFromTrips, emptyClientProfile, tripsForClient, type ClientProfile, type ClientSummary } from "@/data/clients";
 import type { AddonItem } from "@/data/trip-addons";
@@ -9,7 +15,7 @@ import { accepting, openStatus, withOpen, withRevoked, type OpenStatus, type Sha
 import { tripTimeZone } from "@/lib/trip-timezone";
 import { type AccountPlan, planOf } from "@/lib/account-plans";
 import { travelerAttachments, withoutAttachments } from "@/lib/attachments";
-import { emptyItinerary, type Itinerary } from "@/data/itinerary";
+import { flightRouteLabel, buildDays, emptyItinerary, type Itinerary } from "@/data/itinerary";
 import { proposalOptionToItinerary, type Proposal } from "@/data/proposal";
 import type { ManualTripStage } from "@/data/trip-pipeline";
 import { formatCents } from "@/data/trip-payments";
@@ -115,6 +121,12 @@ export type SavedTrip = {
   addonsShareId?: string;
   /** What happened on this trip, newest first. */
   activity?: ActivityEntry[];
+  /** The packing list generated for this trip, and what is ticked off. */
+  packingList?: PackingList;
+  /** The AI's pacing and flow suggestions for this trip, and which are dismissed. */
+  optimization?: OptimizationResult;
+  /** A read-out of the trip's free text, by language. */
+  translations?: Record<string, TranslatedItinerary>;
   /** Advisor's own record of what this trip earned. */
   commissions?: CommissionRecord[];
   /** Extras offered to the client on this trip, and their answers. */
@@ -3157,4 +3169,239 @@ export async function removeAdvisorWelcome(email: string, tripId: string): Promi
   if (!trips.some((t) => t.id === tripId)) return false;
   const next = trips.map((t) => (t.id === tripId ? { ...t, advisorWelcome: undefined, updatedAt: new Date().toISOString() } : t));
   return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+// ---- Packing list ------------------------------------------------------
+
+function packingItemId() {
+  return randomBytes(6).toString("base64url");
+}
+
+/** A short summary of what the trip actually is, for the AI prompt and for
+ *  tripSignature() — destinations from where flights land and where the
+ *  traveler sleeps, since neither alone is always present. */
+function packingSummary(itinerary: Itinerary) {
+  const destinations = Array.from(
+    new Set([...itinerary.flights.map((f) => f.to).filter(Boolean), ...itinerary.lodging.map((l) => l.name).filter(Boolean)]),
+  );
+  const stops = [...itinerary.lodging.map((l) => l.name), ...itinerary.activities.map((a) => a.name)].filter(Boolean);
+  return { destinations, startDate: itinerary.startDate, endDate: itinerary.endDate, stops, activityCount: itinerary.activities.length };
+}
+
+/** The trip's current packing list, or null if none has been generated yet. */
+/** The trip's current packing list, or null if none has been generated yet. */
+export async function getPackingList(email: string, tripId: string): Promise<PackingList | null> {
+  const data = await getAccountData(email);
+  return withTrips(data).trips.find((t) => t.id === tripId)?.packingList ?? null;
+}
+
+/**
+ * Ask the AI for a fresh packing list and save it, replacing whatever was
+ * there before. Returns null when no provider is configured or every
+ * provider failed — the caller says so rather than saving an empty list
+ * over a real one.
+ */
+export async function generatePackingList(email: string, tripId: string): Promise<PackingList | null> {
+  if (!hasAccountStorage()) return null;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return null;
+  const summary = packingSummary(trip.itinerary);
+  const suggestions = await suggestPackingList(summary);
+  if (suggestions === null) return null;
+  const list: PackingList = {
+    items: suggestions.map((s) => ({ id: packingItemId(), label: s.label, category: s.category, checked: false })),
+    generatedAt: new Date().toISOString(),
+    forSignature: tripSignature(summary),
+  };
+  const next = trips.map((t) => (t.id === tripId ? { ...t, packingList: list, updatedAt: new Date().toISOString() } : t));
+  const ok = await writeTrips(normalized, next, activeId);
+  return ok ? list : null;
+}
+
+/** Check or uncheck one item — never regenerates the list. */
+export async function togglePackingItem(email: string, tripId: string, itemId: string, checked: boolean): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip?.packingList) return false;
+  const list: PackingList = { ...trip.packingList, items: trip.packingList.items.map((i) => (i.id === itemId ? { ...i, checked } : i)) };
+  const next = trips.map((t) => (t.id === tripId ? { ...t, packingList: list, updatedAt: new Date().toISOString() } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+/** The trip's current signature, for the caller to check staleness against
+ *  a saved list's forSignature without duplicating packingSummary's logic. */
+export function currentPackingSignature(itinerary: Itinerary): string {
+  return tripSignature(packingSummary(itinerary));
+}
+
+
+function optimizationId() {
+  return randomBytes(6).toString("base64url");
+}
+
+// ---- Ported from White Glove Kosher Travel -------------------------------
+//
+// These belong here: reading a trip's day-by-day back, pacing it, translating
+// it and listing what has happened on it are all BUILD, ORGANISE AND MANAGE
+// work — this product's job. They were written on the kosher deployment first,
+// which was the mistake AGENTS.md now has a rule about.
+
+/** One trip's activity feed, most recent first. */
+export async function getActivity(email: string, tripId: string): Promise<ActivityEntry[]> {
+  const data = await getAccountData(email);
+  const trip = withTrips(data).trips.find((t) => t.id === tripId);
+  return [...(trip?.activity ?? [])].reverse();
+}
+
+/**
+ * The day-by-day plain-text summary handed to the AI — every day's date,
+ * what's scheduled, how much free time and travel time it has, and
+ * buildDays()'s own warnings. Built from the same computation the planner's
+ * own itinerary builder already draws its day view from, not a second
+ * reading of the raw flights/lodging/activities.
+ */
+function optimizationSummary(itinerary: Itinerary): string {
+  const days = buildDays(itinerary);
+  return days
+    .map((day) => {
+      const lines = [`Day ${day.index + 1} (${day.date}):`];
+      for (const j of day.flightsDeparting) lines.push(`  Flight departs: ${flightRouteLabel(j)}`);
+      for (const j of day.flightsArriving) lines.push(`  Flight arrives: ${flightRouteLabel(j)}`);
+      if (day.lodging) lines.push(`  Sleeping at: ${day.lodging.name}`);
+      for (const a of day.activities) lines.push(`  Stop: ${a.name}${a.startTime ? ` at ${a.startTime}` : ""}`);
+      lines.push(`  Free hours: ${day.freeHours ?? "?"}, travel hours: ${day.travelHours.toFixed(1)}`);
+      if (day.warnings.length > 0) lines.push(`  Known conflicts: ${day.warnings.join("; ")}`);
+      return lines.join("\n");
+    })
+    .join("\n\n");
+}
+
+/** The trip's current pacing/flow suggestions, or null if none generated yet. */
+export async function getOptimization(email: string, tripId: string): Promise<OptimizationResult | null> {
+  const data = await getAccountData(email);
+  return withTrips(data).trips.find((t) => t.id === tripId)?.optimization ?? null;
+}
+
+/**
+ * The itinerary's current signature, for the caller to check a saved
+ * result's staleness against without duplicating optimizationSummary's
+ * reasoning about what the itinerary "is".
+ */
+export function currentOptimizationSignature(itinerary: Itinerary): string {
+  return itinerarySignature(itinerary);
+}
+
+/**
+ * Ask the AI for fresh pacing suggestions and save them, replacing whatever
+ * was there before. Returns null when no provider is configured or every
+ * provider failed — an itinerary the model genuinely found nothing to flag
+ * on still saves (as an empty list), which is a real result, not a failure.
+ */
+export async function generateOptimization(email: string, tripId: string): Promise<OptimizationResult | null> {
+  if (!hasAccountStorage()) return null;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return null;
+  const messages = await suggestItineraryOptimizations(optimizationSummary(trip.itinerary));
+  if (messages === null) return null;
+  const result: OptimizationResult = {
+    suggestions: messages.map((message) => ({ id: optimizationId(), message, dismissed: false })),
+    generatedAt: new Date().toISOString(),
+    forSignature: itinerarySignature(trip.itinerary),
+  };
+  const next = trips.map((t) => (t.id === tripId ? { ...t, optimization: result, updatedAt: new Date().toISOString() } : t));
+  const ok = await writeTrips(normalized, next, activeId);
+  return ok ? result : null;
+}
+
+/** Dismiss (or restore) one suggestion — never regenerates the list. */
+export async function setOptimizationDismissed(email: string, tripId: string, suggestionId: string, dismissed: boolean): Promise<boolean> {
+  if (!hasAccountStorage()) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip?.optimization) return false;
+  const result = dismissSuggestion(trip.optimization, suggestionId, dismissed);
+  const next = trips.map((t) => (t.id === tripId ? { ...t, optimization: result, updatedAt: new Date().toISOString() } : t));
+  return Boolean(await writeTrips(normalized, next, activeId));
+}
+
+
+// ---- Itinerary translation ----------------------------------------------
+//
+// A read-out of an itinerary's free text in another language — see
+// data/itinerary-translation.ts for exactly what is and is not translated.
+
+/** Every translatable field on the itinerary, with its own id — the
+ *  payload lib/itinerary-translation-ai.ts translates and hands back
+ *  matched by id. */
+function translatableFields(itinerary: Itinerary): TranslationField[] {
+  const fields: TranslationField[] = [];
+  if (itinerary.title?.trim()) fields.push({ id: "title", text: itinerary.title.trim() });
+  for (const a of itinerary.activities) {
+    if (a.name?.trim()) fields.push({ id: `activity:${a.id}:name`, text: a.name.trim() });
+    if (a.notes?.trim()) fields.push({ id: `activity:${a.id}:notes`, text: a.notes.trim() });
+  }
+  for (const l of itinerary.lodging) {
+    if (l.notes?.trim()) fields.push({ id: `lodging:${l.id}:notes`, text: l.notes.trim() });
+  }
+  for (const f of itinerary.flights) {
+    if (f.notes?.trim()) fields.push({ id: `flight:${f.id}:notes`, text: f.notes.trim() });
+  }
+  return fields;
+}
+
+/** The trip's saved translation for one language, or null if none yet. */
+export async function getTranslation(email: string, tripId: string, language: string): Promise<TranslatedItinerary | null> {
+  const data = await getAccountData(email);
+  const trip = withTrips(data).trips.find((t) => t.id === tripId);
+  return trip?.translations?.[language] ?? null;
+}
+
+/**
+ * Translate the itinerary's free text into a language and save it,
+ * replacing whatever was saved for that language before. Returns null when
+ * no provider is configured or every provider failed.
+ */
+export async function generateTranslation(email: string, tripId: string, language: string): Promise<TranslatedItinerary | null> {
+  if (!hasAccountStorage()) return null;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return null;
+
+  const fields = translatableFields(trip.itinerary);
+  const translated = await translateFields(language, fields);
+  if (translated === null) return null;
+
+  const result: TranslatedItinerary = { ...emptyTranslation(language), generatedAt: new Date().toISOString(), forSignature: itinerarySignature(trip.itinerary) };
+  result.title = translated.get("title");
+  for (const a of trip.itinerary.activities) {
+    const name = translated.get(`activity:${a.id}:name`);
+    const notes = translated.get(`activity:${a.id}:notes`);
+    if (name || notes) result.activities[a.id] = { name, notes };
+  }
+  for (const l of trip.itinerary.lodging) {
+    const notes = translated.get(`lodging:${l.id}:notes`);
+    if (notes) result.lodging[l.id] = { notes };
+  }
+  for (const f of trip.itinerary.flights) {
+    const notes = translated.get(`flight:${f.id}:notes`);
+    if (notes) result.flights[f.id] = { notes };
+  }
+
+  const nextTranslations = { ...(trip.translations ?? {}), [language]: result };
+  const next = trips.map((t) => (t.id === tripId ? { ...t, translations: nextTranslations, updatedAt: new Date().toISOString() } : t));
+  const ok = await writeTrips(normalized, next, activeId);
+  return ok ? result : null;
 }
