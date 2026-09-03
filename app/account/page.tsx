@@ -26,6 +26,7 @@ import { describeIdentity, isPhoneIdentity } from "@/lib/identity";
 
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
+import { BRAND_ORIGIN } from "@/lib/site-brand-core";
 
 // Private to one person. Nothing here belongs in a search result. Brand-aware
 // for the same reason /login is: an itineraries visitor landing here right
@@ -136,7 +137,12 @@ export default async function AccountPage() {
               Signed in as {describeIdentity(who)}.{account && !account.verifiedAt ? " Still waiting for its verification code." : ""}
             </p>
           </div>
-          {canAdmin && <OpenAdminButton />}
+          {canAdmin && (
+            // The one admin lives on the kosher site; on the itineraries build
+            // this links across to it rather than minting a session on a host
+            // that no longer serves the admin API. See middleware + OpenAdminButton.
+            <OpenAdminButton adminHref={siteBrand === "itineraries" ? `${BRAND_ORIGIN.kosher}/admin` : undefined} />
+          )}
         </div>
 
         {/* Itineraries, Route, Favorites. */}

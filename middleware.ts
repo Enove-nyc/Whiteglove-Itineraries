@@ -242,6 +242,26 @@ async function siteLockRedirect(request: NextRequest, pathname: string): Promise
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  /**
+   * THE ADMIN API IS NOT THIS DEPLOYMENT'S EITHER — and this must come before
+   * the /api pass-through, or the redirect below guards only the pages.
+   *
+   * The admin PAGES are sent to the kosher admin further down, but this
+   * deployment ships app/api/admin/** all the same (one codebase, one set of
+   * route files), and /api/** is otherwise waved straight through. That left
+   * the whole admin API live on this host against the SAME shared store —
+   * twenty-odd mutating endpoints, and worse, /api/admin/session, which mints a
+   * full admin cookie for any admin-flagged ACCOUNT with no second factor. The
+   * kosher admin asks for six digits; coming here asked for none. So on the
+   * itineraries build the admin API does not exist: 404, before anything can
+   * reach it. Guarded on the BUILD's own brand (configuredBrand), like the page
+   * redirect — the kosher build leaves the brand unset and is untouched.
+   */
+  if (configuredBrand() === "itineraries" && pathname.startsWith("/api/admin/")) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
   if (pathname.startsWith("/api/")) return NextResponse.next();
   if (/\.[a-z0-9]+$/i.test(pathname)) return NextResponse.next();
 

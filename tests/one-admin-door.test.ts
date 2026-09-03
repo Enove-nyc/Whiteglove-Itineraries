@@ -53,6 +53,34 @@ describe("the second admin door is shut", () => {
   });
 });
 
+describe("the admin API is shut too, not only the pages", () => {
+  // THE HALF THE PAGE REDIRECT MISSED. The redirect above catches /admin and
+  // /admin/... — the pages. But the middleware waves every /api/** straight
+  // through, so app/api/admin/** stayed live on this host against the same
+  // shared store: twenty-odd mutating endpoints, and /api/admin/session, which
+  // mints a full admin cookie for any admin-flagged account with no second
+  // factor. On this build the admin API must 404.
+  it("404s every admin API path on the itineraries build", () => {
+    assert.match(
+      MIDDLEWARE,
+      /configuredBrand\(\) === "itineraries" && pathname\.startsWith\("\/api\/admin\/"\)/,
+    );
+  });
+
+  it("shuts it BEFORE the /api pass-through, or it guards nothing", () => {
+    const apiAdmin = MIDDLEWARE.indexOf('configuredBrand() === "itineraries" && pathname.startsWith("/api/admin/")');
+    const apiPass = MIDDLEWARE.indexOf('if (pathname.startsWith("/api/")) return NextResponse.next()');
+    assert.ok(apiAdmin > 0 && apiPass > 0);
+    assert.ok(apiAdmin < apiPass, "the admin-API 404 must run before /api/** is waved through");
+  });
+
+  it("is decided by THIS BUILD's brand, like the page redirect", () => {
+    const at = MIDDLEWARE.indexOf('configuredBrand() === "itineraries" && pathname.startsWith("/api/admin/")');
+    const clause = MIDDLEWARE.slice(at, at + 160);
+    assert.ok(!clause.includes("brandFromRequestHeaders"), "the request's brand must not decide whether the admin API exists");
+  });
+});
+
 describe("the reason it had to be shut is still true", () => {
   it("this deployment still has no second factor to bypass", () => {
     // If any of these ever appear here, the door was shut for a reason that has

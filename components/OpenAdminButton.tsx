@@ -13,11 +13,28 @@ import { useRouter } from "next/navigation";
  * answer, from a button that said they could get in.
  *
  * It asks the server for the session first, then goes.
+ *
+ * EXCEPT ON THE ITINERARIES DEPLOYMENT, where there is no admin to open — the
+ * admin lives on the kosher site, and this host no longer serves the admin API
+ * that mints the session (see middleware). Given `adminHref`, the button is a
+ * plain link across to that admin instead of a local POST that would now 404;
+ * the session is minted there, behind its own second factor.
  */
-export default function OpenAdminButton() {
+export default function OpenAdminButton({ adminHref }: { adminHref?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  if (adminHref) {
+    return (
+      <a
+        href={adminHref}
+        className="border border-[var(--navy)] bg-[var(--navy)] px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)]"
+      >
+        Open the admin area →
+      </a>
+    );
+  }
 
   async function open() {
     setBusy(true);
