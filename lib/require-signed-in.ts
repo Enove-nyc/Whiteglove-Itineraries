@@ -25,3 +25,11 @@ export async function requireSignedIn(next: string): Promise<void> {
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 }
+
+/** Whether anybody is signed in at all — no account read where a 401 is the
+ *  only possible answer. Ported with /packing, which is open to everyone. */
+export async function isSignedIn(): Promise<boolean> {
+  const cookie = (await cookies()).get(accountCookieName())?.value;
+  const account = await getCurrentAccountSummary(cookie);
+  return Boolean(account) || Boolean(readSessionEmail(cookie));
+}

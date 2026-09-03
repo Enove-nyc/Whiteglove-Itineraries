@@ -5,6 +5,7 @@ import AccountPlanPanel, { type PlanOffer } from "@/components/AccountPlanPanel"
 import BusinessBrandPanel from "@/components/BusinessBrandPanel";
 import CompanionSettings from "@/components/companion/CompanionSettings";
 import AccountRoutePanel from "@/components/AccountRoutePanel";
+import TripUpdates from "@/components/TripUpdates";
 import ForwardingAddress from "@/components/ForwardingAddress";
 import AccountSettings from "@/components/AccountSettings";
 import Footer from "@/components/Footer";
@@ -146,6 +147,12 @@ export default async function AccountPage() {
         </div>
 
         {/* Itineraries, Route, Favorites. */}
+        {/* WHAT HAS CHANGED SINCE THEY PLANNED IT — above the trips rather
+            than below, because a delayed flight or a level-4 advisory is the
+            one thing on this page that will not wait. Draws nothing at all
+            when nothing has changed, which is most visits. */}
+        <TripUpdates email={who} today={new Date().toISOString().slice(0, 10)} />
+
         <AccountRoutePanel />
 
         {/* The address to forward a booking to. In the planner it sits inside
