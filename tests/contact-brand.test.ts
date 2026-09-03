@@ -58,9 +58,12 @@ describe("the address a visitor is given belongs to the site they are on", () =>
 });
 
 describe("the errands offered are the ones this site can do", () => {
-  it("drops the two that need a directory", () => {
+  it("drops the two that need a directory but keeps support", () => {
     const offered = reasonsForBrand("itineraries").map((r) => r.value);
-    assert.deepEqual(offered, ["fault", "question"]);
+    // Support ("help") belongs on both sites — a customer with a payment or
+    // account problem is on either. The two directory errands do not.
+    assert.deepEqual(offered, ["help", "fault", "question"]);
+    assert.ok(offered.includes("help"));
     assert.ok(!offered.includes("correction"));
     assert.ok(!offered.includes("advertise"));
   });

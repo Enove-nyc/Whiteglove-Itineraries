@@ -238,6 +238,20 @@ export default async function AccountPage() {
           )}
         </section>
 
+        <section aria-labelledby="account-help" className="mt-10">
+          <h2 id="account-help" className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Need help?</h2>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-600">
+            We support every part of White Glove by email — your account, a payment, a trip, or anything on the site.{" "}
+            <Link
+              href="/contact?reason=help"
+              className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
+            >
+              Get help
+            </Link>{" "}
+            and we’ll get back to you.
+          </p>
+        </section>
+
         <section aria-labelledby="account-sign-out" className="mt-10">
           <h2 id="account-sign-out" className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Sign out</h2>
           <div className="mt-4">

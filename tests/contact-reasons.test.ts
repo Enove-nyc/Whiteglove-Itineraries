@@ -7,6 +7,7 @@ import {
   missingFields,
   readReason,
   reasonSpec,
+  reasonsForBrand,
 } from "@/lib/contact-reasons";
 import { assigneeFor } from "@/lib/trello";
 import { publicPaths } from "@/lib/site-map";
@@ -38,11 +39,11 @@ const PAGE = readFileSync("app/contact/page.tsx", "utf8");
 const FORM = readFileSync("components/ContactForm.tsx", "utf8");
 
 describe("the reasons", () => {
-  it("is four, and each is answerable without reading the others", () => {
-    // Four since the site fault was split out of "something here is wrong":
-    // one is a claim about the world and one is a claim about the site, and
-    // only the second can be checked without ringing somebody up.
-    assert.equal(CONTACT_REASONS.length, 4);
+  it("is five, and each is answerable without reading the others", () => {
+    // Support ("Get help") is the first, then the four that split a claim about
+    // the world (a wrong address) from a claim about the site (a broken button)
+    // — only the second can be checked without ringing somebody up.
+    assert.equal(CONTACT_REASONS.length, 5);
     for (const reason of CONTACT_REASONS) {
       assert.ok(reason.label.length > 5, reason.value);
       assert.ok(reason.blurb.length > 10, `${reason.value} has no blurb`);
@@ -59,13 +60,31 @@ describe("the reasons", () => {
   it("COVERS THE ERRANDS THE SITE ACTUALLY HAS", () => {
     assert.deepEqual(
       CONTACT_REASONS.map((reason) => reason.value),
-      ["correction", "advertise", "fault", "question"],
+      ["help", "correction", "advertise", "fault", "question"],
     );
   });
 
   it("HAS NO TRIP-PLANNING REASON LEFT", () => {
     const values: string[] = CONTACT_REASONS.map((reason) => reason.value);
     assert.ok(!values.includes("trip"), "personal planning is back as a contact reason");
+  });
+
+  it("OFFERS SUPPORT ON BOTH FRONT DOORS, AS A PERSON-READ INBOX ASKING NOTHING EXTRA", () => {
+    // The one door a paying customer needs. It must exist on both brands (a
+    // customer with a payment or account problem is on either site), reach a
+    // person rather than the fault bot, and not interrogate somebody before it
+    // will help — the whole promise is a reply.
+    for (const brand of ["kosher", "itineraries"] as const) {
+      assert.ok(
+        reasonsForBrand(brand).some((reason) => reason.value === "help"),
+        `support is missing on ${brand}`,
+      );
+    }
+    // "help" is not a card kind of its own — a non-fault contact routes to the
+    // owner's inbox (kind "contact"), which is the person who answers.
+    assert.equal(assigneeFor("contact"), "owner");
+    assert.deepEqual(reasonSpec("help").fields, []);
+    assert.match(reasonSpec("help").subject, /support/i);
   });
 
   it("SENDS THE SITE FAULT TO THE BOT AND EVERYTHING ELSE TO A PERSON", () => {

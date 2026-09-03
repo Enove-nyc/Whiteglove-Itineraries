@@ -1,12 +1,14 @@
 /**
  * Why somebody is writing to us, and what to ask them because of it.
  *
- * ONE PAGE, THREE ERRANDS. A person reaching /contact is doing one of three
- * quite different things: telling us something on the site is wrong, asking
- * about advertising, or asking a question. A single "Message" box serves all
- * three badly — the correction arrives without the page it is about and the
- * advertising enquiry arrives without the business, so each costs a reply
- * asking for what the form should have asked for.
+ * ONE PAGE, A FEW ERRANDS. A person reaching /contact is doing one of a few
+ * quite different things: asking for help, telling us something on the site is
+ * wrong, asking about advertising, or asking a question. A single "Message" box
+ * serves them all badly — the correction arrives without the page it is about
+ * and the advertising enquiry arrives without the business, so each costs a
+ * reply asking for what the form should have asked for. The first errand is
+ * support: a customer who needs help meets a door that says so and a promise of
+ * a reply, not a generic question box.
  *
  * THE RULE THIS FILE ENFORCES: a field belongs to a reason and appears for
  * that reason only. Somebody reporting a wrong address is never asked which
@@ -21,7 +23,7 @@
 
 import { type SiteBrand } from "@/lib/site-brand-core";
 
-export type ContactReason = "correction" | "advertise" | "question" | "fault";
+export type ContactReason = "help" | "correction" | "advertise" | "question" | "fault";
 
 export type ContactField = {
   name: string;
@@ -51,6 +53,29 @@ export type ContactReasonSpec = {
 };
 
 export const CONTACT_REASONS: readonly ContactReasonSpec[] = [
+  {
+    /**
+     * SUPPORT, AND IT IS THE FIRST DOOR ON PURPOSE.
+     *
+     * A person who has an account, has paid for something, or is standing in
+     * the app with a problem is not reporting a wrong hechsher and is not
+     * asking an idle question — they need help, from a person, and they need to
+     * be told plainly that they will get it. "Ask a question" carried them
+     * before, which is a fair door for a stranger and a cold one for a
+     * customer. This one routes to the same inbox a person reads (kind
+     * "contact", not the fault bot), and its whole promise is a reply. It asks
+     * for nothing but the problem: a support form that interrogates somebody
+     * before it will help is not support.
+     */
+    value: "help",
+    label: "Get help",
+    blurb: "A question about your account, a payment, a trip, or the app — we’ll help.",
+    heading: "How can we help?",
+    subject: "Support request",
+    fields: [],
+    messageLabel: "What can we help you with?",
+    messagePlaceholder: "",
+  },
   {
     value: "correction",
     label: "Something here is wrong",
@@ -167,8 +192,8 @@ export const CONTACT_REASONS: readonly ContactReasonSpec[] = [
  * The two that remain apply to any website: it is broken, or I have a question.
  */
 export const BRAND_REASONS: Record<SiteBrand, readonly ContactReason[]> = {
-  kosher: ["correction", "advertise", "fault", "question"],
-  itineraries: ["fault", "question"],
+  kosher: ["help", "correction", "advertise", "fault", "question"],
+  itineraries: ["help", "fault", "question"],
 };
 
 /** The reasons to put on the page, in the order they are declared above. */

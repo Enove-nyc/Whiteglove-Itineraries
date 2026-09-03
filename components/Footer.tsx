@@ -26,6 +26,9 @@ import { brandForHost, configuredBrand } from "@/lib/site-brand-core";
  */
 const KOSHER_LINKS = [
   { label: "Contact", href: "/contact" },
+  // A door that lands on the support form already chosen, for a customer who
+  // wants help rather than the general contact page — see lib/contact-reasons.
+  { label: "Support", href: "/contact?reason=help" },
   { label: "Advertise", href: "/contact?reason=advertise" },
   { label: "Sources", href: "/sources" },
   { label: "Terms", href: "/terms" },
@@ -40,6 +43,7 @@ const ITINERARIES_LINKS = [
   // most ordinary question about a paid product with a 404.
   { label: "Pricing", href: "/pricing" },
   { label: "Contact", href: "/contact" },
+  { label: "Support", href: "/contact?reason=help" },
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
 ];
