@@ -602,10 +602,12 @@ nav :where(svg, .glove-mark),
   --cream: #D5CEC3;
   /* Deeper mushroom for subtle layering; documented shade, not a new brand hue. */
   --cream-deep: #C7BFB1;
-  --surface: #FAF8F3;
+  /* Lifted a shade brighter than a flat warm white, so cards separate more
+   * clearly from the Mushroom ground — the "more pop" tweak. Still warm. */
+  --surface: #FEFDFB;
   --ink: #102F35;
   --wg-radius: 1rem;
-  --wg-shadow: 0 12px 35px rgba(16, 47, 53, 0.12);
+  --wg-shadow: 0 14px 40px rgba(16, 47, 53, 0.14);
 
   /* Semantic aliases (approved names) — same values, so nothing competes.
    * --color-background/--color-foreground are owned by the @theme block above. */
@@ -655,8 +657,14 @@ p {
   border-radius: 0.75rem;
 }
 
-:where(button, a[class*="bg-"], a[class*="border"]) {
-  border-radius: 0.75rem;
+/* Fully-rounded (pill) buttons by default, matching the rounded-full design-
+ * system Button and echoing the round compass in the mark. The :not() is
+ * load-bearing: anything that sets its own radius class (rounded-xl cards,
+ * rounded-full buttons) is excluded outright and keeps exactly the corners it
+ * asked for, so cards stay soft-cornered rectangles and only button-shaped
+ * things with no radius of their own go pill. */
+:where(button, a[class*="bg-"], a[class*="border"]):not([class*="rounded"]) {
+  border-radius: 999px;
 }
 
 .wg-page-hero {
