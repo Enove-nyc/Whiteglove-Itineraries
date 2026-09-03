@@ -83,14 +83,14 @@ export default function DirectoryListingForm({
 
   if (done) {
     return (
-      <p className="rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] p-4 text-sm leading-6 text-[var(--navy)]">
+      <p className="rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-4 text-sm leading-6 text-[var(--navy)]">
         Thank you — sent for review. Nothing appears on the site until somebody has looked at it.
       </p>
     );
   }
 
   return (
-    <form onSubmit={submit} className="rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] p-4 sm:p-6">
+    <form onSubmit={submit} className="rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-4 sm:p-6">
       <DirectoryListingFields draft={draft} onChange={set} current={mode === "edit" ? current : undefined} idPrefix={`${mode}-${targetId}`} />
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">

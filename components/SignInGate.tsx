@@ -119,7 +119,7 @@ export function SignInGateProvider({
             role="dialog"
             aria-modal="true"
             aria-labelledby="sign-in-gate-title"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-8"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.20)] sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <h2 id="sign-in-gate-title" className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">

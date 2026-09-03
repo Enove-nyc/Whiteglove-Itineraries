@@ -72,7 +72,7 @@ export default function SendToClientPanel() {
   }
 
   return (
-    <section className="rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+    <section className="rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
       <h3 className="font-[family-name:var(--font-display)] text-lg text-[var(--navy)]">Send it to your client</h3>
       <p className="mt-1.5 text-xs leading-5 text-stone-600">
         {ready.brandName

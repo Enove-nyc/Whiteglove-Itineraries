@@ -143,7 +143,7 @@ export default function AdminSearch({ areas, pathname }: { areas: AdminArea[] | 
         <div
           id={listId}
           role="listbox"
-          className="absolute right-0 top-full z-50 mt-1 w-[min(100vw-2rem,28rem)] border border-[var(--gold)] bg-[#fcfaf6] shadow-[0_18px_40px_rgba(23,45,82,.18)]"
+          className="absolute right-0 top-full z-50 mt-1 w-[min(100vw-2rem,28rem)] border border-[var(--gold)] bg-[#FAF8F3] shadow-[0_18px_40px_rgba(16, 47, 53,.18)]"
         >
           {searching ? (
             <p className="px-3 py-3 text-sm text-stone-600">Searching…</p>
@@ -155,7 +155,7 @@ export default function AdminSearch({ areas, pathname }: { areas: AdminArea[] | 
             <div className="max-h-80 overflow-auto">
               {groups.map((group) => (
                 <div key={group.section} role="group" aria-label={group.section}>
-                  <p className="sticky top-0 border-b border-[var(--gold-light)] bg-[#f7f3eb] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
+                  <p className="sticky top-0 border-b border-[var(--gold-light)] bg-[#D5CEC3] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
                     {group.section}
                   </p>
                   <ul>

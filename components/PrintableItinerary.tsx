@@ -18,7 +18,7 @@ import { BRAND_DOMAIN, BRAND_NAME, type SiteBrand } from "@/lib/site-brand-core"
 // screen dump while the owner's printed as this was the whole problem — the
 // person being handed the itinerary is usually the one who wants it on paper.
 
-const INK = "#16293a";
+const INK = "#102F35";
 const MAROON = "#6f2b3e";
 /**
  * Two golds, for the same reason the rest of the site has two.
@@ -34,9 +34,9 @@ const MAROON = "#6f2b3e";
  * car, at dusk, by somebody who is already lost. --gold-ink is the site's own
  * answer to exactly this and measures 4.79:1 at worst.
  */
-const GOLD = "#b0894f";
-const GOLD_INK = "#7a602c";
-const GOLD_RULE = "#e3d9cc";
+const GOLD = "#C6A15B";
+const GOLD_INK = "#6B4A1C";
+const GOLD_RULE = "#C7BFB1";
 const BODY = "#545454";
 
 export default function PrintableItinerary({
@@ -309,7 +309,7 @@ const css = `
 
   .wg-toolbar {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 12px; padding: 14px 22px; background: #f7f3eb; border-bottom: 1px solid ${GOLD_RULE};
+    gap: 12px; padding: 14px 22px; background: #D5CEC3; border-bottom: 1px solid ${GOLD_RULE};
     font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: ${BODY};
   }
   .wg-toolbar button {
@@ -344,7 +344,7 @@ const css = `
     font-family: var(--font-display), Georgia, serif;
     font-size: 20pt;
     line-height: 1.05;
-    color: #1e2a44;
+    color: #193F46;
   }
   .wg-crest-wordmark-sub {
     margin-top: 3pt;
@@ -352,7 +352,7 @@ const css = `
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #8a6f3c;
+    color: #C6A15B;
   }
   /* A business with a name and no logo. The same weight the crest carries, so
      the cover still opens on something rather than starting at the eyebrow. */

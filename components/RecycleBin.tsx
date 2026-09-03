@@ -82,7 +82,7 @@ export default function RecycleBin({
       <p className="text-sm leading-6 text-stone-600">{binSummary(rows)}</p>
 
       {groups.map((group) => (
-        <section key={group.kind} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+        <section key={group.kind} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
             {KIND_WORDS[group.kind].one}
             {group.rows.length > 1 ? "s" : ""}

@@ -122,7 +122,7 @@ export default async function CemeteryPage({ params }: { params: Promise<{ cemet
 
       <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
         <div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]">
-          <aside className="wg-card h-fit border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-7 lg:sticky lg:top-28">
+          <aside className="wg-card h-fit border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-7 lg:sticky lg:top-28">
             {/* The address is the headline inside this panel now, so the grey
                 repeat of it that used to sit underneath is gone. */}
             <KeverCoordinates coordinates={cemetery.coordinates} address={cemetery.address} />
@@ -182,7 +182,7 @@ export default async function CemeteryPage({ params }: { params: Promise<{ cemet
 
             <div className="mt-8 space-y-4">
               {cemetery.burials.map((burial) => (
-                <article key={burial.name} className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+                <article key={burial.name} className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
                   {/* Each person has his own page now. He used to exist only as
                       this card, so somebody searching for the man rather than
                       the town had nowhere to land. */}
@@ -237,7 +237,7 @@ export default async function CemeteryPage({ params }: { params: Promise<{ cemet
                   </h3>
                   <div className="mt-5 grid gap-5 md:grid-cols-2">
                     {group.items.map((place) => (
-                      <article key={`${place.name}-${place.address ?? ""}`} className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+                      <article key={`${place.name}-${place.address ?? ""}`} className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
                         <p className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">{place.name}</p>
                         {place.address && <p className="mt-2 text-sm leading-6 text-stone-600">{place.address}</p>}
                         {place.hours && <p className="mt-2 text-sm text-stone-600">Hours: {place.hours}</p>}
@@ -268,7 +268,7 @@ export default async function CemeteryPage({ params }: { params: Promise<{ cemet
         )}
 
         <div className="mt-10 grid gap-5 lg:grid-cols-2">
-          <section className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+          <section className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Verification</p>
             <p className="mt-3 text-sm leading-7 text-stone-600">
               {hasAccessContacts ? "This cemetery has a public access contact listed above. Please confirm it before traveling." : "No public access contact has been verified for this cemetery yet."}

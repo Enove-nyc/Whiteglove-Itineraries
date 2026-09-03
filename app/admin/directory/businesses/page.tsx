@@ -62,14 +62,14 @@ export default async function AdminDirectoryPage({
 
       {!dbReady ? (
         <section className="mx-auto max-w-3xl px-5 py-16 sm:px-8">
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Not connected yet</p>
             <p className="mt-3 text-sm leading-7 text-stone-600">The content database isn&apos;t connected. The public directory shows the built-in list until you connect <code className="rounded bg-[var(--cream)] px-1">DATABASE_URL</code> and run setup.</p>
           </div>
         </section>
       ) : needsSetup ? (
         <section className="mx-auto max-w-3xl px-5 py-16 sm:px-8">
-          <div className="border border-[var(--gold)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold)] bg-[#FAF8F3] p-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">One-time setup</p>
             <p className="mt-3 text-sm leading-7 text-stone-600">Tap below to create the tables and import the built-in directory listings.</p>
             <div className="mt-6"><DbSetupButton /></div>
@@ -81,7 +81,7 @@ export default async function AdminDirectoryPage({
             <Link href="/admin/directory/businesses?new=1" className="mb-4 block border border-[var(--navy)] bg-[var(--navy)] px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[var(--gold)] hover:border-[var(--gold)]">
               + Add a provider
             </Link>
-            <nav className="border border-[var(--gold-light)] bg-[#fcfaf6] p-3">
+            <nav className="border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
               {/* A plain GET form: no client component, and the filter stays
                   in the URL so choosing a provider does not clear it. */}
               <form method="get" className="px-2 pb-3">
@@ -142,7 +142,7 @@ export default async function AdminDirectoryPage({
                 <p className="mt-2 text-center text-sm text-stone-600">Choose a listing on the left, or press “Add a provider.”</p>
                 {/* The two numbers that used to disagree: what is in the
                     database, and what a visitor is actually being shown. */}
-                <p className="mt-6 border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-3 text-left text-sm leading-6 text-stone-700">
+                <p className="mt-6 border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-3 text-left text-sm leading-6 text-stone-700">
                   {describeBusinessList(list)}
                 </p>
               </div>

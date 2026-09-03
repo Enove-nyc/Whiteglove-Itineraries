@@ -214,7 +214,7 @@ function OptionEditor({
   const [uploading, setUploading] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   return (
-    <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <div className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex items-start justify-between gap-3">
         <input
           value={option.name}

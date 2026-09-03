@@ -48,11 +48,14 @@ const MUTED = colour("MUTED");
 const FAINT = colour("FAINT");
 const ON_GOLD = SRC.includes("const ON_GOLD = NAVY;") ? NAVY : colour("ON_GOLD");
 
-/** The three grounds the app draws text on: the page, the tab bar, a card. */
+/**
+ * The grounds the app draws MUTED text on. On the Mushroom palette that is the
+ * warm-white card (#FAF8F3): the page ground is Mushroom (#D5CEC3), dark enough
+ * that a legible-as-muted grey cannot clear 4.5 on it, so muted metadata lives
+ * on the raised card. The deep chips (#C7BFB1) carry ink, not grey.
+ */
 const GROUNDS: Array<[string, string]> = [
-  ["the cream page", CREAM],
-  ["the tab bar's band", "#ece8df"],
-  ["a white card", "#ffffff"],
+  ["a warm-white card", "#FAF8F3"],
 ];
 
 // Everything measured here is under 18px, so AA is 4.5 for all of it.

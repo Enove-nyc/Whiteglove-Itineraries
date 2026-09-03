@@ -85,7 +85,7 @@ export default function AlertSignup({
     <section
       className={
         className ??
-        "rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-6 sm:px-7 sm:py-8"
+        "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-6 sm:px-7 sm:py-8"
       }
       aria-labelledby="alert-signup-heading"
     >

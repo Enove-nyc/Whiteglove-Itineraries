@@ -47,7 +47,7 @@ export default function PageList({ pages }: { pages: AdminPageRow[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type a page name or address"
-            className="mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)] focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]"
+            className="mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)] focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]"
           />
         </label>
         <label className="block">
@@ -55,7 +55,7 @@ export default function PageList({ pages }: { pages: AdminPageRow[] }) {
           <select
             value={only}
             onChange={(e) => setOnly(e.target.value as typeof only)}
-            className="mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)]"
+            className="mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)]"
           >
             <option value="all">Every page</option>
             <option value="PUBLISHED">Live pages</option>
@@ -73,7 +73,7 @@ export default function PageList({ pages }: { pages: AdminPageRow[] }) {
           Nothing matches that.
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-[var(--gold-light)] border border-[var(--gold-light)] bg-[#fcfaf6]">
+        <ul className="mt-4 divide-y divide-[var(--gold-light)] border border-[var(--gold-light)] bg-[#FAF8F3]">
           {rows.map((page) => (
             <li key={page.slug} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="min-w-0">

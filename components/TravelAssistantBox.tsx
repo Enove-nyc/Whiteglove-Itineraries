@@ -142,7 +142,7 @@ export default function TravelAssistantBox({
         aria-controls="travel-assistant-panel"
         aria-label={ASSISTANT_HOME_LABEL}
         title={ASSISTANT_HOME_LABEL}
-        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-4 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]"
+        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-4 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]"
       >
         <Icon name="sparkle" className="h-4 w-4" />
         AI assistant
@@ -151,7 +151,7 @@ export default function TravelAssistantBox({
       {open && (
         <div
           id="travel-assistant-panel"
-          className="mt-3 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6"
+          className="mt-3 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6"
         >
           {labelledOutside ? null : (
             <>

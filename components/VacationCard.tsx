@@ -67,7 +67,7 @@ function HeritageBody({ card, compact }: { card: Extract<DirectoryCard, { kind: 
         <span className="block text-sm leading-6 text-stone-600 line-clamp-3">{card.summary}</span>
       )}
       <span className="mt-auto flex flex-wrap gap-2 pt-4">
-        <span className="inline-flex items-start gap-1.5 rounded-md border border-[var(--gold)] bg-[#fcf6e9] px-2.5 py-1.5 text-[11px] font-semibold leading-4 text-[var(--navy)]">
+        <span className="inline-flex items-start gap-1.5 rounded-md border border-[var(--gold)] bg-[#FAF8F3] px-2.5 py-1.5 text-[11px] font-semibold leading-4 text-[var(--navy)]">
           {/* THE COUNT, NOT WHAT WE HOLD ABOUT IT. This first read "3 batei
               hachaim on record", which describes the site's own filing rather
               than the town — the same habit as "checked information" and
@@ -95,7 +95,7 @@ export default function VacationCard({ card, compact = false }: { card: Director
   return (
     <Link
       href={href}
-      className="wg-card group flex h-full flex-col overflow-hidden border border-[var(--gold-light)] bg-[var(--surface)] transition hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_10px_28px_rgba(23,45,82,.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--navy)] focus-visible:outline-offset-2"
+      className="wg-card group flex h-full flex-col overflow-hidden border border-[var(--gold-light)] bg-[var(--surface)] transition hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_10px_28px_rgba(16, 47, 53,.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--navy)] focus-visible:outline-offset-2"
     >
       <span
         className="relative block overflow-hidden bg-[var(--navy)] bg-cover bg-center"
@@ -106,7 +106,7 @@ export default function VacationCard({ card, compact = false }: { card: Director
             foot to hold a real photograph too. */}
         <span
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-[var(--navy)] via-[rgba(23,45,82,0.55)] to-[rgba(23,45,82,0.10)]"
+          className="absolute inset-0 bg-gradient-to-t from-[var(--navy)] via-[rgba(16, 47, 53,0.55)] to-[rgba(16, 47, 53,0.10)]"
         />
         <span className={`relative block ${compact ? "px-6 pb-5 pt-24" : "px-6 pb-7 pt-32"}`}>
           <span className="block text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold-light)]">

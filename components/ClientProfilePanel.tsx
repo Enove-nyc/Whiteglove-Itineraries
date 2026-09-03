@@ -128,7 +128,7 @@ export default function ClientProfilePanel({ clientKey }: { clientKey: string })
           ) : (
             <ul className="mt-3 flex flex-col gap-2">
               {previous.map((t) => (
-                <li key={t.id} className="wg-card flex items-center justify-between gap-3 border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+                <li key={t.id} className="wg-card flex items-center justify-between gap-3 border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
                   <div>
                     <p className="font-semibold text-[var(--navy)]">{t.name}</p>
                     <p className="text-sm text-stone-500">{t.startDate} {t.endDate ? `→ ${t.endDate}` : ""}</p>

@@ -131,7 +131,7 @@ export default async function AdminTravelProvidersPage() {
         <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--gold-light)] bg-white">
           <table className="w-full min-w-[46rem] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-[var(--gold-light)] bg-[#fcfaf6] text-left">
+              <tr className="border-b border-[var(--gold-light)] bg-[#FAF8F3] text-left">
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">Provider</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">Category</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">Key</th>

@@ -6,7 +6,7 @@ import { ADMIN_AREAS, AREA_LABELS, describeAreas, grantedAreas } from "@/lib/adm
 import type { TeamMember } from "@/lib/admin-roles";
 
 const inputClass =
-  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
+  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
 const captionClass = "text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500";
 const submitClass =
   "min-h-[44px] border border-[var(--navy)] bg-[var(--navy)] px-5 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)] disabled:opacity-60";
@@ -38,7 +38,7 @@ export default function TeamEditor({ members, storageReady }: { members: TeamMem
         </p>
       )}
 
-      <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Who has access</h2>
         {members.length === 0 ? (
           <p className="mt-3 text-sm text-stone-600">Nobody yet. You are the only one who can get in.</p>
@@ -104,7 +104,7 @@ export default function TeamEditor({ members, storageReady }: { members: TeamMem
         <Status state={removeState} />
       </section>
 
-      <form action={saveAction} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <form action={saveAction} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Give someone access</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
           They need a White Glove account with this email address — they sign in normally and their access follows

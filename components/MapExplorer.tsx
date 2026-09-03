@@ -260,7 +260,7 @@ export default function MapExplorer({
           ) : (
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {nearby.map((m) => (
-                <li key={m.id} className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+                <li key={m.id} className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: MAP_STYLE[m.kind].color }}>
                     {MAP_STYLE[m.kind].label}
                   </p>

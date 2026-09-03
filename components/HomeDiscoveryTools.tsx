@@ -121,7 +121,7 @@ export default function HomeDiscoveryTools() {
               onClick={() => setTool(item.id)}
               className={`min-h-11 rounded-2xl border px-2 py-3 text-center transition sm:px-4 sm:py-4 sm:text-left ${
                 selected
-                  ? "border-[var(--navy)] bg-[var(--navy)] text-white shadow-[0_14px_30px_rgba(23,45,82,.16)]"
+                  ? "border-[var(--navy)] bg-[var(--navy)] text-white shadow-[0_14px_30px_rgba(16, 47, 53,.16)]"
                   : "border-[var(--gold-light)] bg-[var(--surface)] text-[var(--navy)] hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]"
               }`}
             >

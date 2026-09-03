@@ -55,8 +55,8 @@ export default function PromotionBanner({
   const cardClass = promotion.placements.includes("full-page-takeover")
     ? "w-full max-w-2xl rounded-md border border-[var(--gold-light)] border-t-2 border-t-[var(--gold)] bg-[var(--cream)] p-6 shadow-2xl sm:p-8"
     : promotion.placements.includes("popup")
-      ? "rounded-md border border-[var(--gold-light)] border-t-2 border-t-[var(--gold)] bg-[#fcfaf6] p-4 shadow-2xl"
-      : "rounded-md border border-[var(--gold-light)] border-t-2 border-t-[var(--gold)] bg-[#fcfaf6] p-5";
+      ? "rounded-md border border-[var(--gold-light)] border-t-2 border-t-[var(--gold)] bg-[#FAF8F3] p-4 shadow-2xl"
+      : "rounded-md border border-[var(--gold-light)] border-t-2 border-t-[var(--gold)] bg-[#FAF8F3] p-5";
 
   return (
     <div className={wrapperClass}>

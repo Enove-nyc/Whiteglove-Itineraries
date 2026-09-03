@@ -62,7 +62,7 @@ export default async function StartingPoints({
                 className={
                   low
                     ? "group flex h-full flex-col rounded-2xl border border-transparent p-5 transition hover:border-[var(--gold-light)]"
-                    : "wg-card group flex h-full flex-col border border-[var(--gold-light)] bg-[#fcfaf6] p-5"
+                    : "wg-card group flex h-full flex-col border border-[var(--gold-light)] bg-[#FAF8F3] p-5"
                 }
               >
                 <span

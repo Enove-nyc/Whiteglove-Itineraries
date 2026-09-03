@@ -102,7 +102,7 @@ export default function SendPlaceIn({
               It is yours — nothing goes unless you say so.
             </p>
 
-            <div className="mt-5 border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+            <div className="mt-5 border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">What would be sent</p>
               <dl className="mt-2 space-y-1.5 text-sm leading-6">
                 {fields.map((field) => (

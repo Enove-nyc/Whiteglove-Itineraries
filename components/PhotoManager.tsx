@@ -172,7 +172,7 @@ function PhotoRow({ target, slug, photo, url, onDone }: {
   const src = photo?.url ?? url ?? "";
 
   return (
-    <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+    <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
       {/* A stranger's picture and the owner's own unfinished one look
           identical without this, and the difference matters: publishing your
           own draft is a decision, publishing somebody else's is a liability. */}

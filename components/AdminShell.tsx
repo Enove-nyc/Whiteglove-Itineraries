@@ -114,7 +114,7 @@ export default function AdminShell({ areas = null, children }: { areas?: AdminAr
         Skip to the page
       </a>
 
-      <header className="sticky top-0 z-30 border-b border-[var(--gold-light)] bg-[#fcfaf6]">
+      <header className="sticky top-0 z-30 border-b border-[var(--gold-light)] bg-[#FAF8F3]">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
           <button
             type="button"

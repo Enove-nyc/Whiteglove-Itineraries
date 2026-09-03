@@ -258,7 +258,7 @@ export default function AdminContentManager({ initialBundle, configured, initial
       )}
 
       {tab === "settings" && (
-        <div className="mt-6 grid gap-4 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+        <div className="mt-6 grid gap-4 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
           <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Site settings</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Hero title" value={siteSettings.heroTitle} onChange={(value) => setSiteSettings((current) => ({ ...current, heroTitle: value }))} />
@@ -289,7 +289,7 @@ export default function AdminContentManager({ initialBundle, configured, initial
             </p>
           )}
           <input value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} placeholder="Search locations by name, route or country" className="w-full border border-[var(--gold-light)] bg-white px-4 py-3 text-sm outline-none" />
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
             <h3 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Add location</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <Field label="ID" value={newLocation.id} onChange={(value) => setNewLocation((current) => ({ ...current, id: value }))} />
@@ -334,7 +334,7 @@ export default function AdminContentManager({ initialBundle, configured, initial
       )}
 
       {tab === "bulk" && (
-        <div className="mt-6 border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="mt-6 border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Bulk import locations</h2>
           <p className="mt-3 text-sm leading-6 text-stone-600">
             Paste CSV rows for cemetery and tzaddik records here. Use English and Yiddish fields together so the public pages stay searchable in both languages.
@@ -352,7 +352,7 @@ export default function AdminContentManager({ initialBundle, configured, initial
       {tab === "accommodations" && (
         <div className="mt-6 space-y-4">
           <input value={accommodationQuery} onChange={(event) => setAccommodationQuery(event.target.value)} placeholder="Search accommodations" className="w-full border border-[var(--gold-light)] bg-white px-4 py-3 text-sm outline-none" />
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
             <h3 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Add accommodation</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <Field label="Location ID" value={newAccommodation.locationId} onChange={(value) => setNewAccommodation((current) => ({ ...current, locationId: value }))} />
@@ -403,7 +403,7 @@ export default function AdminContentManager({ initialBundle, configured, initial
 // A count is a question — which ones? — so it is a button that answers it.
 function Metric({ label, value, onClick }: { label: string; value: number; onClick?: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5 text-left transition hover:border-[var(--gold)] hover:shadow-md">
+    <button type="button" onClick={onClick} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5 text-left transition hover:border-[var(--gold)] hover:shadow-md">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">{value}</p>
       <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">Show them →</p>
@@ -413,7 +413,7 @@ function Metric({ label, value, onClick }: { label: string; value: number; onCli
 
 function ReportCard({ title, value, note, onClick }: { title: string; value: number; note: string; onClick?: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5 text-left transition hover:border-[var(--gold)] hover:shadow-md">
+    <button type="button" onClick={onClick} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5 text-left transition hover:border-[var(--gold)] hover:shadow-md">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{title}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">{value}</p>
       <p className="mt-3 text-sm leading-6 text-stone-600">{note}</p>
@@ -435,7 +435,7 @@ function Field({ label, value, onChange, textarea = false }: { label: string; va
 function LocationEditor({ item, onSave, saving }: { item: EditableLocation; onSave: (item: EditableLocation) => void; saving: boolean }) {
   const [draft, setDraft] = useState(item);
   return (
-    <article className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <article className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">{draft.category}</p>
@@ -476,7 +476,7 @@ function LocationEditor({ item, onSave, saving }: { item: EditableLocation; onSa
 function AccommodationEditor({ item, onSave, saving }: { item: EditableAccommodation; onSave: (item: EditableAccommodation) => void; saving: boolean }) {
   const [draft, setDraft] = useState(item);
   return (
-    <article className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <article className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">{draft.locationId}</p>

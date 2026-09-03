@@ -46,7 +46,7 @@ export default async function AdminMessagesPage() {
 
       <section className="mt-8">
         {!available ? (
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
             <p className="text-sm leading-7 text-stone-600">
               The private store isn&apos;t connected, so messages are not being kept — each one is emailed and nothing
               more, and if the email fails the person is asked to try again.

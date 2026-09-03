@@ -41,7 +41,7 @@ export default async function InsurancePanel() {
 
   return (
     <section className="mx-auto max-w-5xl px-5 pb-4 sm:px-8" aria-labelledby="insurance-panel-heading">
-      <div className="rounded-3xl border border-[var(--gold-light)] bg-[var(--surface)] p-6 shadow-[0_18px_45px_rgba(23,45,82,.07)] sm:p-8">
+      <div className="rounded-3xl border border-[var(--gold-light)] bg-[var(--surface)] p-6 shadow-[0_18px_45px_rgba(16, 47, 53,.07)] sm:p-8">
         <h2
           id="insurance-panel-heading"
           className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)]"

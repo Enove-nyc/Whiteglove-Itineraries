@@ -39,15 +39,15 @@ import { blocksOf, blockHasContent, splitLinks, type BlastBlock } from "@/lib/em
 
 /* ---- the palette, matched to app/globals.css ---------------------------- */
 
-const NAVY = "#172d52";
+const NAVY = "#102F35";
 const INK = "#2d2c2a";
 const BODY_INK = "#4a4a48";
-const GOLD = "#aa8b52";
+const GOLD = "#C6A15B";
 /** The one that carries words. --gold is a rule; --gold-ink clears 4.5:1. */
-const GOLD_INK = "#7a602c";
-const GOLD_RULE = "#d9c7a3";
-const CREAM = "#f7f3eb";
-const SURFACE = "#fffdf9";
+const GOLD_INK = "#6B4A1C";
+const GOLD_RULE = "#D8BC7A";
+const CREAM = "#D5CEC3";
+const SURFACE = "#FAF8F3";
 
 const SANS = "Arial, Helvetica, sans-serif";
 const DISPLAY = "Georgia, 'Times New Roman', serif";

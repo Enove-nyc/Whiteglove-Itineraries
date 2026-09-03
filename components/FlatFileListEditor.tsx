@@ -109,7 +109,7 @@ export default function FlatFileListEditor({
       )}
 
       {added.length === 0 ? (
-        <p className="mt-5 rounded-lg border border-dashed border-[var(--gold-light)] bg-[#fcfaf6] p-5 text-sm leading-6 text-stone-600">
+        <p className="mt-5 rounded-lg border border-dashed border-[var(--gold-light)] bg-[#FAF8F3] p-5 text-sm leading-6 text-stone-600">
           {emptyLabel}
         </p>
       ) : (
@@ -119,7 +119,7 @@ export default function FlatFileListEditor({
               <button
                 type="button"
                 onClick={() => setEditing({ item: entry })}
-                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#fcfaf6]"
+                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#FAF8F3]"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-semibold text-[var(--navy)] underline decoration-[var(--gold-light)] decoration-2 underline-offset-4">
@@ -146,7 +146,7 @@ export default function FlatFileListEditor({
             role="dialog"
             aria-modal="true"
             aria-labelledby="flatfile-modal-title"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-8"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.20)] sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <h3 id="flatfile-modal-title" className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">

@@ -137,7 +137,7 @@ export default function AddressAutocomplete({
         className={className}
       />
       {open && results.length > 0 && (
-        <ul style={{ ...anchoredStyle(anchor), width: anchor?.width }} className="z-[var(--wg-z-popover)] border border-[var(--gold)] bg-[#fcfaf6] shadow-[0_16px_36px_rgba(23,45,82,.14)]">
+        <ul style={{ ...anchoredStyle(anchor), width: anchor?.width }} className="z-[var(--wg-z-popover)] border border-[var(--gold)] bg-[#FAF8F3] shadow-[0_16px_36px_rgba(16, 47, 53,.14)]">
           {results.map((s, i) => (
             <li key={`${s.label}-${i}`}>
               <button

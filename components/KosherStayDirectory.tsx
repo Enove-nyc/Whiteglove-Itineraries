@@ -166,7 +166,7 @@ export default function KosherStayDirectory({ stays }: { stays: KosherStay[] }) 
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {visible.map((s) => (
           // The id is what /stops and the planner's hotel picker link to.
-          <article key={s.slug} id={s.slug} className="min-w-0 scroll-mt-24 border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-7">
+          <article key={s.slug} id={s.slug} className="min-w-0 scroll-mt-24 border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-7">
             <p className="break-words text-xs font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)] sm:tracking-[0.18em]">
               {s.city} · {s.country} · {s.kind}
             </p>

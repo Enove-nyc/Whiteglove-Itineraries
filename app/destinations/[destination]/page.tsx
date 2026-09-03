@@ -580,7 +580,7 @@ async function KosherFood({ destination }: { destination: VacationDestination })
       )}
 
       {facts.base && (facts.base.eateries.length > 0 || facts.base.areas.length > 0) && (
-        <div className="mt-6 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="mt-6 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <SubHeading>Where to shop on the way in</SubHeading>
           <p className="mt-2 leading-7 text-stone-600">{facts.base.note}</p>
           <ul className="mt-3 space-y-2">
@@ -775,7 +775,7 @@ export default async function VacationDestinationPage({ params }: { params: Prom
             </div>
           </div>
 
-          <p className="mt-6 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-5 py-3 text-sm leading-6 text-stone-600">
+          <p className="mt-6 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-5 py-3 text-sm leading-6 text-stone-600">
             <span className="font-semibold text-[var(--navy)]">This section is our view of the place.</span> The
             practical detail below comes from listings with a named source.
           </p>
@@ -876,7 +876,7 @@ export default async function VacationDestinationPage({ params }: { params: Prom
             <SubHeading>Before you book</SubHeading>
             <ul className="mt-3 max-w-3xl space-y-3">
               {destination.cautions.map((caution) => (
-                <li key={caution} className="flex gap-3 rounded-lg border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-5 py-4">
+                <li key={caution} className="flex gap-3 rounded-lg border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-5 py-4">
                   <GloveMark size="sm" className="mt-1" />
                   <span className="leading-7 text-stone-700">{caution}</span>
                 </li>

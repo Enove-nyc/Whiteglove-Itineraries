@@ -31,7 +31,7 @@ const PAGE_OPTIONS: Array<{ label: string; value: string }> = [
 const STEPS = ["What kind", "What it says", "Where", "When", "Check it"] as const;
 
 const inputClass =
-  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
+  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
 const captionClass = "text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500";
 const primaryClass =
   "min-h-[44px] border border-[var(--navy)] bg-[var(--navy)] px-5 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)] disabled:opacity-60";
@@ -57,7 +57,7 @@ function Choice({
       className={`flex w-full flex-col border p-5 text-left transition ${
         selected
           ? "border-[var(--navy)] bg-[var(--cream-deep)]"
-          : "border-[var(--gold-light)] bg-[#fcfaf6] hover:border-[var(--gold)]"
+          : "border-[var(--gold-light)] bg-[#FAF8F3] hover:border-[var(--gold)]"
       }`}
     >
       <span className="font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">{title}</span>
@@ -73,7 +73,7 @@ function Preview({ ad, narrow }: { ad: Promotion; narrow: boolean }) {
       className={`mx-auto border border-[var(--gold-light)] bg-white ${narrow ? "w-[320px]" : "w-full max-w-2xl"}`}
       aria-label={narrow ? "How it looks on a phone" : "How it looks on a computer"}
     >
-      <div className="border-b border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
+      <div className="border-b border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
         {narrow ? "On a phone" : "On a computer"}
       </div>
       <div className={`flex gap-4 p-4 ${narrow ? "flex-col" : "items-center"}`}>
@@ -188,7 +188,7 @@ export default function AdWizard({
   }
 
   return (
-    <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <ol className="flex flex-wrap gap-2" aria-label="Steps">
         {STEPS.map((label, i) => (
           <li key={label}>

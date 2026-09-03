@@ -59,7 +59,7 @@ function ConnectionNote({ connection }: { connection: ConnectionInfo }) {
 
   if (connection.kind === "separate") {
     return (
-      <div className="rounded-lg border border-[var(--gold-light)] border-l-4 border-l-amber-500 bg-[#fcfaf6] px-4 py-3 text-sm">
+      <div className="rounded-lg border border-[var(--gold-light)] border-l-4 border-l-amber-500 bg-[#FAF8F3] px-4 py-3 text-sm">
         <p className="font-semibold text-[var(--navy)]">
           Change at {connection.airport}
           {wait ? <span className="font-normal text-stone-600"> · {wait} between flights</span> : null}
@@ -125,7 +125,7 @@ function GroupHeading({ children }: { children: React.ReactNode }) {
 function FlightCard({ leg, index }: { leg: FlightLeg; index: number }) {
   const carrier = [leg.airline, leg.flightNumber].filter(Boolean).join(" · ");
   return (
-    <article className="wg-flight rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] p-5 sm:p-6">
+    <article className="wg-flight rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Flight {index + 1}</p>
         {carrier ? <p className="text-sm font-semibold text-[var(--navy)]">{carrier}</p> : null}
@@ -212,7 +212,7 @@ export default async function FlightItineraryPage({ params }: { params: Promise<
       `}</style>
 
       <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
-        <div className="print:hidden mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+        <div className="print:hidden mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
           <p className="text-sm text-stone-600">
             Your flight itinerary is below. Use <strong>Print / Save as PDF</strong> to keep a copy.
           </p>
@@ -248,7 +248,7 @@ export default async function FlightItineraryPage({ params }: { params: Promise<
         </section>
 
         {itinerary.notes ? (
-          <section className="mt-8 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+          <section className="mt-8 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Good to know</p>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-stone-700">{itinerary.notes}</p>
           </section>

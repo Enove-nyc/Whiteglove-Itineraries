@@ -31,7 +31,7 @@ export default async function EsimOffers() {
 
   return (
     <section
-      className="border-y border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-14 sm:px-8 sm:py-16"
+      className="border-y border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-14 sm:px-8 sm:py-16"
       aria-labelledby="esim-offers-heading"
     >
       <div className="mx-auto max-w-6xl">

@@ -82,7 +82,7 @@ export default async function TravelGuidePage() {
           {rows.map(({ country, advisory }) => {
             const tone = advisory?.level ? ADVISORY_LEVELS[advisory.level]?.tone ?? "caution" : null;
             return (
-              <div key={country} className={`border-l-4 px-4 py-3 ${tone ? TONE[tone] : "border-[var(--gold-light)] bg-[#fcfaf6] text-stone-600"}`}>
+              <div key={country} className={`border-l-4 px-4 py-3 ${tone ? TONE[tone] : "border-[var(--gold-light)] bg-[#FAF8F3] text-stone-600"}`}>
                 <p className="font-[family-name:var(--font-display)] text-2xl leading-tight">{country}</p>
                 {advisory ? (
                   <>
@@ -99,7 +99,7 @@ export default async function TravelGuidePage() {
       </section>
 
       {/* ---- Documents ---- */}
-      <section id="documents" className="border-y border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-14 sm:px-8">
+      <section id="documents" className="border-y border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-14 sm:px-8">
         <div className="mx-auto max-w-5xl">
           <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[var(--gold-ink)]"><GloveMark size="xs" />Passports, visas &amp; entry</p>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">Documents</h2>
@@ -164,7 +164,7 @@ export default async function TravelGuidePage() {
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {PAYMENT_GUIDE.map((item) => (
-            <article key={item.title} className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+            <article key={item.title} className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
               <p className="font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">{item.title}</p>
               <p className="mt-2 text-sm leading-6 text-stone-600">{item.text}</p>
             </article>

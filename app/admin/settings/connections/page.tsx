@@ -100,7 +100,7 @@ export default function ConnectionSettings() {
           The outside services the website leans on. Each one tells you whether it is working right now, and what to
           do if it is not. Nothing here is needed day to day.
         </p>
-        <p className="mt-4 border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-700">
+        <p className="mt-4 border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-700">
           These run on the server and report back a plain answer. Keys and passwords are never sent to your browser
           — with one deliberate exception, the map key, which is public by design and explained in its own panel.
         </p>
@@ -116,7 +116,7 @@ export default function ConnectionSettings() {
         <SmsStatus />
         <RoutingKeyTest />
         <MapKeyStatus />
-        <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+        <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
           <p className="text-xs font-bold uppercase tracking-[0.17em] text-[var(--gold-ink)]">Bookings</p>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Where searches go</h2>
           <dl className="mt-4 space-y-3 text-sm leading-6">

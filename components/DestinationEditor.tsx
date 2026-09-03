@@ -192,7 +192,7 @@ function ActionForm({
       <Hidden values={hidden} />
 
       {offer && draft && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-3">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-3">
           <p className="text-sm leading-6 text-stone-700">
             You typed something here {describeDraft(draft, now)} and did not save it. It is still on this
             computer.
@@ -293,7 +293,7 @@ function Card({
 }) {
   return (
     <div className={`overflow-hidden rounded-lg border bg-white shadow-sm ${accent ? "border-dashed border-[var(--gold)]" : "border-[var(--gold-light)]"}`}>
-      <div className="flex items-center justify-between gap-3 border-b border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-3">
         <h4 className="font-[family-name:var(--font-display)] text-xl leading-none text-[var(--navy)]">{title}</h4>
         {badge && <span className="rounded-full bg-[var(--gold-light)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--navy)]">{badge}</span>}
       </div>

@@ -187,7 +187,7 @@ export default function DateField({
           role="dialog"
           aria-label="Choose a date"
           style={anchoredStyle(anchor)}
-          className="z-[var(--wg-z-popover)] w-[19rem] max-w-[92vw] border border-[var(--gold)] bg-[#fcfaf6] p-3 shadow-[0_16px_36px_rgba(23,45,82,.18)]"
+          className="z-[var(--wg-z-popover)] w-[19rem] max-w-[92vw] border border-[var(--gold)] bg-[#FAF8F3] p-3 shadow-[0_16px_36px_rgba(16, 47, 53,.18)]"
         >
           <div className="flex items-center justify-between gap-2">
             <button type="button" onClick={() => step(-1)} aria-label="Previous month" className="min-h-11 min-w-11 px-2 text-[var(--navy)] transition hover:text-[var(--gold-ink)]">

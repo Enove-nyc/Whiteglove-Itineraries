@@ -78,7 +78,7 @@ export default function EarningsForm({
           const choices = partnersFor(s.slot);
           const chosen = partnerFor(s.slot, partners);
           return (
-            <div key={s.slot} className="rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+            <div key={s.slot} className="rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">{s.label}</span>
               <span className="mt-1 block text-sm leading-6 text-stone-600">
                 {s.slot === "hotels" && hotelsElsewhere

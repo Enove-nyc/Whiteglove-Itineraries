@@ -89,7 +89,7 @@ export default function MapKeyStatus() {
       ? "border-green-600 bg-green-50"
       : state === "refused" || state === "bad-key" || state === "timeout"
         ? "border-red-400 bg-red-50"
-        : "border-[var(--gold)] bg-[#fcfaf6]";
+        : "border-[var(--gold)] bg-[#FAF8F3]";
 
   return (
     <section className={`border-l-4 ${tone} border-y border-r border-[var(--gold-light)] p-6`}>

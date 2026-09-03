@@ -62,7 +62,7 @@ export default function DirectoryProviderForm({
   const p = provider ?? (draft ? ({ ...draft, status: "PUBLISHED" } as unknown as DirectoryProvider) : null);
 
   return (
-    <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">{p ? `Edit ${p.name}` : "Add a provider"}</h2>
       {!provider && draft && (
         <p className="mt-3 border-l-4 border-[var(--gold)] bg-white px-4 py-3 text-sm leading-6 text-stone-700">
@@ -143,7 +143,7 @@ export default function DirectoryProviderForm({
         </label>
 
         {/* Permission to publish their number. Off unless somebody asked. */}
-        <div className="sm:col-span-2 border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+        <div className="sm:col-span-2 border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
           <label className="flex min-h-11 items-center gap-2">
             <input type="checkbox" name="contactConsent" defaultChecked={p?.contactConsent ?? false} className="h-4 w-4" />
             <span className="text-sm font-semibold text-[var(--navy)]">They agreed their phone number may be published</span>
@@ -160,7 +160,7 @@ export default function DirectoryProviderForm({
           </label>
         </div>
 
-        <div className="sm:col-span-2 border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+        <div className="sm:col-span-2 border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
           <label className="flex min-h-11 items-center gap-2">
             <input type="checkbox" name="featured" defaultChecked={p?.featured ?? false} className="h-4 w-4" />
             <span className="text-sm font-semibold text-[var(--navy)]">Featured — shown first in its category</span>

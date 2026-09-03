@@ -195,7 +195,7 @@ export default async function CityGuidePage({ params }: { params: Promise<{ city
       </section>
 
       {guide.safetyNote && (
-        <section className="border-b border-amber-200 bg-[#fff8e8] px-5 py-5 sm:px-8">
+        <section className="border-b border-amber-200 bg-[#FAF8F3] px-5 py-5 sm:px-8">
           <div className="mx-auto max-w-7xl text-sm leading-7 text-stone-700"><strong className="font-semibold text-[var(--navy)]">Current travel notice:</strong> {guide.safetyNote}</div>
         </section>
       )}
@@ -235,7 +235,7 @@ export default async function CityGuidePage({ params }: { params: Promise<{ city
               <div><p dir="rtl" lang="yi" className="text-xs font-bold tracking-[0.12em] text-[var(--gold-ink)]">שנת פטירה</p><p dir="rtl" lang="yi" className="mt-2 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{guide.niftar}</p></div>
             </div>
 
-            {accessContacts.length > 0 ? <div className="wg-card mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+            {accessContacts.length > 0 ? <div className="wg-card mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
               <p className="text-xs font-bold uppercase tracking-[0.17em] text-[var(--gold-ink)]">Shomer & access contact</p>
               <div className="mt-4 space-y-5">
                 {accessContacts.map((contact) => <div key={`${contact.label}-${contact.phone ?? contact.email}`} className="border-t border-[var(--gold-light)] pt-4 first:border-t-0 first:pt-0"><h3 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{contact.label}</h3>{"name" in contact && contact.name ? <p className="mt-2 inline-block rounded-full border border-[var(--gold)] px-3 py-0.5 text-xs font-bold tracking-[0.06em] text-[var(--navy)]">Ask for {contact.name}</p> : null}<p className="mt-2 text-sm leading-6 text-stone-600">{contact.note}</p><div className="mt-3 flex flex-wrap gap-3">{contact.phone && <a href={`tel:${contact.phone.replace(/[^+\d]/g, "")}`} className="border border-[var(--gold)] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)]">Call {contact.phone}</a>}{contact.email && <a href={`mailto:${contact.email}`} className="border border-[var(--gold-light)] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)]">Email access desk</a>}</div>{checkedOnFor(contact) && <p className="mt-3 text-[11px] leading-4 text-stone-500">Checked on {checkedOnFor(contact)}</p>}</div>)}
@@ -281,7 +281,7 @@ export default async function CityGuidePage({ params }: { params: Promise<{ city
                   href={link.url}
                   target="_blank"
                   rel="noreferrer nofollow"
-                  className="block border border-[var(--gold-light)] bg-[#fcfaf6] p-7 transition hover:border-[var(--gold)]"
+                  className="block border border-[var(--gold-light)] bg-[#FAF8F3] p-7 transition hover:border-[var(--gold)]"
                 >
                   {/* The host, said out loud. A link that leaves the site
                       should say where it goes before it is clicked. */}

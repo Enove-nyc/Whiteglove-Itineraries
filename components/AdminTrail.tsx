@@ -113,7 +113,7 @@ export default function AdminTrail({ areas = null }: { areas?: AdminArea[] | nul
   const back = [...trail].slice(0, -1).reverse().find((crumb) => crumb.href) ?? null;
 
   return (
-    <div className="border-b border-[var(--gold-light)] bg-[#fdfbf7]">
+    <div className="border-b border-[var(--gold-light)] bg-[#FAF8F3]">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
         {/* Back. Named, not an arrow — "Back" alone makes somebody guess where
             to, and the browser button already does the unnamed version. */}
@@ -162,7 +162,7 @@ export default function AdminTrail({ areas = null }: { areas?: AdminArea[] | nul
             <span aria-hidden="true">+</span> Add
           </button>
           {addOpen && (
-            <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-md border border-[var(--gold)] bg-[#fcfaf6] py-1 shadow-[0_18px_40px_rgba(23,45,82,.18)]">
+            <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-md border border-[var(--gold)] bg-[#FAF8F3] py-1 shadow-[0_18px_40px_rgba(16, 47, 53,.18)]">
               {quickAdd.map((item) => (
                 <Link
                   key={item.href}

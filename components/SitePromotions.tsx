@@ -211,7 +211,7 @@ export default function SitePromotions() {
 
       {/* Sticky bottom banner */}
       {bottomBanner && !closedBottom && (
-        <div className="fixed inset-x-0 bottom-14 z-[var(--wg-z-ad)] border-t-2 border-t-[var(--gold)] bg-[#fcfaf6] shadow-[0_-6px_20px_rgba(23,45,82,0.08)] sm:bottom-0">
+        <div className="fixed inset-x-0 bottom-14 z-[var(--wg-z-ad)] border-t-2 border-t-[var(--gold)] bg-[#FAF8F3] shadow-[0_-6px_20px_rgba(16, 47, 53,0.08)] sm:bottom-0">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-8">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Sponsored</p>

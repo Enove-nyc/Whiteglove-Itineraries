@@ -24,7 +24,7 @@ import { Icon, type IconName } from "@/components/icons/Icon";
  * Palette lifted from AdvisorApp so the two cannot drift.
  */
 
-const NAVY = "#14213d";
+const NAVY = "#102F35";
 const MUTED = "#5a544e";
 
 const TABS: { tab: string; label: string; icon: IconName }[] = [
@@ -38,7 +38,7 @@ export default function AdvisorTabBar() {
   return (
     <nav
       aria-label="Advisor app"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[rgba(38,50,58,.1)] bg-[#ece8df] px-2.5 pt-2 sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[rgba(16, 47, 53,.1)] bg-[#C7BFB1] px-2.5 pt-2 sm:hidden"
       style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
     >
       {TABS.map((t) => (

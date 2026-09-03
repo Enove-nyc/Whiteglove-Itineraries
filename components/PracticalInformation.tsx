@@ -203,7 +203,7 @@ export default async function PracticalInformation({
           // /heritage/towns/[place] and by nothing else.
           if (key && dbPlaces.length === 0 && record[key].status === "unavailable") return null;
           return (
-            <article key={english} className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+            <article key={english} className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
               {/* Yiddish where there is a heading for it. The sections added
                   in July 2026 have none yet, and an invented translation is
                   wrong in a way only the reader can see — so English alone
@@ -231,7 +231,7 @@ export default async function PracticalInformation({
             </article>
           );
         })}
-        <article className="border border-[var(--gold)] bg-[#fcfaf6] p-6">
+        <article className="border border-[var(--gold)] bg-[#FAF8F3] p-6">
           {/* No Yiddish heading here: the one that was read "fligers un
               hoteln", English in Hebrew letters rather than a translation. */}
           <h3 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)]">Flights &amp; hotels</h3>

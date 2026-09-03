@@ -186,7 +186,7 @@ export default function AccountPlanPanel({
   }
 
   return (
-    <section className="mt-10 border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+    <section className="mt-10 border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Your account</p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">
         {PLAN_LABELS[plan]}
@@ -377,7 +377,7 @@ export default function AccountPlanPanel({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="plan-soon-title"
-                className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-8"
+                className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.20)] sm:p-8"
               >
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">
                   {PLAN_LABELS[asking]}

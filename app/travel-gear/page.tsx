@@ -81,7 +81,7 @@ export default async function TravelGearPage() {
                   href={item.url}
                   target="_blank"
                   rel="noreferrer sponsored"
-                  className="flex flex-col overflow-hidden rounded-2xl border border-[var(--gold-light)] bg-white shadow-[0_8px_24px_rgba(23,45,82,.05)] transition hover:border-[var(--gold)] hover:shadow-[0_14px_34px_rgba(23,45,82,.09)]"
+                  className="flex flex-col overflow-hidden rounded-2xl border border-[var(--gold-light)] bg-white shadow-[0_8px_24px_rgba(16, 47, 53,.05)] transition hover:border-[var(--gold)] hover:shadow-[0_14px_34px_rgba(16, 47, 53,.09)]"
                 >
                   {item.imageUrl.trim() && (
                     // A picture well of a fixed height, and the product sits

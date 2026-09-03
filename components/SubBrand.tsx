@@ -19,7 +19,7 @@ export const SUB_BRAND_NAME = "שתוליכנו לשלום by White Glove";
  */
 export default function SubBrandBanner({ className = "" }: { className?: string }) {
   return (
-    <div className={`border-b border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-4 sm:px-8 ${className}`}>
+    <div className={`border-b border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-4 sm:px-8 ${className}`}>
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2">
         <Link href="/stops" className="shrink-0" aria-label={`${SUB_BRAND_NAME} — Jewish heritage journeys`}>
           <Image

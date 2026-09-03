@@ -23,7 +23,7 @@ export default function PartnerSearchWidget({
       key={src}
       src={src}
       title={title}
-      className="mt-4 w-full rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6]"
+      className="mt-4 w-full rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3]"
       style={{ minHeight }}
       loading="lazy"
     />

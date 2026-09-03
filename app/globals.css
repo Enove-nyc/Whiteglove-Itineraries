@@ -99,7 +99,7 @@
  * overwrite the transform Leaflet positions the marker with. */
 .wg-map-pin {
   /* Bare line art on pale tiles needs an edge of its own now the disc is gone. */
-  filter: drop-shadow(0 1px 1px rgba(23, 45, 82, 0.5));
+  filter: drop-shadow(0 1px 1px rgba(16, 47, 53, 0.5));
 }
 .wg-map-pin > span {
   transform-origin: 50% 100%;
@@ -120,8 +120,11 @@
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Repointed from dead Geist template vars (--background/--foreground were
+   * never defined) to the palette, so the few bg-background/text-foreground
+   * utilities in the tree adopt Mushroom ground and teal ink like everything else. */
+  --color-background: var(--cream);
+  --color-foreground: var(--ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -219,7 +222,7 @@ summary:focus-visible,
 [tabindex]:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
-  box-shadow: 0 0 0 5px rgba(23, 45, 82, 0.55);
+  box-shadow: 0 0 0 5px rgba(16, 47, 53, 0.55);
 }
 
 /* Skip to content. Off-screen until it is focused, which is the first Tab on
@@ -247,7 +250,7 @@ summary:focus-visible,
   top: 1rem;
 }
 :where(button, a) { -webkit-tap-highlight-color: rgba(170, 139, 82, 0.16); }
-:where(select, input, textarea) { background-color: #fcfaf6; color: var(--navy); }
+:where(select, input, textarea) { background-color: #FAF8F3; color: var(--navy); }
 
 select,
 input[type="date"],
@@ -289,7 +292,7 @@ select {
   .wg-date-face { display: flex; }
 }
 
-select option { background-color: #fcfaf6; color: var(--navy); }
+select option { background-color: #FAF8F3; color: var(--navy); }
 input::placeholder, textarea::placeholder { color: #78716c; }
 
 /* The brand mark used as a bullet and as a small ornament.
@@ -352,14 +355,14 @@ input::placeholder, textarea::placeholder { color: #78716c; }
 
 .wg-card {
   border-radius: 0.75rem;
-  box-shadow: 0 8px 28px rgba(23, 45, 82, 0.055);
+  box-shadow: 0 8px 28px rgba(16, 47, 53, 0.055);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 @media (hover: hover) {
   .wg-card:hover {
     border-color: var(--gold);
-    box-shadow: 0 14px 38px rgba(23, 45, 82, 0.09);
+    box-shadow: 0 14px 38px rgba(16, 47, 53, 0.09);
     transform: translateY(-2px);
   }
 }
@@ -383,7 +386,7 @@ input::placeholder, textarea::placeholder { color: #78716c; }
   display: block;
   height: 100%;
   border: 1px solid var(--gold-light);
-  background: #fcfaf6;
+  background: #FAF8F3;
   padding: 1.25rem;
 }
 
@@ -455,7 +458,7 @@ input::placeholder, textarea::placeholder { color: #78716c; }
 .itinerary-planner > div > div,
 .itinerary-planner article {
   border-radius: 0.75rem;
-  box-shadow: 0 5px 20px rgba(23, 45, 82, 0.045);
+  box-shadow: 0 5px 20px rgba(16, 47, 53, 0.045);
 }
 
 .itinerary-planner button,
@@ -574,47 +577,59 @@ nav :where(svg, .glove-mark),
   font-size: 1.1rem;
 }
 
-/* 2026 interface system: quiet, touch-first, and shared by every route. */
+/* 2026 interface system: quiet, touch-first, and shared by every route.
+ *
+ * THE PALETTE LIVES HERE, ONCE. Mushroom ground, Deep Heritage Teal brand,
+ * Antique Brass accent — the same block, values and semantic aliases as the
+ * kosher deployment, so the two products read one palette. */
 :root {
-  --navy: #15324b;
-  --navy-deep: #0b2437;
-  --gold: #b78a4a;
+  /* Brand — Deep Heritage Teal, and its dark endpoint. */
+  --navy: #193F46;
+  --navy-deep: #102F35;
+  /* Accent — Antique Brass. --gold is a tone for rules, borders and ornament
+   * (NOT a text colour: ~2.5–3:1 on light grounds). */
+  --gold: #C6A15B;
   /**
-   * THE ACCENT SPLITS IN TWO, and this is the half that may be used for words.
-   *
-   * MEASURED AGAINST THESE VALUES, not inherited from an older pair. --gold is
-   * the brand tone and it is not a text colour: on the site's own backgrounds
-   * it comes out at 2.55:1 to 3.11:1, which is fine for a rule, a border or
-   * the ornament (3:1) and fails 1.4.3 for text (4.5:1) — and --gold was the
-   * colour of every small-caps eyebrow on the site, at eleven or twelve
-   * pixels, exactly where it matters most.
-   *
-   * --gold-ink is for words, and clears 4.5:1 on every light background here:
-   *
-   *   surface #ffffff 6.93:1 · card #fcfaf6 6.65:1
-   *   cream #f7f5f0 6.36:1 · cream-deep #ece8df 5.67:1
-   *
-   * On the navy sections the text accent is --gold-light; this one would be
-   * unreadable there.
-   *
-   * These numbers describe THE COLOURS IN THIS BLOCK. There used to be a
-   * second :root above with a different navy and a different gold, and the
-   * contrast note lived up there describing colours the site had stopped
-   * using — the arithmetic was real and it was about the wrong palette.
+   * The readable brass for gold words — a deliberately darker brass than the
+   * palette's display golds, because none of those clear AA as text. Measured
+   * on this block it clears 4.5:1 on every light ground here:
+   *   surface #FAF8F3 7.55:1 · mushroom #D5CEC3 5.13:1 · deep mushroom #C7BFB1 4.7:1
+   * On teal sections the text accent is --gold-light (6.2:1 on #193F46). This is
+   * the one required accessibility shade outside the approved list.
    */
-  --gold-ink: #765321;
-  --gold-light: #e5d2b3;
-  --cream: #f7f5f0;
-  --cream-deep: #ece8df;
-  --surface: #ffffff;
-  --ink: #26323a;
+  --gold-ink: #6B4A1C;
+  --gold-light: #D8BC7A;
+  --cream: #D5CEC3;
+  /* Deeper mushroom for subtle layering; documented shade, not a new brand hue. */
+  --cream-deep: #C7BFB1;
+  --surface: #FAF8F3;
+  --ink: #102F35;
   --wg-radius: 1rem;
-  --wg-shadow: 0 12px 35px rgba(15, 42, 61, 0.08);
+  --wg-shadow: 0 12px 35px rgba(16, 47, 53, 0.12);
+
+  /* Semantic aliases (approved names) — same values, so nothing competes.
+   * --color-background/--color-foreground are owned by the @theme block above. */
+  --color-surface: var(--surface);
+  --color-surface-strong: #FFFFFF;
+  --color-primary: var(--navy);
+  --color-primary-dark: var(--navy-deep);
+  --color-gold: var(--gold);
+  --color-gold-highlight: var(--gold-light);
+  --color-gold-deep: #B89048;
+  --color-text: var(--ink);
+  --color-text-muted: #536566;
+  --color-text-on-dark: var(--surface);
+  --color-border: rgba(198, 161, 91, 0.50);
+  --color-border-subtle: rgba(25, 63, 70, 0.16);
+  --color-focus: var(--gold-light);
+  --color-selection: rgba(216, 188, 122, 0.30);
+  --gradient-primary: linear-gradient(135deg, #193F46 0%, #102F35 100%);
+  --gradient-gold: linear-gradient(135deg, #B89048 0%, #DFC886 100%);
 }
 
 body {
   background:
-    radial-gradient(circle at 100% 0, rgba(183, 138, 74, 0.09), transparent 32rem),
+    radial-gradient(circle at 100% 0, rgba(198, 161, 91, 0.09), transparent 32rem),
     var(--cream);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: -0.008em;
@@ -646,8 +661,8 @@ p {
 
 .wg-page-hero {
   background:
-    radial-gradient(circle at 90% 5%, rgba(183, 138, 74, 0.18), transparent 28rem),
-    linear-gradient(180deg, #fff, rgba(247, 245, 240, 0.72));
+    radial-gradient(circle at 90% 5%, rgba(198, 161, 91, 0.18), transparent 28rem),
+    linear-gradient(180deg, #fff, rgba(213, 206, 195, 0.72));
 }
 
 .wg-card,
@@ -664,7 +679,7 @@ p {
 }
 
 .wg-admin {
-  background: #f3f5f6;
+  background: #FAF8F3;
 }
 
 .wg-admin :where(input, select, textarea) {
@@ -679,7 +694,7 @@ p {
 }
 
 .wg-admin :where(th) {
-  color: #53636e;
+  color: #536566;
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;

@@ -48,14 +48,14 @@ export default async function AdminSecurityPage() {
 
       <section className="mx-auto mt-10 max-w-4xl">
         {!cspReportStoreAvailable() ? (
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
             <p className="text-sm leading-7 text-stone-600">
               The private store is not connected, so reports cannot be collected. This is the same store the accounts
               system uses; once it is connected, reports appear here on their own.
             </p>
           </div>
         ) : summary.rows.length === 0 ? (
-          <div className="border border-[var(--gold)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold)] bg-[#FAF8F3] p-8">
             <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Nothing has been blocked.</p>
             <p className="mt-3 text-sm leading-7 text-stone-600">
               The policy is enforcing and no page has loaded a service it does not allow. This empty state is the one to

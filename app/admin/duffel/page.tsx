@@ -33,7 +33,7 @@ export default function AdminDuffelPage() {
         . Nothing there uses Duffel, and no setting can turn it on for them.
       </p>
 
-      <div className="mt-8 rounded-xl border border-[var(--gold)] bg-[#fcf6e9] p-5">
+      <div className="mt-8 rounded-xl border border-[var(--gold)] bg-[#FAF8F3] p-5">
         <p className="text-sm leading-6 text-stone-700">
           <span className="font-semibold text-[var(--navy)]">A booking made here is a real one.</span> Search
           creates live offers. If you continue to pay, Duffel collects the card and is the merchant of record —

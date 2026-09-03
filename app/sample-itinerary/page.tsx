@@ -115,7 +115,7 @@ export default async function SampleItineraryPage() {
                 ? "A family of five, seven nights — the trip your client is actually handed, in all three of the places it lives."
                 : "A family of five, seven nights, and a Shabbos in the middle of it — the trip you are actually handed, in all three of the places it lives."}
             </p>
-            <p className="mt-4 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#fcf6e9] px-5 py-3 leading-7 text-stone-700">
+            <p className="mt-4 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-5 py-3 leading-7 text-stone-700">
               <span className="font-semibold text-[var(--navy)]">{SAMPLE_NOTICE}</span>
             </p>
           </div>

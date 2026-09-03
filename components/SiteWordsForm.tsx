@@ -89,7 +89,7 @@ export default function SiteWordsForm({
 
   if (!storeReady) {
     return (
-      <p className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-600">
+      <p className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-600">
         The private store is not connected, so nothing can be changed yet. The site is saying the words it ships with,
         which are shown below each field.
       </p>
@@ -103,7 +103,7 @@ export default function SiteWordsForm({
           them live today without being asked would change his front page for a
           decision he made a long time ago and may not remember. */}
       {oldSettings.length > 0 && (
-        <section className="mt-8 border border-[var(--gold)] bg-[#fcfaf6] p-6">
+        <section className="mt-8 border border-[var(--gold)] bg-[#FAF8F3] p-6">
           <p className="text-xs font-bold uppercase tracking-[0.17em] text-[var(--gold-ink)]">From the old settings screen</p>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
             {oldSettings.length === 1 ? "One line was" : `${oldSettings.length} lines were`} saved here before, and never shown anywhere

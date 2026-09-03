@@ -50,7 +50,7 @@ export default async function TrelloSettings() {
         </p>
       </section>
 
-      <section className="mt-8 rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+      <section className="mt-8 rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
         <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-stone-500">Where to find the three values</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-600">
           <li>

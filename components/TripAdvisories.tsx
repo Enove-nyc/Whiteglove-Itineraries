@@ -25,7 +25,7 @@ const TONES: Record<string, { border: string; bg: string; text: string }> = {
   caution: { border: "border-amber-500", bg: "bg-amber-50", text: "text-amber-900" },
   warn: { border: "border-orange-600", bg: "bg-orange-50", text: "text-orange-900" },
   danger: { border: "border-red-600", bg: "bg-red-50", text: "text-red-900" },
-  unknown: { border: "border-[var(--gold)]", bg: "bg-[#fcfaf6]", text: "text-[var(--navy)]" },
+  unknown: { border: "border-[var(--gold)]", bg: "bg-[#FAF8F3]", text: "text-[var(--navy)]" },
 };
 
 function when(advisory: Advisory | null): string {
@@ -51,7 +51,7 @@ export default function TripAdvisories({ roll, unavailable }: { roll: Roll; unav
       {unavailable ? (
         // Said plainly rather than shown as an empty list, which would read as
         // "nothing to report" when it means "nobody could check".
-        <p className="mt-3 max-w-2xl border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-[var(--navy)]">
+        <p className="mt-3 max-w-2xl border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-[var(--navy)]">
           The State Department&rsquo;s advisories could not be read just now, so this is not saying anything about your
           countries either way.{" "}
           <a href={ADVISORY_SOURCE_URL} rel="noreferrer noopener" target="_blank" className="font-semibold underline decoration-[var(--gold)] underline-offset-4">

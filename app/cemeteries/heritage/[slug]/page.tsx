@@ -105,7 +105,7 @@ export default async function HeritageCemeteryPage({ params }: { params: Promise
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-        <div className="wg-card max-w-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+        <div className="wg-card max-w-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Access &amp; details</p>
           <p className="mt-3 leading-7 text-stone-600">
             Access, hours and contacts for this bais hachaim are kept by Nesiya Tova. Many grounds are locked —

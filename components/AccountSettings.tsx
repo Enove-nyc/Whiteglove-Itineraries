@@ -115,7 +115,7 @@ export default function AccountSettings({
   }
 
   return (
-    <div className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+    <div className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
       <div className="flex flex-wrap items-start gap-5">
         <AvatarCircle name={name || undefined} imageUrl={avatarId ? `/api/media?id=${encodeURIComponent(avatarId)}` : undefined} size={64} />
         <div className="min-w-0 flex-1">

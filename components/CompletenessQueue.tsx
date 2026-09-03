@@ -36,7 +36,7 @@ export default async function CompletenessQueue({ limit = 12 }: { limit?: number
   const notTracked = scored[0]?.score.notTracked ?? [];
 
   return (
-    <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Completeness</p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">
         What needs filling in

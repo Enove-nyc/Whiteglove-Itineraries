@@ -31,7 +31,7 @@ export default async function AdminAccountsPage() {
 
       <section className="mt-8">
         {!available ? (
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
             <p className="text-sm leading-7 text-stone-600">The private account store isn&apos;t connected, so there are no accounts to show yet.</p>
           </div>
         ) : (

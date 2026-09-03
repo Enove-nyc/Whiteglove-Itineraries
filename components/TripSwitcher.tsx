@@ -247,7 +247,7 @@ export default function TripSwitcher({
   const active = trips.find((t) => t.active);
 
   return (
-    <section className="mt-6 border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <section className="mt-6 border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">

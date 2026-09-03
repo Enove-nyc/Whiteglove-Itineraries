@@ -49,7 +49,7 @@ export function PartnerResultsPanel({
 }) {
   if (loading) {
     return (
-      <div className="mt-6 rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-6 text-sm text-stone-600" role="status">
+      <div className="mt-6 rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-6 text-sm text-stone-600" role="status">
         Looking up live options…
       </div>
     );

@@ -100,7 +100,7 @@ export default function ContactForm({
 
   if (sent) {
     return (
-      <div className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-8 text-center">
+      <div className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-8 text-center">
         <p className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">
           Thank you — your message is on its way.
         </p>
@@ -119,7 +119,7 @@ export default function ContactForm({
   }
 
   return (
-    <form onSubmit={submit} className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+    <form onSubmit={submit} className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
       <h2 className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">
         {spec.heading}
       </h2>

@@ -55,7 +55,7 @@ export default function AccessLog({ entries, available }: { entries: SignInEntry
   }
 
   return (
-    <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.17em] text-[var(--gold-ink)]">Who has been in</p>

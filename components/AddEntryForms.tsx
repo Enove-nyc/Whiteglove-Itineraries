@@ -10,7 +10,7 @@ import { type ActionResult, addAttractionAction, addCemeteryAction, addInfoPageA
 const inputClass =
   "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-white px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
 const captionClass = "text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500";
-const cardClass = "border border-[var(--gold-light)] bg-[#fcfaf6] p-6";
+const cardClass = "border border-[var(--gold-light)] bg-[#FAF8F3] p-6";
 const submitClass =
   "border border-[var(--navy)] bg-[var(--navy)] px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[var(--gold)] hover:border-[var(--gold)] disabled:opacity-60";
 

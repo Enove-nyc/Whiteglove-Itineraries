@@ -62,7 +62,7 @@ export default function DayProgress({
       ? "border-emerald-300 bg-emerald-50 text-emerald-900"
       : standing.state === "behind"
         ? "border-amber-300 bg-amber-50 text-amber-900"
-        : "border-[var(--gold-light)] bg-[#fcfaf6] text-stone-700";
+        : "border-[var(--gold-light)] bg-[#FAF8F3] text-stone-700";
 
   return (
     <div className={`mt-4 rounded-xl border p-4 ${tone}`}>

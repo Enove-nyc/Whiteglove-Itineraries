@@ -109,7 +109,7 @@ export default function CaseStudiesForm({
 
   if (!storeReady) {
     return (
-      <p className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-600">
+      <p className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-600">
         The private store is not connected. Case studies cannot be saved yet — and nothing invented is shown publicly.
       </p>
     );
@@ -140,7 +140,7 @@ export default function CaseStudiesForm({
       {/* The list: a study per row, pressable to edit. The eleven fields live in
           the pop-up, not stacked down the page. */}
       {studies.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-dashed border-[var(--gold-light)] bg-[#fcfaf6] p-5 text-sm leading-6 text-stone-600">
+        <p className="mt-6 rounded-lg border border-dashed border-[var(--gold-light)] bg-[#FAF8F3] p-5 text-sm leading-6 text-stone-600">
           None yet — and that is correct. Do not invent any. Press <strong className="text-[var(--navy)]">Add a case
           study</strong> when a real client has permitted one.
         </p>
@@ -252,7 +252,7 @@ export default function CaseStudiesForm({
             role="dialog"
             aria-modal="true"
             aria-labelledby="case-study-modal-title"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-8"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.20)] sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <h2 id="case-study-modal-title" className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">

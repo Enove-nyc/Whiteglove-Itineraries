@@ -52,7 +52,7 @@ export default function ContentImportReview({ dashboard }: { dashboard: ContentI
     <section className="mt-8">
       <section className="mt-8 space-y-4">
         {dashboard.batches.map((source) => (
-          <article key={source.slug} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+          <article key={source.slug} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Source package</p>
@@ -100,7 +100,7 @@ export default function ContentImportReview({ dashboard }: { dashboard: ContentI
         )}
       </section>
 
-      <section className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+      <section className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
           <label className="block min-w-0 flex-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">
             Search candidates

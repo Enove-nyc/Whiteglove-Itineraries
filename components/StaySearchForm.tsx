@@ -54,7 +54,7 @@ export default function StaySearchForm({
       action="/hotels"
       method="get"
       data-search-memory=""
-      className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-5 shadow-[0_18px_45px_rgba(23,45,82,.09)] sm:p-6"
+      className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-5 shadow-[0_18px_45px_rgba(16, 47, 53,.09)] sm:p-6"
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block lg:col-span-2" htmlFor={`${id}-destination`}>

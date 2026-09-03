@@ -127,7 +127,7 @@ export default function CemeteryDirectory({
           <Link
             key={cemetery.slug}
             href={`/cemeteries/${cemetery.slug}`}
-            className="min-w-0 border border-[var(--gold-light)] bg-[#fcfaf6] p-5 transition hover:border-[var(--gold)] hover:shadow-md sm:p-7"
+            className="min-w-0 border border-[var(--gold-light)] bg-[#FAF8F3] p-5 transition hover:border-[var(--gold)] hover:shadow-md sm:p-7"
           >
             <h2 dir="rtl" lang="yi" className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] [overflow-wrap:anywhere] sm:text-4xl">{cemetery.yiddishName}</h2>
             <p className="mt-2 font-[family-name:var(--font-display)] text-xl text-stone-500">{cemetery.name}</p>
@@ -166,7 +166,7 @@ export default function CemeteryDirectory({
       {/* Nothing typed and no country chosen: say the located set is there, and
           how to bring it in — without a count, and without a wall of it. */}
       {!narrowed && heritage.length > 0 && (
-        <p className="mt-10 max-w-3xl border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-5 py-4 text-sm leading-6 text-stone-600">
+        <p className="mt-10 max-w-3xl border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-5 py-4 text-sm leading-6 text-stone-600">
           Search a town or choose a country to include the batei hachaim located worldwide from Nesiya Tova. Many grounds
           are locked; confirm access before travelling.
         </p>

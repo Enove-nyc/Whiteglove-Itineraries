@@ -48,7 +48,7 @@ export default async function AdminFlightItinerariesPage() {
               return (
                 <li
                   key={itinerary.id}
-                  className="rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] p-5 shadow-[0_1px_2px_rgba(23,45,82,.04)]"
+                  className="rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 shadow-[0_1px_2px_rgba(16, 47, 53,.04)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>

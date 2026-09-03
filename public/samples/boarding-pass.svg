@@ -4,52 +4,52 @@
   <defs>
     <pattern id="sample" width="220" height="220" patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
       <text x="0" y="40" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="700"
-            letter-spacing="6" fill="#15324b" fill-opacity="0.07">SAMPLE</text>
+            letter-spacing="6" fill="#193F46" fill-opacity="0.07">SAMPLE</text>
     </pattern>
   </defs>
 
-  <rect width="760" height="320" rx="14" fill="#ffffff" stroke="#d8cbb0"/>
+  <rect width="760" height="320" rx="14" fill="#ffffff" stroke="#C7BFB1"/>
   <rect x="1" y="1" width="758" height="318" rx="13" fill="url(#sample)"/>
 
   <!-- The banner is the first thing read, and it is the whole point of the file. -->
-  <rect x="1" y="1" width="758" height="34" rx="13" fill="#15324b"/>
-  <rect x="1" y="22" width="758" height="13" fill="#15324b"/>
+  <rect x="1" y="1" width="758" height="34" rx="13" fill="#193F46"/>
+  <rect x="1" y="22" width="758" height="13" fill="#193F46"/>
   <text x="24" y="24" font-family="Inter, Arial, Helvetica, sans-serif" font-size="12.5" font-weight="700"
-        letter-spacing="2.4" fill="#f3ead9">SAMPLE DOCUMENT — NOT VALID FOR TRAVEL</text>
+        letter-spacing="2.4" fill="#FAF8F3">SAMPLE DOCUMENT — NOT VALID FOR TRAVEL</text>
 
   <text x="24" y="76" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" font-weight="700"
-        letter-spacing="2.6" fill="#8a6f3c">BOARDING PASS</text>
-  <text x="24" y="104" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" fill="#15324b">Meridian Atlantic · MA 704</text>
+        letter-spacing="2.6" fill="#C6A15B">BOARDING PASS</text>
+  <text x="24" y="104" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" fill="#193F46">Meridian Atlantic · MA 704</text>
 
-  <line x1="24" y1="124" x2="736" y2="124" stroke="#e2d7bf"/>
+  <line x1="24" y1="124" x2="736" y2="124" stroke="#C7BFB1"/>
 
-  <text x="24" y="160" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">PASSENGER</text>
-  <text x="24" y="186" font-family="Georgia, 'Times New Roman', serif" font-size="21" fill="#15324b">COHEN / DAVID</text>
+  <text x="24" y="160" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">PASSENGER</text>
+  <text x="24" y="186" font-family="Georgia, 'Times New Roman', serif" font-size="21" fill="#193F46">COHEN / DAVID</text>
 
-  <text x="300" y="160" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">FROM</text>
-  <text x="300" y="192" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="#15324b">JFK</text>
+  <text x="300" y="160" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">FROM</text>
+  <text x="300" y="192" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="#193F46">JFK</text>
   <text x="300" y="212" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11.5" fill="#57534e">New York</text>
 
-  <text x="404" y="186" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" fill="#b78a4a">&#8594;</text>
+  <text x="404" y="186" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" fill="#C6A15B">&#8594;</text>
 
-  <text x="452" y="160" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">TO</text>
-  <text x="452" y="192" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="#15324b">FCO</text>
+  <text x="452" y="160" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">TO</text>
+  <text x="452" y="192" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="#193F46">FCO</text>
   <text x="452" y="212" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11.5" fill="#57534e">Rome Fiumicino</text>
 
-  <text x="24" y="234" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">DEPARTS</text>
-  <text x="24" y="258" font-family="Georgia, 'Times New Roman', serif" font-size="19" fill="#15324b">Sun 25 Oct · 18:40</text>
+  <text x="24" y="234" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">DEPARTS</text>
+  <text x="24" y="258" font-family="Georgia, 'Times New Roman', serif" font-size="19" fill="#193F46">Sun 25 Oct · 18:40</text>
 
-  <text x="300" y="234" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">SEAT</text>
-  <text x="300" y="258" font-family="Georgia, 'Times New Roman', serif" font-size="19" fill="#15324b">21A</text>
+  <text x="300" y="234" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">SEAT</text>
+  <text x="300" y="258" font-family="Georgia, 'Times New Roman', serif" font-size="19" fill="#193F46">21A</text>
 
-  <text x="452" y="234" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">MEAL</text>
-  <text x="452" y="258" font-family="Georgia, 'Times New Roman', serif" font-size="19" fill="#15324b">Kosher, confirmed</text>
+  <text x="452" y="234" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">MEAL</text>
+  <text x="452" y="258" font-family="Georgia, 'Times New Roman', serif" font-size="19" fill="#193F46">Kosher, confirmed</text>
 
-  <line x1="612" y1="56" x2="612" y2="292" stroke="#e2d7bf" stroke-dasharray="4 5"/>
-  <text x="636" y="150" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">GATE</text>
-  <text x="636" y="176" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" fill="#15324b">B14</text>
-  <text x="636" y="212" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#8a6f3c">BOARDS</text>
-  <text x="636" y="234" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#15324b">18:05</text>
+  <line x1="612" y1="56" x2="612" y2="292" stroke="#C7BFB1" stroke-dasharray="4 5"/>
+  <text x="636" y="150" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">GATE</text>
+  <text x="636" y="176" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" fill="#193F46">B14</text>
+  <text x="636" y="212" font-family="Inter, Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#C6A15B">BOARDS</text>
+  <text x="636" y="234" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#193F46">18:05</text>
 
   <text x="24" y="292" font-family="Inter, Arial, Helvetica, sans-serif" font-size="11" fill="#78716c">
     An illustration of what a client opens from their travel wallet. Meridian Atlantic is not a real airline.

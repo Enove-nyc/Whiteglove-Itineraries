@@ -114,7 +114,7 @@ export default function ShareItineraryPanel() {
 
   if (!loggedIn) {
     return (
-      <div className="mt-5 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <div className="mt-5 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Share this trip</p>
         <p className="mt-2 text-sm text-stone-600"><Link href="/login" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">Log in</Link> to share your itinerary with family or friends and add people to the trip.</p>
       </div>
@@ -122,7 +122,7 @@ export default function ShareItineraryPanel() {
   }
 
   return (
-    <div className="mt-5 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <div className="mt-5 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Share this trip</p>
 
       {url ? (

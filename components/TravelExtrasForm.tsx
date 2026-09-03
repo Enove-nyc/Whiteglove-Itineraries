@@ -56,7 +56,7 @@ export default function TravelExtrasForm({ current, storeReady }: { current: Tra
       <p className="text-sm leading-6 text-stone-600">{describeExtras(rows)}</p>
 
       {rows.map((row, index) => (
-        <div key={row.id} className="rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+        <div key={row.id} className="rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
           <div className="flex items-start justify-between gap-4">
             <span className={label}>Offer {index + 1}</span>
             <button

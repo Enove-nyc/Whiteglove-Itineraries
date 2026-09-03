@@ -226,7 +226,7 @@ function Section({ id, title, action, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <section aria-labelledby={id} className="mt-8 rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-7">
+    <section aria-labelledby={id} className="mt-8 rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 id={id} className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">{title}</h2>
         {action}

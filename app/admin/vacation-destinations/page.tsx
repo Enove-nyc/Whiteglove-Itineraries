@@ -77,7 +77,7 @@ export default async function AdminVacationDestinationsPage({
       </header>
 
       {!ready && (
-        <section className="mt-8 rounded-2xl border border-[var(--gold)] bg-[#fcfaf6] p-6">
+        <section className="mt-8 rounded-2xl border border-[var(--gold)] bg-[#FAF8F3] p-6">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">One thing first</p>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
             The database needs one update before this screen can save.

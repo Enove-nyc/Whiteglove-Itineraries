@@ -73,7 +73,7 @@ export default function PlannerAssumptionsForm({ current, storeReady }: { curren
 
   if (!storeReady) {
     return (
-      <p className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-600">
+      <p className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-600">
         The private store is not connected, so nothing can be changed yet. Every trip on the site is being planned with
         the figures below, which are the ones it ships with. {describeDay(current)}
       </p>
@@ -83,7 +83,7 @@ export default function PlannerAssumptionsForm({ current, storeReady }: { curren
   return (
     <>
       <form action={save} className="mt-8 space-y-8">
-        <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+        <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
           <p className="text-xs font-bold uppercase tracking-[0.17em] text-[var(--gold-ink)]">What these figures make of it</p>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Four real legs</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{describeDay(typed)}</p>

@@ -66,7 +66,7 @@ function Block({ block }: { block: PageBlock }) {
                   )}
                 </>
               );
-              const shell = "wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6";
+              const shell = "wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6";
               // A card with somewhere to go is a link; one without stays an
               // article, so nothing looks clickable that is not.
               return item.href ? (
@@ -103,7 +103,7 @@ function Block({ block }: { block: PageBlock }) {
       if (!block.url) return null;
       return (
         <section className="wg-page-section mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-          <figure className="overflow-hidden rounded-xl border border-[var(--gold-light)] bg-[var(--surface)] p-2 shadow-[0_12px_35px_rgba(23,45,82,.07)]">
+          <figure className="overflow-hidden rounded-xl border border-[var(--gold-light)] bg-[var(--surface)] p-2 shadow-[0_12px_35px_rgba(16, 47, 53,.07)]">
             <Image
               src={block.url}
               alt={block.alt}
@@ -145,7 +145,7 @@ function Block({ block }: { block: PageBlock }) {
     case "quote":
       return (
         <section className="wg-page-section mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-          <blockquote className="max-w-3xl rounded-r-xl border-l-4 border-[var(--gold)] bg-[var(--surface)] px-6 py-7 shadow-[0_8px_25px_rgba(23,45,82,.05)]">
+          <blockquote className="max-w-3xl rounded-r-xl border-l-4 border-[var(--gold)] bg-[var(--surface)] px-6 py-7 shadow-[0_8px_25px_rgba(16, 47, 53,.05)]">
             <p className="font-[family-name:var(--font-display)] text-2xl leading-9 text-[var(--navy)]">{block.text}</p>
             {block.attribution && <footer className="mt-3 text-sm text-stone-500">{block.attribution}</footer>}
           </blockquote>
@@ -157,7 +157,7 @@ function Block({ block }: { block: PageBlock }) {
         <section className="wg-page-section mx-auto max-w-7xl px-5 py-8 sm:px-8">
           <p
             className={`max-w-3xl rounded-r-lg border-l-4 px-5 py-4 text-sm leading-7 ${
-              block.tone === "warn" ? "border-amber-400 bg-amber-50 text-amber-900" : "border-[var(--gold)] bg-[#fcfaf6] text-stone-700"
+              block.tone === "warn" ? "border-amber-400 bg-amber-50 text-amber-900" : "border-[var(--gold)] bg-[#FAF8F3] text-stone-700"
             }`}
           >
             {block.body}

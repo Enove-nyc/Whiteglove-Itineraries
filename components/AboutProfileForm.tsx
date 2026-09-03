@@ -62,7 +62,7 @@ export default function AboutProfileForm({
 
   if (!storeReady) {
     return (
-      <p className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-600">
+      <p className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-600">
         The private store is not connected, so nothing can be saved yet. The About page will keep the general
         introduction until this is connected.
       </p>

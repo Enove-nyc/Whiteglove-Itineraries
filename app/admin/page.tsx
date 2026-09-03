@@ -21,13 +21,13 @@ import { getDashboardStats } from "@/lib/site-analytics";
 export const dynamic = "force-dynamic";
 
 const cardClass =
-  "rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] shadow-[0_1px_2px_rgba(23,45,82,.04)]";
+  "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] shadow-[0_1px_2px_rgba(16, 47, 53,.04)]";
 
 function QuickAction({ href, title, detail }: { href: string; title: string; detail: string }) {
   return (
     <AdminNavLink
       href={href}
-      className={`${cardClass} group flex min-h-44 flex-col justify-between p-5 transition hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_10px_28px_rgba(23,45,82,.09)]`}
+      className={`${cardClass} group flex min-h-44 flex-col justify-between p-5 transition hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_10px_28px_rgba(16, 47, 53,.09)]`}
     >
       <span>
         <span className="block font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">
@@ -65,7 +65,7 @@ function WorkPanel({
 }
 
 const totalCardClass =
-  "rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2";
+  "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2";
 
 function TotalCard({
   label,
@@ -101,7 +101,7 @@ function TotalCard({
           otherwise lays the label beside the count and spills into the next tile. */}
       <AdminNavLink
         href={href}
-        className={`${totalCardClass} flex w-full min-w-0 flex-col hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_8px_22px_rgba(23,45,82,.08)]`}
+        className={`${totalCardClass} flex w-full min-w-0 flex-col hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_8px_22px_rgba(16, 47, 53,.08)]`}
         aria-label={`${label}: ${value}. Open ${label.toLowerCase()}.`}
       >
         {body}

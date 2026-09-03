@@ -107,7 +107,7 @@ export default function MikvaosEditor({
       )}
 
       {shown.length === 0 ? (
-        <p className="mt-5 rounded-lg border border-dashed border-[var(--gold-light)] bg-[#fcfaf6] p-5 text-sm leading-6 text-stone-600">
+        <p className="mt-5 rounded-lg border border-dashed border-[var(--gold-light)] bg-[#FAF8F3] p-5 text-sm leading-6 text-stone-600">
           {rows.length === 0 ? "No mikvah listings yet." : "Nothing matches that search."}
         </p>
       ) : (
@@ -137,14 +137,14 @@ export default function MikvaosEditor({
                   <button
                     type="button"
                     onClick={() => setEditing(row)}
-                    className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#fcfaf6]"
+                    className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#FAF8F3]"
                   >
                     {body}
                   </button>
                 ) : (
                   <Link
                     href={row.townHref}
-                    className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#fcfaf6]"
+                    className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#FAF8F3]"
                   >
                     {body}
                   </Link>
@@ -167,7 +167,7 @@ export default function MikvaosEditor({
             role="dialog"
             aria-modal="true"
             aria-labelledby="mikvah-modal-title"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-8"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.20)] sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>

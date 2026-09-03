@@ -50,7 +50,7 @@ export default async function TripContextBar({ current }: { current: string }) {
   return (
     <nav
       aria-label="This trip"
-      className="border-b border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-3 sm:px-8"
+      className="border-b border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-3 sm:px-8"
     >
       <div className="mx-auto max-w-6xl">
         {/* Who and when, above the where. The client's name is the thing an

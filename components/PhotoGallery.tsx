@@ -41,7 +41,7 @@ export default function PhotoGallery({ photos, heading = "Pictures" }: { photos:
       <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">{heading}</h2>
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {photos.map((photo) => (
-          <figure key={photo.id} className="border border-[var(--gold-light)] bg-[#fcfaf6]">
+          <figure key={photo.id} className="border border-[var(--gold-light)] bg-[#FAF8F3]">
             {/* eslint-disable-next-line @next/next/no-img-element -- an uploaded
                 blob served from /api/media; next/image cannot optimise it and
                 would only add a second fetch. */}

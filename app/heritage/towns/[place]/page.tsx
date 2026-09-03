@@ -166,7 +166,7 @@ export default async function BulkDestinationPage({ params }: { params: Promise<
         {record?.cemeteries.length ? (
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {record.cemeteries.map((cemetery) => (
-              <article key={cemetery.id} className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+              <article key={cemetery.id} className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
                 <h2 dir="rtl" lang="yi" className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">{cemetery.yiddishName}</h2>
                 <p className="mt-1 text-sm text-stone-500">{cemetery.name}</p>
                 {cemetery.address && <p className="mt-4 text-sm leading-6 text-stone-600">{cemetery.address}</p>}

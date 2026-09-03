@@ -223,7 +223,7 @@ function table(rows: Array<[string, string | undefined]>) {
     visible
       .map(
         ([k, v]) =>
-          `<tr><td style="vertical-align:top;color:#8a7a52;font-weight:bold;white-space:nowrap;">${escapeHtml(k)}</td>` +
+          `<tr><td style="vertical-align:top;color:#C6A15B;font-weight:bold;white-space:nowrap;">${escapeHtml(k)}</td>` +
           `<td style="vertical-align:top;color:#333;">${escapeHtml(String(v)).replace(/\n/g, "<br>")}</td></tr>`,
       )
       .join("") +
@@ -252,7 +252,7 @@ export async function sendSubmissionNotification(sub: SubmissionNotification): P
       to,
       reply_to: sub.email,
       subject: `White Glove: new ${sub.kind}${sub.title ? ` — ${sub.title}` : ""}`,
-      html: `<h2 style="font-family:Georgia,serif;color:#1e2a44;">New ${escapeHtml(sub.kind)} on White Glove</h2>${html}<p style="font-family:Arial,sans-serif;font-size:12px;color:#999;">Reply directly to this email to respond to ${escapeHtml(sub.name)}.</p>`,
+      html: `<h2 style="font-family:Georgia,serif;color:#193F46;">New ${escapeHtml(sub.kind)} on White Glove</h2>${html}<p style="font-family:Arial,sans-serif;font-size:12px;color:#999;">Reply directly to this email to respond to ${escapeHtml(sub.name)}.</p>`,
       text,
     },
     to,
@@ -301,7 +301,7 @@ export async function sendPlanRequestNotification(request: PlanRequestNotificati
       ...(request.account.includes("@") ? { reply_to: request.account } : {}),
       subject: `White Glove: ${request.account} asked about ${request.wanted}`,
       html:
-        `<h2 style="font-family:Georgia,serif;color:#1e2a44;">Somebody asked about ${escapeHtml(request.wanted)}</h2>${html}` +
+        `<h2 style="font-family:Georgia,serif;color:#193F46;">Somebody asked about ${escapeHtml(request.wanted)}</h2>${html}` +
         `<p style="font-family:Arial,sans-serif;font-size:13px;color:#555;">Nothing has been charged and no card was taken — this is a request for you to answer.</p>` +
         `<p style="font-family:Arial,sans-serif;font-size:13px;color:#555;">Grant or decline it under <strong>Admin &rarr; Visitor accounts</strong>.</p>`,
       text: `${text}\n\nNothing has been charged. Grant or decline under Admin > Visitor accounts.`,
@@ -358,7 +358,7 @@ export async function sendContactMessage(msg: ContactMessage): Promise<boolean> 
       to,
       reply_to: msg.email,
       subject: `${siteName} contact${msg.subject ? `: ${msg.subject}` : " form message"}`,
-      html: `<h2 style="font-family:Georgia,serif;color:#1e2a44;">New message from the ${siteName} contact form</h2>${html}<p style="font-family:Arial,sans-serif;font-size:12px;color:#999;">Reply directly to this email to respond to ${escapeHtml(msg.name)}.</p>`,
+      html: `<h2 style="font-family:Georgia,serif;color:#193F46;">New message from the ${siteName} contact form</h2>${html}<p style="font-family:Arial,sans-serif;font-size:12px;color:#999;">Reply directly to this email to respond to ${escapeHtml(msg.name)}.</p>`,
       text,
     },
     to,
@@ -386,9 +386,9 @@ export async function sendItineraryShareEmail(
       to,
       subject: `${opts.fromName || "A traveler"} shared "${opts.title}" with you`,
       html:
-        `<h2 style="font-family:Georgia,serif;color:#1e2a44;">${who} shared a trip with you</h2>` +
+        `<h2 style="font-family:Georgia,serif;color:#193F46;">${who} shared a trip with you</h2>` +
         `<p style="font-family:Arial,sans-serif;font-size:14px;color:#333;">You've been added to <strong>${title}</strong> on ${siteName}.</p>` +
-        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#1e2a44;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">View the itinerary →</a></p>` +
+        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#193F46;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">View the itinerary →</a></p>` +
         `<p style="font-family:Arial,sans-serif;font-size:12px;color:#999;">Or open this link: ${url}</p>`,
       text: `${opts.fromName || "A fellow traveler"} shared "${opts.title}" with you on ${siteName}.\n\nView it here: ${opts.url}`,
     },
@@ -418,9 +418,9 @@ export async function sendAgencyInviteEmail(
       to,
       subject: `${opts.ownerName || "Somebody"} invited you to their agency on ${siteName}`,
       html:
-        `<h2 style="font-family:Georgia,serif;color:#1e2a44;">${who} invited you to their agency</h2>` +
+        `<h2 style="font-family:Georgia,serif;color:#193F46;">${who} invited you to their agency</h2>` +
         `<p style="font-family:Arial,sans-serif;font-size:14px;color:#333;">Accepting puts you on Advisor Pro, sharing ${who}&rsquo;s subscription and letterhead. Your own trips stay your own.</p>` +
-        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#1e2a44;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">See the invitation →</a></p>` +
+        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#193F46;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">See the invitation →</a></p>` +
         `<p style="font-family:Arial,sans-serif;font-size:12px;color:#999;">Or open this link: ${url}</p>`,
       text: `${opts.ownerName || "Somebody"} invited you to their agency on ${siteName}.\n\nAccepting puts you on Advisor Pro, sharing their subscription and letterhead. Your own trips stay your own.\n\nSee the invitation: ${opts.url}`,
     },
@@ -460,10 +460,10 @@ export async function sendTripNoteEmail(
       to,
       subject: `${opts.fromName || "Somebody"} left a note on "${opts.tripTitle}"`,
       html:
-        `<h2 style="font-family:Georgia,serif;color:#1e2a44;">${who} left a note${on}</h2>` +
+        `<h2 style="font-family:Georgia,serif;color:#193F46;">${who} left a note${on}</h2>` +
         `<p style="font-family:Arial,sans-serif;font-size:14px;color:#333;">On <strong>${title}</strong>:</p>` +
-        `<blockquote style="font-family:Arial,sans-serif;font-size:14px;color:#333;border-left:4px solid #aa8b52;margin:0;padding:8px 16px;">${note}</blockquote>` +
-        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#1e2a44;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">Open the trip →</a></p>`,
+        `<blockquote style="font-family:Arial,sans-serif;font-size:14px;color:#333;border-left:4px solid #C6A15B;margin:0;padding:8px 16px;">${note}</blockquote>` +
+        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#193F46;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">Open the trip →</a></p>`,
       text: `${opts.fromName || "Somebody"} left a note${opts.about ? ` on ${opts.about}` : ""} on "${opts.tripTitle}":\n\n${opts.note}\n\nOpen the trip: ${opts.url}`,
     },
     to,
@@ -518,7 +518,7 @@ export async function sendSubscriptionNotification(note: SubscriptionNotificatio
         ? `White Glove: ${note.account} is now on ${note.plan}`
         : `White Glove: ${note.account}'s ${note.plan} subscription ended`,
       html:
-        `<h2 style="font-family:Georgia,serif;color:#1e2a44;">${started ? "New subscription" : "Subscription ended"}</h2>${html}` +
+        `<h2 style="font-family:Georgia,serif;color:#193F46;">${started ? "New subscription" : "Subscription ended"}</h2>${html}` +
         `<p style="font-family:Arial,sans-serif;font-size:13px;color:#555;">Stripe handled the payment. The account was moved ${started ? "onto" : "off"} the plan automatically — there is nothing for you to do.</p>`,
       text: `${text}\n\nStripe handled the payment. The account was moved automatically.`,
     },
@@ -660,13 +660,13 @@ export async function sendItineraryToClient(input: {
       subject: `${input.from}: your itinerary for ${input.tripTitle || "your trip"}`,
       html:
         `<div style="max-width:560px;margin:0 auto;padding:8px 4px;">` +
-        `<h2 style="font-family:Georgia,serif;color:#1e2a44;margin:0 0 16px;">Your itinerary from ${business}</h2>` +
+        `<h2 style="font-family:Georgia,serif;color:#193F46;margin:0 0 16px;">Your itinerary from ${business}</h2>` +
         (note
           ? `<p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#333;">${escapeHtml(note).replace(/\n/g, "<br>")}</p>`
           : "") +
         `<p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#333;">` +
         `<strong>${title}</strong> is ready. Open it to see every day, and print it or save it as a PDF to take with you.</p>` +
-        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#1e2a44;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">Open your itinerary →</a></p>` +
+        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#193F46;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">Open your itinerary →</a></p>` +
         `<p style="font-family:Arial,sans-serif;font-size:12px;line-height:1.6;color:#8a8a8a;margin-top:24px;">` +
         `Sent by ${business}. Reply to this email to reach them.<br>` +
         `Planned with ${domain}.</p></div>`,

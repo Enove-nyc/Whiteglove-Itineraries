@@ -104,7 +104,7 @@ export default function SearchResults({
     // which, inside an installed app, means losing the verified domain. The
     // planner is what this brand has instead.
     return (
-      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] px-6 py-10 text-center">
+      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] px-6 py-10 text-center">
         {itineraries ? (
           <Link href="/itinerary" className="inline-block text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-4">
             Open the planner
@@ -124,7 +124,7 @@ export default function SearchResults({
     // needs somewhere to go next — so: what the search covers, then the
     // places most people are looking for when they end up here.
     return (
-      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] px-6 py-10">
+      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] px-6 py-10">
         <p className="text-lg text-[var(--navy)]">No results for “{query}”.</p>
         <p className="mt-2 text-sm leading-6 text-stone-600">
           Check the spelling, or try a city or country on its own — Rome, Switzerland, Antwerp.
@@ -178,7 +178,7 @@ export default function SearchResults({
           >
             {group.heading}
           </h2>
-          <ul className="mt-4 divide-y divide-[var(--gold-light)] rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+          <ul className="mt-4 divide-y divide-[var(--gold-light)] rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3]">
             {group.hits.map((hit) => (
               <li key={hit.id}>
                 <Link
@@ -231,7 +231,7 @@ function FilterChip({
       className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
         active
           ? "border-[var(--navy)] bg-[var(--navy)] text-white"
-          : "border-[var(--gold-light)] bg-[#fcfaf6] text-[var(--navy)] hover:bg-[var(--cream-deep)]"
+          : "border-[var(--gold-light)] bg-[#FAF8F3] text-[var(--navy)] hover:bg-[var(--cream-deep)]"
       }`}
     >
       {children}

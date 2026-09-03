@@ -31,7 +31,7 @@ export default function ContentImportCandidateEditor({ candidate }: { candidate:
         </p>
       )}
 
-      <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+      <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Review state</p>
         <p className="mt-2 text-lg font-semibold text-[var(--navy)]">{candidate.status.replace(/_/g, " ").toLocaleLowerCase("en")}</p>
         {candidate.duplicateOf && (
@@ -58,7 +58,7 @@ export default function ContentImportCandidateEditor({ candidate }: { candidate:
       </section>
 
       <fieldset disabled={!editable || pending} className="space-y-8 disabled:opacity-60">
-        <section className="grid gap-4 border border-[var(--gold-light)] bg-[#fcfaf6] p-5 md:grid-cols-2">
+        <section className="grid gap-4 border border-[var(--gold-light)] bg-[#FAF8F3] p-5 md:grid-cols-2">
           <label className={labelClass}>
             Type
             <select
@@ -107,7 +107,7 @@ export default function ContentImportCandidateEditor({ candidate }: { candidate:
           )}
         </section>
 
-        <section className="grid gap-4 border border-[var(--gold-light)] bg-[#fcfaf6] p-5 md:grid-cols-2">
+        <section className="grid gap-4 border border-[var(--gold-light)] bg-[#FAF8F3] p-5 md:grid-cols-2">
           <label className={`${labelClass} md:col-span-2`}>
             Customer-ready summary
             <textarea name="summary" defaultValue={candidate.summary ?? ""} rows={4} className={fieldClass} />
@@ -127,7 +127,7 @@ export default function ContentImportCandidateEditor({ candidate }: { candidate:
         </section>
 
         {kind === "PLACE_TO_STAY" && (
-          <section className="grid gap-4 border border-[var(--gold-light)] bg-[#fcfaf6] p-5 md:grid-cols-2">
+          <section className="grid gap-4 border border-[var(--gold-light)] bg-[#FAF8F3] p-5 md:grid-cols-2">
             <p className="md:col-span-2 text-sm leading-6 text-stone-600">
               A place to stay is published only with the quarter or shul it is near. These coordinates belong to the anchor, not the hotel. Kosher status is completed in the destination editor, not from a bulk source.
             </p>
@@ -156,7 +156,7 @@ export default function ContentImportCandidateEditor({ candidate }: { candidate:
           </section>
         )}
 
-        <section className="grid gap-4 border border-[var(--gold-light)] bg-[#fcfaf6] p-5 md:grid-cols-2">
+        <section className="grid gap-4 border border-[var(--gold-light)] bg-[#FAF8F3] p-5 md:grid-cols-2">
           <label className={`${labelClass} md:col-span-2`}>
             Source record URL
             <input type="url" name="sourceUrl" required defaultValue={candidate.sourceUrl} className={fieldClass} />
@@ -195,7 +195,7 @@ export default function ContentImportCandidateEditor({ candidate }: { candidate:
       </fieldset>
 
       {candidate.sourceEvidence != null && (
-        <details className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <details className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <summary className="cursor-pointer text-sm font-semibold text-[var(--navy)]">Source evidence preserved with this candidate</summary>
           <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words text-xs leading-5 text-stone-600">{JSON.stringify(candidate.sourceEvidence, null, 2)}</pre>
         </details>

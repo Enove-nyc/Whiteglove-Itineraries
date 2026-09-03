@@ -66,21 +66,21 @@ export default function AdminInventoryManager({ initialItems, configured }: { in
   return (
     <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Total items</p>
           <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">{items.length}</p>
         </div>
-        <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Not completed</p>
           <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">{open}</p>
         </div>
-        <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Completed</p>
           <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">{completed}</p>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-3 border border-[var(--gold-light)] bg-[#fcfaf6] p-4 lg:grid-cols-3">
+      <div className="mt-6 grid gap-3 border border-[var(--gold-light)] bg-[#FAF8F3] p-4 lg:grid-cols-3">
         <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)]">
           Show
           {/* Sized to their labels rather than to three equal thirds. Forced
@@ -111,7 +111,7 @@ export default function AdminInventoryManager({ initialItems, configured }: { in
 
       <div className="mt-6 space-y-4">
         {visibleItems.map((item) => (
-          <article key={item.id} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+          <article key={item.id} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
             <div className="grid gap-5 lg:grid-cols-[1fr_14rem]">
               <div>
                 <div className="flex flex-wrap items-center gap-2">

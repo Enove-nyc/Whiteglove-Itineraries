@@ -30,7 +30,7 @@ export default async function AdminImportsPage() {
       </header>
 
       {!dashboard.configured && (
-        <section className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+        <section className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Database not connected</p>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600">
             The source package below is ready for review but is not public and has not been staged. Add <code className="rounded bg-[var(--cream)] px-1">DATABASE_URL</code>, then run the one-time setup on the <Link href="/admin/destinations" className="font-semibold underline decoration-[var(--gold)] underline-offset-4">Destination editor</Link>.
@@ -39,7 +39,7 @@ export default async function AdminImportsPage() {
       )}
 
       {dashboard.configured && !dashboard.databaseReady && (
-        <section className="mt-8 border border-[var(--gold)] bg-[#fcfaf6] p-6">
+        <section className="mt-8 border border-[var(--gold)] bg-[#FAF8F3] p-6">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Database setup needed</p>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600">
             A database connection was found, but the import tables are not available yet. Run the one-time setup on the <Link href="/admin/destinations" className="font-semibold underline decoration-[var(--gold)] underline-offset-4">Destination editor</Link>, then return here to stage the source package.

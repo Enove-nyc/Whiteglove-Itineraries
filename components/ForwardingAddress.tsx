@@ -96,7 +96,7 @@ export default function ForwardingAddress() {
         ready to check against your trip. Attachments too — the airline&rsquo;s PDF, a screenshot, a photo of a printed
         voucher. Nothing is added to a trip until you look at it.
       </p>
-      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] px-4 py-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] px-4 py-3">
         <span className="min-w-0 break-all font-mono text-sm text-[var(--navy)]">{address}</span>
         <button
           type="button"

@@ -149,7 +149,7 @@ export default function TravelEssentialsForm({
       {/* The two master switches stay in the open — they are the whole section's
           on/off, not one service's. */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex items-start gap-3 rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+        <label className="flex items-start gap-3 rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
           <input
             type="checkbox"
             checked={settings.sectionEnabled}
@@ -163,7 +163,7 @@ export default function TravelEssentialsForm({
             </span>
           </span>
         </label>
-        <label className="flex items-start gap-3 rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+        <label className="flex items-start gap-3 rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
           <input
             type="checkbox"
             checked={settings.showDisclosure}
@@ -251,7 +251,7 @@ export default function TravelEssentialsForm({
             role="dialog"
             aria-modal="true"
             aria-labelledby="essential-modal-title"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-8"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.20)] sm:p-8"
           >
             {(() => {
               const { def, cfg } = openRow;
@@ -327,7 +327,7 @@ export default function TravelEssentialsForm({
                       </div>
 
                       {(cfg.extra ?? []).map((offer, offerIndex) => (
-                        <div key={offerIndex} className="mt-3 rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-3">
+                        <div key={offerIndex} className="mt-3 rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
                           <div className="flex items-center justify-between gap-3">
                             <span className={label}>Also offer</span>
                             <div className="flex items-center gap-3">

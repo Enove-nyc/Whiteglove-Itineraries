@@ -9,7 +9,7 @@ const PAID_PLAN_LIST = PAID_PLANS.map((plan) => PLAN_LABELS[plan]).join(", ");
 
 export const dynamic = "force-dynamic";
 
-const card = "rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] p-5 sm:p-6";
+const card = "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6";
 
 /**
  * Whether this site sells anything, and on what terms.

@@ -108,7 +108,7 @@ export default function AdminExpenses() {
   }
 
   if (!available) {
-    return <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6 text-sm text-stone-600">The private store isn&apos;t connected, so expenses can&apos;t be saved yet.</div>;
+    return <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6 text-sm text-stone-600">The private store isn&apos;t connected, so expenses can&apos;t be saved yet.</div>;
   }
 
   return (
@@ -119,14 +119,14 @@ export default function AdminExpenses() {
           <p className={caption}>Total spent</p>
           {Object.keys(totals.byCurrency).length === 0 ? <p className="mt-2 text-2xl text-stone-400">—</p> : Object.entries(totals.byCurrency).map(([cur, cents]) => <p key={cur} className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">{money(cents, cur)}</p>)}
         </div>
-        <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <p className={caption}>By category</p>
           <ul className="mt-2 space-y-1 text-sm text-stone-700">
             {Object.entries(totals.byCategory).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([cat, cents]) => <li key={cat} className="flex justify-between gap-3"><span>{cat}</span><span className="font-semibold text-[var(--navy)]">{money(cents, Object.keys(totals.byCurrency)[0] || "USD")}</span></li>)}
             {Object.keys(totals.byCategory).length === 0 && <li className="text-stone-400">No expenses yet.</li>}
           </ul>
         </div>
-        <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           <p className={caption}>By month</p>
           <ul className="mt-2 space-y-1 text-sm text-stone-700">
             {Object.entries(totals.byMonth).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6).map(([m, cents]) => <li key={m} className="flex justify-between gap-3"><span>{m}</span><span className="font-semibold text-[var(--navy)]">{money(cents, Object.keys(totals.byCurrency)[0] || "USD")}</span></li>)}
@@ -136,7 +136,7 @@ export default function AdminExpenses() {
       </div>
 
       {/* Add form */}
-      <form onSubmit={add} className="mt-6 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <form onSubmit={add} className="mt-6 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Add an expense</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="block"><span className={caption}>Date</span><DateField value={form.date} onChange={(v) => setForm({ ...form, date: v })} className={inputClass} ariaLabel="Date" /></label>
@@ -153,7 +153,7 @@ export default function AdminExpenses() {
       </form>
 
       {/* List */}
-      <div className="mt-6 overflow-x-auto border border-[var(--gold-light)] bg-[#fcfaf6]">
+      <div className="mt-6 overflow-x-auto border border-[var(--gold-light)] bg-[#FAF8F3]">
         <table className="w-full min-w-[680px] text-left text-sm">
           <thead className="border-b border-[var(--gold-light)] text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">
             <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Category</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3">Receipt</th><th className="px-4 py-3" /></tr>

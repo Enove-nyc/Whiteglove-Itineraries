@@ -71,12 +71,12 @@ export default function Stay22Form({ current, storeReady }: { current: Stay22Set
         </label>
       </div>
 
-      <p className="rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-600">
+      <p className="rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-600">
         The search button will read “<span className="text-[var(--navy)]">{hotelButtonLabel()}</span>”, so
         nobody is sent somewhere without being told first.
       </p>
 
-      <p className="rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-600">
+      <p className="rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-600">
         The Stay22 <span className="font-semibold text-[var(--navy)]">ID above is for tracked links</span> (Allez
         hand-off for hotels, and Kayak flights and cars). Live places to stay and prices on /book need a separate server key: set{" "}
         <code className="rounded bg-white px-1.5 py-0.5 text-xs">STAY22_API_KEY</code> in{" "}

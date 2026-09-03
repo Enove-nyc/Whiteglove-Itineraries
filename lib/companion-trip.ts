@@ -320,7 +320,7 @@ function walletGroupsFor(itin: Itinerary): CompanionWalletGroup[] {
 
 /* ---- the guide (kosher + Shabbos), from the site's own records ---------- */
 
-const KOSHER_TINT = "#e7edf1";
+const KOSHER_TINT = "#FAF8F3";
 const SHABBOS_TINT = "#ffffff";
 
 /** "Kosher, near you" — the site's listings, in the site's careful voice. */

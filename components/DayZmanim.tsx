@@ -25,7 +25,7 @@ export default function DayZmanim({ zmanim }: { zmanim: ZmanimDay | undefined })
   return (
     <section
       className={`mt-4 rounded-xl border p-4 ${
-        zmanim.restDay ? "border-[var(--gold)] bg-[var(--cream)]" : "border-[var(--gold-light)] bg-[#fcfaf6]"
+        zmanim.restDay ? "border-[var(--gold)] bg-[var(--cream)]" : "border-[var(--gold-light)] bg-[#FAF8F3]"
       }`}
       aria-label={`Zmanim for ${zmanim.date}`}
     >

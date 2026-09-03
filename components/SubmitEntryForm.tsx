@@ -72,7 +72,7 @@ export default function SubmitEntryForm() {
 
   if (done) {
     return (
-      <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+      <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
         <p className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Thank you — we received it.</p>
         <p className="mt-3 text-sm leading-6 text-stone-600">White Glove will review your submission and add it once verified. If we need more detail, we&apos;ll reach out to the email you gave.</p>
       </div>
@@ -80,7 +80,7 @@ export default function SubmitEntryForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+    <form onSubmit={handleSubmit} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className={captionClass}>Kind of entry</span>

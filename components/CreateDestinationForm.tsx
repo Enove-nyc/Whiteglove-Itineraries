@@ -9,7 +9,7 @@ const inputClass =
 export default function CreateDestinationForm() {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(createDestinationAction, null);
   return (
-    <details className="border border-[var(--gold)] bg-[#fcfaf6] p-5">
+    <details className="border border-[var(--gold)] bg-[#FAF8F3] p-5">
       <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
         + Create destination
       </summary>

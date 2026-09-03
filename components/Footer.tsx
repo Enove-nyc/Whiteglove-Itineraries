@@ -80,7 +80,7 @@ export default function Footer({ brand: brandProp, minimal = false }: { brand?: 
   const links = minimal ? allLinks.filter((link) => !FOOTER_MARKETING.has(link.label)) : allLinks;
 
   return (
-    <footer id="contact" className="mt-auto border-t border-[var(--gold-light)] bg-[var(--navy-deep)] text-[#f7f3eb]">
+    <footer id="contact" className="mt-auto border-t border-[var(--gold-light)] bg-[var(--navy-deep)] text-[#D5CEC3]">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         {/* THE MARK, AND THE NAME AS TEXT — the same lockup as the header. */}
         <div className="flex items-center gap-3">
@@ -92,7 +92,7 @@ export default function Footer({ brand: brandProp, minimal = false }: { brand?: 
             className="h-12 w-auto object-contain brightness-0 invert"
           />
           <span className="flex flex-col leading-none">
-            <span className="font-[family-name:var(--font-display)] text-xl text-[#f7f3eb]">White Glove</span>
+            <span className="font-[family-name:var(--font-display)] text-xl text-[#D5CEC3]">White Glove</span>
             {/* --gold-light, not --gold: on the navy sections that is the text
                 accent, and --gold is a border colour that does not clear 4.5:1
                 as words. See the note in globals.css. */}

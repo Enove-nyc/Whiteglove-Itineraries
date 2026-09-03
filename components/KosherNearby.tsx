@@ -99,7 +99,7 @@ export default function KosherNearby({
   if (!point && !query?.trim()) return null;
 
   return (
-    <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{heading}</p>
 
       {shown.length === 0 ? (

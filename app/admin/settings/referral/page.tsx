@@ -5,7 +5,7 @@ import { listAttributions, readReferralSettings, referralStoreAvailable } from "
 
 export const dynamic = "force-dynamic";
 
-const card = "rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] p-5 sm:p-6";
+const card = "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6";
 
 export default async function ReferralSettingsPage() {
   const storeReady = referralStoreAvailable();

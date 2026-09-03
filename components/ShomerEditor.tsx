@@ -96,7 +96,7 @@ export default function ShomerEditor({ cemeteries }: { cemeteries: ShomerCemeter
 
   return (
     <div className="space-y-8">
-      <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         {/* 146 batei hachaim: type the town rather than scrolling for it. */}
         <SearchableSelect
           id="shomer-cemetery"
@@ -121,7 +121,7 @@ export default function ShomerEditor({ cemeteries }: { cemeteries: ShomerCemeter
       </div>
 
       {selected && (
-        <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+        <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Numbers on this page now</h2>
             <button type="button" onClick={() => setEditing("new")} className={addButtonClass}>
@@ -143,7 +143,7 @@ export default function ShomerEditor({ cemeteries }: { cemeteries: ShomerCemeter
                     <button
                       type="button"
                       onClick={() => setEditing(r)}
-                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#fcfaf6]"
+                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#FAF8F3]"
                     >
                       <span className="min-w-0">
                         <span className="flex flex-wrap items-baseline gap-2">
@@ -183,7 +183,7 @@ export default function ShomerEditor({ cemeteries }: { cemeteries: ShomerCemeter
             role="dialog"
             aria-modal="true"
             aria-labelledby="shomer-modal-title"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-8"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.20)] sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -245,7 +245,7 @@ export default function ShomerEditor({ cemeteries }: { cemeteries: ShomerCemeter
                 </button>
                 {saveState && !saveState.ok && <span className="text-sm font-semibold text-red-700">{saveState.message}</span>}
               </div>
-              <p className="mt-4 border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-3 py-2 text-xs leading-5 text-stone-600">
+              <p className="mt-4 border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-3 py-2 text-xs leading-5 text-stone-600">
                 Only enter a number you have confirmed. Travelers ring these from the roadside, and a wrong number is
                 worse than none.
               </p>

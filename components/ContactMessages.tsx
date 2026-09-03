@@ -34,7 +34,7 @@ function Row({ message, now }: { message: ContactMessage; now: string }) {
     `?subject=${encodeURIComponent(`Re: ${message.subject || "your message to White Glove Kosher Travel"}`)}`;
 
   return (
-    <div className={`border p-5 ${waiting ? "border-[var(--gold-light)] bg-white" : "border-stone-200 bg-[#fcfaf6]"}`}>
+    <div className={`border p-5 ${waiting ? "border-[var(--gold-light)] bg-white" : "border-stone-200 bg-[#FAF8F3]"}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{message.name}</p>

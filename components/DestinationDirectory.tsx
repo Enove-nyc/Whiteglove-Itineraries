@@ -100,7 +100,7 @@ export default function DestinationDirectory({ entries, initialQuery = "" }: { e
 
   return (
     <div>
-      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Search the directory</span>
           <input
@@ -207,7 +207,7 @@ export default function DestinationDirectory({ entries, initialQuery = "" }: { e
         <>
           <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {results.slice(0, shown).map((entry) => (
-              <Link key={`${entry.k}-${entry.s}`} href={entry.h} className="flex min-w-0 flex-col rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 transition hover:border-[var(--gold)] hover:shadow-md sm:p-7">
+              <Link key={`${entry.k}-${entry.s}`} href={entry.h} className="flex min-w-0 flex-col rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 transition hover:border-[var(--gold)] hover:shadow-md sm:p-7">
                 <p className="break-words text-xs font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">{entry.c} · {KIND_LABEL[entry.k]}</p>
                 <h3 dir="rtl" lang="yi" className="mt-3 font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] [overflow-wrap:anywhere]">{entry.y}</h3>
                 <p className="mt-2 font-[family-name:var(--font-display)] text-xl text-stone-500">{entry.n}</p>

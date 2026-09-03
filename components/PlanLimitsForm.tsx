@@ -51,7 +51,7 @@ export default function PlanLimitsForm({ current, storeReady }: { current: Limit
       {PAID_PLANS.map((plan) => {
         const shown = limitsFor(plan, draft);
         return (
-          <div key={plan} className="rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+          <div key={plan} className="rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
             <h3 className="font-[family-name:var(--font-display)] text-xl text-[var(--navy)]">{PLAN_LABELS[plan]}</h3>
             <div className="mt-3 flex flex-wrap gap-6">
               <label className="block">

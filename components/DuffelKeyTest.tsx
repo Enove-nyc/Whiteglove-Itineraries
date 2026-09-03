@@ -46,7 +46,7 @@ export default function DuffelKeyTest() {
 
   // A test token works but sells nothing, so it is neither green nor red.
   const tone = !result
-    ? "border-[var(--gold)] bg-[#fcfaf6]"
+    ? "border-[var(--gold)] bg-[#FAF8F3]"
     : result.ok && result.mode === "live"
       ? "border-emerald-400 bg-emerald-50 text-emerald-900"
       : result.ok
@@ -54,7 +54,7 @@ export default function DuffelKeyTest() {
         : "border-amber-400 bg-amber-50 text-amber-900";
 
   return (
-    <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <p className="text-xs font-bold uppercase tracking-[0.17em] text-[var(--gold-ink)]">Flight search</p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Is the Duffel token working?</h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">

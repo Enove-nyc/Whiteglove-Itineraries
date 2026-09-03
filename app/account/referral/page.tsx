@@ -54,7 +54,7 @@ export default async function AccountReferralPage() {
             to see your referral link.
           </p>
         ) : code ? (
-          <div className="mt-6 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+          <div className="mt-6 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">Your code</p>
             <p className="mt-2 font-mono text-2xl text-[var(--navy)]">{code}</p>
             <p className="mt-3 text-sm leading-6 text-stone-600">

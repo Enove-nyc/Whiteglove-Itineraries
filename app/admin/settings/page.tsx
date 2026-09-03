@@ -17,7 +17,7 @@ function Card({ href, title, detail, state }: { href: string; title: string; det
   return (
     <AdminNavLink
       href={href}
-      className="group flex flex-col border border-[var(--gold-light)] bg-[#fcfaf6] p-6 transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]"
+      className="group flex flex-col border border-[var(--gold-light)] bg-[#FAF8F3] p-6 transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]"
     >
       <span className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">{title}</span>
       <span className="mt-2 text-sm leading-6 text-stone-600">{detail}</span>

@@ -12,5 +12,5 @@ export const metadata: Metadata = {
  * search form.
  */
 export default function EmbedLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-full bg-[#fcfaf6] p-2 sm:p-3">{children}</div>;
+  return <div className="min-h-full bg-[#FAF8F3] p-2 sm:p-3">{children}</div>;
 }

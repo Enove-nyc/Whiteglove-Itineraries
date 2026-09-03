@@ -48,7 +48,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ share
     <main className="min-h-screen bg-[var(--cream)]">
       <Navbar />
       <section className="mx-auto max-w-3xl px-5 py-10 sm:px-8">
-        <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+        <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
             Trip proposal{expired ? " — expired" : ""}
           </p>

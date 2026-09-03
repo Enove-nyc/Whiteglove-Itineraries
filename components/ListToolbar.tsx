@@ -75,7 +75,7 @@ export default function ListToolbar({
   const active = Boolean(query.trim()) || setFilters.length > 0;
 
   return (
-    <div className="rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <div className="rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex flex-wrap items-end gap-3">
         <label className="block min-w-0 flex-1 basis-64">
           <span className={captionClass}>{searchLabel}</span>

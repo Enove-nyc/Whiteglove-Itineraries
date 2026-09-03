@@ -23,7 +23,7 @@ export default async function AreaGate({ area, children }: { area: AdminArea; ch
   if (mayUse(areas, area)) return <>{children}</>;
 
   return (
-    <div className="max-w-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+    <div className="max-w-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Not yours to open</p>
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">
         {AREA_LABELS[area].label}

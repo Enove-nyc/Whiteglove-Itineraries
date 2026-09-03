@@ -29,7 +29,7 @@ import {
  */
 
 const inputClass =
-  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
+  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
 const captionClass = "text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500";
 const submitClass =
   "min-h-[44px] border border-[var(--navy)] bg-[var(--navy)] px-5 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)] disabled:opacity-60";
@@ -212,7 +212,7 @@ export default function BorderCrossingsEditor({
       <Status state={clearState} />
 
       {needACheck.length > 0 && (
-        <section className="border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-3">
+        <section className="border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-3">
           <p className="text-sm leading-6 text-stone-700">
             {/* Not a scolding — a list of thirty crossings does not answer
                 "where do I look next" on its own. */}
@@ -222,7 +222,7 @@ export default function BorderCrossingsEditor({
       )}
 
       {groups.map((group) => (
-        <section key={group.key} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+        <section key={group.key} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
             {group.countries[0]} – {group.countries[1]}
           </h2>
@@ -279,7 +279,7 @@ export default function BorderCrossingsEditor({
         </section>
       ))}
 
-      <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Add a crossing</h2>
           {!adding && (

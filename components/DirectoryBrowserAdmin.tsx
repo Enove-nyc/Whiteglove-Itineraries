@@ -24,7 +24,7 @@ const KIND_TONE: Record<DirectoryKind, string> = {
 };
 
 const inputClass =
-  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)] focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
+  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)] focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
 const captionClass = "text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500";
 const smallButton =
   "min-h-[36px] border border-[var(--gold-light)] px-3 text-[11px] font-bold uppercase leading-9 tracking-[0.1em] text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]";
@@ -102,7 +102,7 @@ export default function DirectoryBrowserAdmin({ entries }: { entries: DirectoryE
         </p>
       ) : (
         <>
-          <ul className="mt-5 divide-y divide-[var(--gold-light)] border border-[var(--gold-light)] bg-[#fcfaf6]">
+          <ul className="mt-5 divide-y divide-[var(--gold-light)] border border-[var(--gold-light)] bg-[#FAF8F3]">
             {visible.map((entry) => (
               <li key={entry.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
                 <div className="min-w-0">

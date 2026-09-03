@@ -54,12 +54,12 @@ const bareInput = "mt-1 min-h-11 w-full min-w-0 border-0 bg-transparent p-0 text
 function SearchGrid({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   // overflow-visible so airport, address and date pickers can open below the
   // grid — overflow-hidden was clipping them and made every dropdown look dead.
-  return <div className={`grid gap-px overflow-visible rounded-2xl border border-[var(--gold-light)] bg-[var(--gold-light)] shadow-[0_8px_24px_rgba(23,45,82,.06)] ${className}`}>{children}</div>;
+  return <div className={`grid gap-px overflow-visible rounded-2xl border border-[var(--gold-light)] bg-[var(--gold-light)] shadow-[0_8px_24px_rgba(16, 47, 53,.06)] ${className}`}>{children}</div>;
 }
 
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className={`flex min-w-0 flex-col justify-center bg-[#fcfaf6] px-4 py-2.5 transition focus-within:bg-white sm:py-3 ${className}`}>
+    <label className={`flex min-w-0 flex-col justify-center bg-[#FAF8F3] px-4 py-2.5 transition focus-within:bg-white sm:py-3 ${className}`}>
       <span className={fieldLabel}>{label}</span>
       {children}
     </label>
@@ -238,11 +238,11 @@ export default function BookPartners({
   // what actually happens next, so neither can promise the wrong thing.
 
   return (
-    <div className="overflow-visible rounded-[2rem] border border-[var(--gold-light)] bg-white shadow-[0_24px_60px_rgba(23,45,82,.10)]">
+    <div className="overflow-visible rounded-[2rem] border border-[var(--gold-light)] bg-white shadow-[0_24px_60px_rgba(16, 47, 53,.10)]">
       {/* ---- How are you paying? A segmented control, so the choice reads as
            one control with two settings rather than two competing panels. ---- */}
-      <div className="flex flex-wrap items-center justify-between gap-5 border-b border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-5 sm:px-8 sm:py-6">
-        <div className="relative grid h-14 w-full max-w-[21rem] min-w-0 grid-cols-2 overflow-hidden rounded-full border border-[var(--gold-light)] bg-white p-1.5 shadow-[0_4px_14px_rgba(23,45,82,.08)]">
+      <div className="flex flex-wrap items-center justify-between gap-5 border-b border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-5 sm:px-8 sm:py-6">
+        <div className="relative grid h-14 w-full max-w-[21rem] min-w-0 grid-cols-2 overflow-hidden rounded-full border border-[var(--gold-light)] bg-white p-1.5 shadow-[0_4px_14px_rgba(16, 47, 53,.08)]">
           <span aria-hidden="true" className={`absolute bottom-1.5 left-1.5 top-1.5 w-[calc(50%-0.375rem)] rounded-full bg-[var(--navy)] shadow-sm transition-transform duration-300 ease-out ${pay === "miles" ? "translate-x-full" : "translate-x-0"}`} />
           <PayToggle active={pay === "cash"} onClick={() => setPay("cash")}>Cash</PayToggle>
           <PayToggle active={pay === "miles"} onClick={() => setPay("miles")}>Miles &amp; points</PayToggle>
@@ -291,7 +291,7 @@ export default function BookPartners({
 
       {/* Says what happens when you press the button on the tab you are
           actually looking at, rather than describing the page in general. */}
-      <p className="border-t border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-5 text-xs leading-6 text-stone-500 sm:px-8">
+      <p className="border-t border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-5 text-xs leading-6 text-stone-500 sm:px-8">
         {pay === "miles"
           ? "Award bookings are finished inside your own loyalty account."
           : "After you book, add the details to your itinerary."}
@@ -677,7 +677,7 @@ function FlightsForm({
                     className={bareInput}
                   />
                 </Field>
-                <div className="flex items-end bg-[#fcfaf6] px-4 py-2.5">
+                <div className="flex items-end bg-[#FAF8F3] px-4 py-2.5">
                   {extraLegs.length > 1 ? (
                     <button
                       type="button"
@@ -1018,7 +1018,7 @@ function CarsForm({ onAdd, onOpened, prefill }: { onAdd: AddFn; onOpened: (b: Pe
         <Field label="Drop-off">
           <input type="date" value={dropoff} onChange={(e) => setDropoff(e.target.value)} className={bareInput} />
         </Field>
-        <div className="flex items-center bg-[#fcfaf6] px-4 py-2.5 sm:py-3">
+        <div className="flex items-center bg-[#FAF8F3] px-4 py-2.5 sm:py-3">
           <button
             type="button"
             onClick={search}
@@ -1068,7 +1068,7 @@ function BookedPrompt({ booking, onDone, onDismiss }: { booking: PendingBooking;
 
   return (
     <div className="fixed inset-0 z-[var(--wg-z-modal)] flex items-end justify-center bg-[rgba(13,31,59,.45)] p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="booked-title">
-      <div ref={dialogRef} tabIndex={-1} className="w-full max-w-lg rounded-3xl border border-[var(--gold)] bg-[#fcfaf6] p-6 shadow-[0_24px_60px_rgba(23,45,82,.35)] outline-none sm:p-8">
+      <div ref={dialogRef} tabIndex={-1} className="w-full max-w-lg rounded-3xl border border-[var(--gold)] bg-[#FAF8F3] p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.35)] outline-none sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Searching in the other tab</p>
         <h2 id="booked-title" className="mt-3 font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)] sm:text-3xl">
           When you have booked, come back and tell us.
@@ -1131,7 +1131,7 @@ function ActionRow({
         type="button"
         onClick={onSearch}
         disabled={busy}
-        className="min-h-[52px] min-w-0 flex-1 rounded-full bg-[var(--navy)] px-6 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_20px_rgba(23,45,82,.14)] transition hover:bg-[var(--gold)] disabled:opacity-60"
+        className="min-h-[52px] min-w-0 flex-1 rounded-full bg-[var(--navy)] px-6 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_20px_rgba(16, 47, 53,.14)] transition hover:bg-[var(--gold)] disabled:opacity-60"
       >
         {busy ? "Searching…" : `${searchLabel} →`}
       </button>
@@ -1258,7 +1258,7 @@ function ValueCalculator({ unit, cashLabel, feesLabel, pointsPlaceholder, cashPl
         <Field label={feesLabel}><input inputMode="decimal" value={fees} onChange={(e) => setFees(e.target.value)} placeholder="0" className={bareInput} /></Field>
       </SearchGrid>
       {cpp !== null && verdict && (
-        <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-4">
+        <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-4">
           <p className="font-[family-name:var(--font-display)] text-3xl leading-none text-[var(--navy)]">{cpp.toFixed(2)}¢ <span className="text-base text-stone-500">per point</span></p>
           <p className={`text-sm font-semibold ${verdict.tone}`}>{verdict.text}</p>
           <p className="mt-1 basis-full text-xs leading-5 text-stone-500">

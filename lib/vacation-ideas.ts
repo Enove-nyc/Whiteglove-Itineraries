@@ -544,7 +544,7 @@ export function featuredThisSeason(
 export const SIGNAL_CLASSES: Record<SignalTone, string> = {
   good: "border-emerald-700 bg-emerald-50 text-emerald-900",
   workable: "border-amber-600 bg-amber-50 text-amber-900",
-  plan: "border-[var(--gold)] bg-[#fcf6e9] text-[var(--navy)]",
+  plan: "border-[var(--gold)] bg-[#FAF8F3] text-[var(--navy)]",
   unknown: "border-stone-400 bg-stone-100 text-stone-700",
 };
 

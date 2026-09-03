@@ -223,14 +223,14 @@ export default async function BookPage({
         <div className="mx-auto max-w-6xl">
         <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Cash or points, side by side</h2>
 
-        <div className="mt-8 grid gap-px overflow-hidden rounded-3xl border border-[var(--gold-light)] bg-[var(--gold-light)] shadow-[0_18px_45px_rgba(23,45,82,.07)]">
+        <div className="mt-8 grid gap-px overflow-hidden rounded-3xl border border-[var(--gold-light)] bg-[var(--gold-light)] shadow-[0_18px_45px_rgba(16, 47, 53,.07)]">
           <div className="hidden bg-[var(--navy)] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold-light)] sm:grid sm:grid-cols-[8rem_1fr_1fr] sm:gap-5">
             <span />
             <span>With cash</span>
             <span>With miles &amp; points</span>
           </div>
           {COMPARISON.map(([category, cash, points]) => (
-            <div key={category} className="grid gap-4 bg-[#fcfaf6] px-5 py-6 sm:grid-cols-[8rem_1fr_1fr] sm:gap-6 sm:px-6">
+            <div key={category} className="grid gap-4 bg-[#FAF8F3] px-5 py-6 sm:grid-cols-[8rem_1fr_1fr] sm:gap-6 sm:px-6">
               <h3 className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">
                 <GloveMark size="sm" />
                 {category}

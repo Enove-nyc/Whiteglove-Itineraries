@@ -44,7 +44,7 @@ export default function TravelExtras({
   const amazon = needsAmazonDisclosure(extras);
 
   return (
-    <section className="border-t border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-14 sm:px-8 sm:py-16">
+    <section className="border-t border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-14 sm:px-8 sm:py-16">
       <div className="mx-auto max-w-6xl">
         <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">{heading}</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{intro}</p>
@@ -59,7 +59,7 @@ export default function TravelExtras({
               href={extra.url}
               target="_blank"
               rel="noreferrer sponsored"
-              className="flex flex-col justify-between rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_8px_24px_rgba(23,45,82,.05)] transition hover:border-[var(--gold)] hover:shadow-[0_14px_34px_rgba(23,45,82,.09)]"
+              className="flex flex-col justify-between rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_8px_24px_rgba(16, 47, 53,.05)] transition hover:border-[var(--gold)] hover:shadow-[0_14px_34px_rgba(16, 47, 53,.09)]"
             >
               <div>
                 <h3 className="font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">{extra.name}</h3>

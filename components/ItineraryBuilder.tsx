@@ -468,7 +468,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
       />
 
       {/* Trip header */}
-      <section className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-4 shadow-[0_10px_30px_rgba(23,45,82,.06)] sm:p-6">
+      <section className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-4 shadow-[0_10px_30px_rgba(16, 47, 53,.06)] sm:p-6">
         {/* SET ONCE, THEN RE-READ ON EVERY VISIT FOR THE REST OF THE TRIP.
             The name, the dates, who is coming and what time a day starts are
             answered in the first minute of a trip and then sit open at the
@@ -589,7 +589,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
                   type="button"
                   onClick={() => set({ showZmanim: !itin.showZmanim })}
                   aria-pressed={Boolean(itin.showZmanim)}
-                  className={`inline-flex h-14 items-center rounded-full border px-5 text-xs font-bold shadow-[0_4px_14px_rgba(23,45,82,.08)] transition ${
+                  className={`inline-flex h-14 items-center rounded-full border px-5 text-xs font-bold shadow-[0_4px_14px_rgba(16, 47, 53,.08)] transition ${
                     itin.showZmanim
                       ? "border-[var(--navy)] bg-[var(--navy)] text-white hover:bg-[var(--gold)]"
                       : "border-[var(--gold-light)] bg-white text-stone-500 hover:text-[var(--navy)]"
@@ -598,7 +598,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
                   {itin.showZmanim ? "Zmanim on" : "Show zmanim"}
                 </button>
               )}
-              <span className="relative grid h-14 w-[14rem] grid-cols-2 overflow-hidden rounded-full border border-[var(--gold-light)] bg-white p-1.5 shadow-[0_4px_14px_rgba(23,45,82,.08)]">
+              <span className="relative grid h-14 w-[14rem] grid-cols-2 overflow-hidden rounded-full border border-[var(--gold-light)] bg-white p-1.5 shadow-[0_4px_14px_rgba(16, 47, 53,.08)]">
                 <span aria-hidden="true" className={`absolute bottom-1.5 left-1.5 top-1.5 w-[calc(50%-0.375rem)] rounded-full bg-[var(--navy)] shadow-sm transition-transform duration-300 ease-out ${view === "calendar" ? "translate-x-full" : "translate-x-0"}`} />
                 <button type="button" onClick={() => setView("days")} aria-pressed={view === "days"} className={`relative z-10 flex min-h-0 items-center justify-center rounded-full px-4 text-xs font-bold transition-colors duration-300 ${view === "days" ? "text-white" : "text-stone-500 hover:text-[var(--navy)]"}`}>Day view</button>
                 <button type="button" onClick={() => setView("calendar")} aria-pressed={view === "calendar"} className={`relative z-10 flex min-h-0 items-center justify-center rounded-full px-4 text-xs font-bold transition-colors duration-300 ${view === "calendar" ? "text-white" : "text-stone-500 hover:text-[var(--navy)]"}`}>Calendar</button>
@@ -609,7 +609,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
                   rounded rectangle inside the pill track. Mirroring the toggle
                   above — an absolutely-inset span under a transparent link —
                   keeps the fill immune to that rule. */}
-              <span className="group relative inline-flex h-14 items-center overflow-hidden rounded-full border border-[var(--gold-light)] bg-white p-1.5 shadow-[0_4px_14px_rgba(23,45,82,.08)]">
+              <span className="group relative inline-flex h-14 items-center overflow-hidden rounded-full border border-[var(--gold-light)] bg-white p-1.5 shadow-[0_4px_14px_rgba(16, 47, 53,.08)]">
                 <span aria-hidden="true" className="absolute inset-1.5 rounded-full bg-[var(--navy)] transition-colors group-hover:bg-[var(--gold)]" />
                 <Link href="/itinerary/print" target="_blank" className="relative z-10 inline-flex h-full items-center justify-center px-5 text-xs font-bold text-white">Print / PDF</Link>
               </span>
@@ -625,7 +625,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           </div>
 
           {unscheduled.length > 0 && (
-            <details open={unscheduledOpen} onToggle={(e) => setUnscheduledOpen(e.currentTarget.open)} className="group rounded-xl border border-dashed border-[var(--gold)] bg-[#fcfaf6]">
+            <details open={unscheduledOpen} onToggle={(e) => setUnscheduledOpen(e.currentTarget.open)} className="group rounded-xl border border-dashed border-[var(--gold)] bg-[#FAF8F3]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
                 <span className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Not scheduled yet ({unscheduled.length})</span>
                 <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
@@ -692,7 +692,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
 
 
       <div className="grid gap-3 md:grid-cols-2">
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
             <span className="text-sm font-semibold text-[var(--navy)]">Travelers <span className="font-normal text-stone-400">({travelersOf(itin).length})</span></span>
             <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
@@ -710,7 +710,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
             />
           </div>
         </details>
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
             <span className="text-sm font-semibold text-[var(--navy)]">Share this itinerary</span>
             <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
@@ -721,7 +721,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
             <SendToClientPanel />
           </div>
         </details>
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
             <span className="text-sm font-semibold text-[var(--navy)]">Rooms for this trip</span>
             <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
@@ -737,7 +737,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           for "show me every flight" and for deleting one, and not worth a
           permanent section of the page. Shut by default, under the trip. */}
       {(itin.flights.length + itin.lodging.length + itin.activities.length) > 0 && (
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] px-4">
+        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] px-4">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 marker:content-none">
           <span className="text-sm font-semibold text-[var(--navy)]">Everything on this trip, as lists</span>
           <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
@@ -795,7 +795,7 @@ function CalendarView({ days }: { days: ReturnType<typeof buildDays> }) {
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <section className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-3 sm:p-4">
+    <section className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-3 sm:p-4">
       <div className="hidden grid-cols-7 gap-2 border-b border-[var(--gold-light)] pb-2 sm:grid">
         {weekdays.map((weekday) => <p key={weekday} className="text-center text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400">{weekday}</p>)}
       </div>
@@ -1137,8 +1137,8 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
   return (
     <details
       id={`trip-day-${day.date}`}
-      className={`group overflow-hidden rounded-2xl border shadow-[0_8px_24px_rgba(23,45,82,.045)] ${
-        isToday ? "border-[var(--gold)] bg-[#fffdf4] ring-1 ring-[var(--gold-light)]" : "border-[var(--gold-light)] bg-[#fcfaf6]"
+      className={`group overflow-hidden rounded-2xl border shadow-[0_8px_24px_rgba(16, 47, 53,.045)] ${
+        isToday ? "border-[var(--gold)] bg-[#FAF8F3] ring-1 ring-[var(--gold-light)]" : "border-[var(--gold-light)] bg-[#FAF8F3]"
       }`}
       open={expanded}
       onToggle={(e) => setExpanded(e.currentTarget.open)}
@@ -1495,7 +1495,7 @@ function BookingList({ title, items, onRemove, onEdit }: {
   onEdit?: (id: string) => void;
 }) {
   return (
-    <details className="group border border-[var(--gold-light)] bg-[#fcfaf6]">
+    <details className="group border border-[var(--gold-light)] bg-[#FAF8F3]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 marker:content-none">
         <span className={caption}>{title} ({items.length})</span>
         <span aria-hidden="true" className="text-lg leading-none text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
@@ -1714,7 +1714,7 @@ function FlightForm({ startDate, initial, onAdd, onRemove, onCancel }: {
       onCancel={onCancel}
       onSubmit={submitFlight}
     >
-      <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#faf7ef] p-3">
+      <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
         <span className={caption}>Auto-fill from a flight number</span>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <input className={`${inputClass} mt-0 w-32`} value={lookupNo} onChange={(e) => setLookupNo(e.target.value)} placeholder="e.g. LY1" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void runLookup(); } }} />
@@ -1745,7 +1745,7 @@ function FlightForm({ startDate, initial, onAdd, onRemove, onCancel }: {
       {/* Connections belong to this one journey. Entering them as separate
           flights made the planner think the traveler had arrived, needed a bed
           in the connecting city, and had a free day there. */}
-      <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#faf7ef] p-3">
+      <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className={caption}>Stops on the way (connections)</span>
           <button
@@ -1903,7 +1903,7 @@ function LodgingForm({ startDate, initial, onAdd, onRemove, onCancel }: {
       }}
     >
       {!overnight && (
-        <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#faf7ef] p-3">
+        <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
           <span className={caption}>Pick from our listed lodging</span>
           <LodgingPicker onPick={pickLodging} />
           <span className={`${caption} mt-3 block`}>…or search any hotel</span>
@@ -1981,7 +1981,7 @@ function LodgingPicker({ onPick }: { onPick: (g: LodgingResult) => void }) {
         autoComplete="off"
       />
       {open && results.length > 0 && (
-        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#fcfaf6] shadow-[0_16px_36px_rgba(23,45,82,.14)]">
+        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#FAF8F3] shadow-[0_16px_36px_rgba(16, 47, 53,.14)]">
           {results.map((g, i) => (
             <li key={`${g.name}-${i}`}>
               <button
@@ -2059,12 +2059,12 @@ function HotelPlacePicker({ onPick }: { onPick: (p: PlaceLodgingResult) => void 
         autoComplete="off"
       />
       {open && loading && q.trim().length >= 3 && (
-        <p className="absolute left-0 right-0 top-full z-30 border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2 text-xs text-stone-500 shadow-[0_16px_36px_rgba(23,45,82,.14)]">
+        <p className="absolute left-0 right-0 top-full z-30 border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2 text-xs text-stone-500 shadow-[0_16px_36px_rgba(16, 47, 53,.14)]">
           Searching…
         </p>
       )}
       {open && !loading && results.length > 0 && (
-        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#fcfaf6] shadow-[0_16px_36px_rgba(23,45,82,.14)]">
+        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#FAF8F3] shadow-[0_16px_36px_rgba(16, 47, 53,.14)]">
           {results.map((p, i) => (
             <li key={`${p.name}-${i}`}>
               <button
@@ -2122,7 +2122,7 @@ function ActivityForm({ startDate, onAdd, itineraries = false }: { startDate: st
 
   return (
     <FormShell title="Add an activity / stop" onSubmit={() => { if (a.name) onAdd({ id: uid(), name: a.name, yiddishName: a.yiddishName, address: a.address, coordinates: a.coordinates, date: a.date ?? "", startTime: a.startTime, durationMins: a.durationMins, href: a.href, phone: a.phone, keverSlug: a.keverSlug, country: a.country, notes: a.notes, bookedOnSite: false }); }}>
-      <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#faf7ef] p-3">
+      <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
         {!itineraries && (
           <>
             <span className={caption}>Add a kever from our list</span>
@@ -2202,7 +2202,7 @@ function KeverPicker({ onPick }: { onPick: (k: KeverResult) => void }) {
         autoComplete="off"
       />
       {open && results.length > 0 && (
-        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#fcfaf6] shadow-[0_16px_36px_rgba(23,45,82,.14)]">
+        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#FAF8F3] shadow-[0_16px_36px_rgba(16, 47, 53,.14)]">
           {results.map((k) => (
             <li key={k.slug}>
               <button
@@ -2279,7 +2279,7 @@ function AttractionPicker({ onPick }: { onPick: (x: AttractionResult) => void })
         autoComplete="off"
       />
       {open && results.length > 0 && (
-        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#fcfaf6] shadow-[0_16px_36px_rgba(23,45,82,.14)]">
+        <ul className="absolute left-0 right-0 top-full z-30 max-h-72 overflow-auto border border-[var(--gold)] bg-[#FAF8F3] shadow-[0_16px_36px_rgba(16, 47, 53,.14)]">
           {results.map((x) => (
             <li key={x.slug}>
               <button
@@ -2397,7 +2397,7 @@ function TravelerShareLink({ tripId, traveler }: { tripId: string | null; travel
   if (link) {
     return (
       <div className="mt-1.5 flex w-full min-w-0 items-center gap-2 text-xs">
-        <input readOnly value={link} className="min-w-0 flex-1 truncate border border-[var(--gold-light)] bg-[#fcfaf6] px-2 py-1 text-[var(--navy)]" onFocus={(e) => e.target.select()} />
+        <input readOnly value={link} className="min-w-0 flex-1 truncate border border-[var(--gold-light)] bg-[#FAF8F3] px-2 py-1 text-[var(--navy)]" onFocus={(e) => e.target.select()} />
         <button type="button" onClick={() => navigator.clipboard?.writeText(link)} className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
           Copy
         </button>
@@ -2509,7 +2509,7 @@ function TravelersPanel({
                 value={t.kind ?? "adult"}
                 onChange={(e) => update(t.id, { kind: e.target.value as ItinTraveler["kind"] })}
                 aria-label={`${t.name || "Traveler"} type`}
-                className="border border-[var(--gold-light)] bg-[#fcfaf6] py-1 pl-2 text-xs text-[var(--navy)] outline-none"
+                className="border border-[var(--gold-light)] bg-[#FAF8F3] py-1 pl-2 text-xs text-[var(--navy)] outline-none"
               >
                 {TRAVELER_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
               </select>
@@ -2526,7 +2526,7 @@ function TravelersPanel({
                 onChange={(e) => update(t.id, { family: e.target.value })}
                 aria-label={`${t.name || "Traveler"}'s family or group`}
                 placeholder="Family / group (optional)"
-                className="min-w-0 flex-1 border border-[var(--gold-light)] bg-[#fcfaf6] px-2 py-1 text-xs text-[var(--navy)] outline-none"
+                className="min-w-0 flex-1 border border-[var(--gold-light)] bg-[#FAF8F3] px-2 py-1 text-xs text-[var(--navy)] outline-none"
               />
               <TravelerShareLink tripId={tripId ?? null} traveler={t} />
             </li>
@@ -2590,7 +2590,7 @@ function BookFlightsPanel({ itin }: { itin: Itinerary }) {
   const href = bookingHref(booking, Object.fromEntries(params));
 
   return (
-    <section className="mt-5 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <section className="mt-5 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Book the flights</h2>
         {people.length > 0 && (

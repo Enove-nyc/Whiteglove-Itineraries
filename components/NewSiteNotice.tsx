@@ -166,7 +166,7 @@ export default function NewSiteNotice({ notice }: { notice: BetaNotice }) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="w-full max-w-xl rounded-2xl border border-[var(--gold)] bg-[#fcf6e9] p-5 text-[var(--navy)] shadow-[0_24px_60px_rgba(23,45,82,.28)] outline-none sm:p-7"
+        className="w-full max-w-xl rounded-2xl border border-[var(--gold)] bg-[#FAF8F3] p-5 text-[var(--navy)] shadow-[0_24px_60px_rgba(16, 47, 53,.28)] outline-none sm:p-7"
       >
         {/* Every field the owner can edit is rendered. A settings screen with a
             line on it that no page shows is the exact failure data/site-words.ts

@@ -15,7 +15,7 @@ type StatusFilter = "OPEN" | "ALL" | ReviewQueueItemStatus;
 type OriginFilter = "ALL" | "database" | "source_pack";
 
 const countCardClass =
-  "w-full min-w-0 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2";
+  "w-full min-w-0 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2";
 
 function CountCard({
   label,
@@ -34,8 +34,8 @@ function CountCard({
       onClick={onClick}
       aria-pressed={active}
       aria-label={`Filter the queue to ${label.toLowerCase()}.`}
-      className={`${countCardClass} flex flex-col hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_8px_22px_rgba(23,45,82,.08)] ${
-        active ? "border-[var(--gold)] shadow-[0_8px_22px_rgba(23,45,82,.08)]" : ""
+      className={`${countCardClass} flex flex-col hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_8px_22px_rgba(16, 47, 53,.08)] ${
+        active ? "border-[var(--gold)] shadow-[0_8px_22px_rgba(16, 47, 53,.08)]" : ""
       }`}
     >
       {typeof value === "number" && (
@@ -156,7 +156,7 @@ export default function ImportNeedsReviewQueue({
         />
       </div>
 
-      <section className="mt-8 border border-[var(--gold-light)] bg-[#fffdf9] p-5" aria-labelledby="review-one-heading">
+      <section className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] p-5" aria-labelledby="review-one-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">One at a time</p>
@@ -297,7 +297,7 @@ export default function ImportNeedsReviewQueue({
           <p className="text-sm text-stone-600">No private import packs were found under data/imports.</p>
         ) : (
           queue.packs.map((pack) => (
-            <article key={pack.slug} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+            <article key={pack.slug} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{pack.path}</p>
@@ -321,7 +321,7 @@ export default function ImportNeedsReviewQueue({
         )}
       </section>
 
-      <section ref={queueRef} className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+      <section ref={queueRef} className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
           <label className="block min-w-0 flex-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">
             Search

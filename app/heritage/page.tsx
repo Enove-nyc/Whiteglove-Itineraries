@@ -275,7 +275,7 @@ export default async function HeritagePage() {
                 ["Documents and borders", "/travel-guide", "Entry rules, and what catches people out."],
               ].map(([label, href, blurb]) => (
                 <li key={href}>
-                  <Link href={href} className="wg-card block h-full border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+                  <Link href={href} className="wg-card block h-full border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
                     <span className="block font-semibold text-[var(--navy)]">{label}</span>
                     <span className="mt-1 block text-sm leading-6 text-stone-600">{blurb}</span>
                   </Link>
@@ -310,7 +310,7 @@ export default async function HeritagePage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[var(--gold)] bg-[#fcfaf6] p-7">
+          <div className="rounded-2xl border border-[var(--gold)] bg-[#FAF8F3] p-7">
             <h2 className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">
               Plan the journey
             </h2>

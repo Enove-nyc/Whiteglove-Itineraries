@@ -60,7 +60,7 @@ export function GettingThere({
         />
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {airports.map((airport) => (
-            <article key={airport.code} className="flex flex-col border border-[var(--gold-light)] bg-[#fcfaf6] p-7">
+            <article key={airport.code} className="flex flex-col border border-[var(--gold-light)] bg-[#FAF8F3] p-7">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--gold-ink)]">{airport.code}</p>
               <h3 className="mt-3 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{airport.name}</h3>
               {airport.km && <p className="mt-3 text-sm font-semibold text-[var(--navy)]">{airport.km} away, straight line</p>}
@@ -129,7 +129,7 @@ export function NearbyKevarim({ nearby }: { nearby: NearbyKever[] }) {
       />
       <div className="mt-12 grid gap-5 md:grid-cols-2">
         {nearby.map((place) => (
-          <Link key={place.slug} href={`/cemeteries/${place.slug}`} className="block border border-[var(--gold-light)] bg-[#fcfaf6] p-7 transition hover:border-[var(--gold)]">
+          <Link key={place.slug} href={`/cemeteries/${place.slug}`} className="block border border-[var(--gold-light)] bg-[#FAF8F3] p-7 transition hover:border-[var(--gold)]">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--gold-ink)]">{place.km} km · {place.country}</p>
             <h3 className="mt-3 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{place.name}</h3>
           </Link>

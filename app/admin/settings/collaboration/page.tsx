@@ -4,7 +4,7 @@ import { growthSettingsStoreAvailable, readCollaborationSettings } from "@/lib/g
 
 export const dynamic = "force-dynamic";
 
-const card = "rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] p-5 sm:p-6";
+const card = "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6";
 
 export default async function CollaborationSettingsPage() {
   const storeReady = growthSettingsStoreAvailable();

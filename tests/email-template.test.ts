@@ -82,7 +82,7 @@ describe("what the letter always carries", () => {
   it("paints the background on a table rather than the body alone", () => {
     // A background on <body> alone is dropped by several clients, which is how
     // an email ends up on stark white.
-    assert.match(html, /<table[^>]+background:#f7f3eb/);
+    assert.match(html, /<table[^>]+background:#D5CEC3/);
   });
 });
 

@@ -67,7 +67,7 @@ export default function AccountMenu({ plan }: { plan?: AccountPlan } = {}) {
         <div
           id="account-menu"
           role="menu"
-          className={`absolute right-0 top-full z-[var(--wg-z-popover)] mt-1 overflow-hidden rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] py-1 shadow-[0_16px_40px_rgba(23,45,82,.18)] ${advisorPlaces.length > 0 ? "w-56" : "w-48"}`}
+          className={`absolute right-0 top-full z-[var(--wg-z-popover)] mt-1 overflow-hidden rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] py-1 shadow-[0_16px_40px_rgba(16, 47, 53,.18)] ${advisorPlaces.length > 0 ? "w-56" : "w-48"}`}
         >
           {ACCOUNT_PLACES.map((item) => (
             <Link

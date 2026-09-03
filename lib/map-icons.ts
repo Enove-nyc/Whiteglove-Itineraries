@@ -21,6 +21,9 @@ export const MAP_STYLE: Record<MapKind, { color: string; label: string; /** Pin 
   // Deep and saturated, one hue apart. Line art has no fill to carry a pale
   // colour, so mid-tone gold and dusty purple washed out over light terrain and
   // stopped marking anything; these hold their own against a sunlit map.
+  // FUNCTIONAL WAYFINDING COLOURS, NOT BRAND CHROME — kept out of the
+  // Mushroom/Teal/Brass system so the kinds stay tellable apart at pin size. An
+  // intentional, documented exception to the palette migration.
   center: { color: "#0d1f3d", label: "What you searched for", size: 44 },
   kever: { color: "#6d4a11", label: "Kevarim", size: 36 },
   attraction: { color: "#8e2c11", label: "Things to do", size: 36 },

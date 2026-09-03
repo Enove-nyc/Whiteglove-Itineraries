@@ -45,10 +45,10 @@ export type AdvisorTripRow = {
 type Tab = "trips" | "messages" | "wallet" | "account";
 
 // The same palette the client app uses, so the two match exactly.
-const NAVY = "#14213d";
-const CREAM = "#f7f5f0";
-const GOLD = "#b78a4a";
-const GOLD_ON_DARK = "#c8a76a";
+const NAVY = "#102F35";
+const CREAM = "#D5CEC3";
+const GOLD = "#C6A15B";
+const GOLD_ON_DARK = "#C6A15B";
 const ON_GOLD = NAVY;
 const MUTED = "#5a544e";
 const serif = "Georgia,'Times New Roman',serif";
@@ -154,14 +154,14 @@ export default function AdvisorApp({
       )}
 
       {/* content */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", ...(wide && viewingTrip && openTrip ? { alignItems: "center", background: "#eef1f4" } : {}) }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", ...(wide && viewingTrip && openTrip ? { alignItems: "center", background: "#FAF8F3" } : {}) }}>
         {viewingTrip && openTrip && (
           // The trip itself, embedded — its own navy header and itinerary,
           // this app's four-tab bar still below it. The advisor is never handed
           // off to the client app, and Account is always one tap away. On a
           // computer it's boxed to a comfortable app width and centred; on a
           // phone it fills the screen.
-          <div style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: wide ? 460 : undefined, display: "flex", flexDirection: "column", ...(wide ? { boxShadow: "0 0 0 1px rgba(38,50,58,.08)" } : {}) }}>
+          <div style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: wide ? 460 : undefined, display: "flex", flexDirection: "column", ...(wide ? { boxShadow: "0 0 0 1px rgba(16, 47, 53,.08)" } : {}) }}>
             <CompanionApp
               trip={openTrip}
               embedded
@@ -214,7 +214,7 @@ export default function AdvisorApp({
           the active one, the same bottom bar the client app carries. Hidden
           while the message composer holds the keyboard. */}
       {!(composerUp && tab === "messages") && (
-        <div style={{ flexShrink: 0, position: "relative", padding: "8px 10px", background: "#ece8df", borderTop: "1px solid rgba(38,50,58,.08)", display: "flex", paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}>
+        <div style={{ flexShrink: 0, position: "relative", padding: "8px 10px", background: "#C7BFB1", borderTop: "1px solid rgba(16, 47, 53,.08)", display: "flex", paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}>
           <span
             aria-hidden="true"
             style={{
@@ -225,7 +225,7 @@ export default function AdvisorApp({
               width: `calc((100% - 20px) / ${TABS.length})`,
               background: GOLD,
               borderRadius: 16,
-              boxShadow: "0 3px 10px rgba(183,138,74,.34)",
+              boxShadow: "0 3px 10px rgba(198, 161, 91,.34)",
               transition: "left .28s cubic-bezier(.4,0,.2,1)",
             }}
           />
@@ -253,7 +253,7 @@ export default function AdvisorApp({
 function NoDatesTrip({ name, client }: { name: string; client: string }) {
   return (
     <div className="wg-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 16px 24px", display: "flex", flexDirection: "column", gap: 12, animation: "wgIn .28s ease both" }}>
-      <div style={{ border: "1px solid rgba(38,50,58,.1)", background: "#fff", borderRadius: 16, padding: "18px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ border: "1px solid rgba(16, 47, 53,.1)", background: "#fff", borderRadius: 16, padding: "18px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         <span style={{ font: "600 10px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#a8a29e" }}>No dates yet</span>
         <h2 style={{ margin: 0, font: `400 22px/1.2 ${serif}`, color: NAVY }}>{client || name}</h2>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "#57534e" }}>
@@ -338,17 +338,17 @@ function TripRow({ trip, openHref, actions }: { trip: AdvisorTripRow; openHref: 
       /* clipboard blocked — the code is shown to copy by hand */
     }
   };
-  const btn: CSSProperties = { flex: "none", width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(38,50,58,.12)", background: "#fff", color: NAVY, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, textDecoration: "none" };
+  const btn: CSSProperties = { flex: "none", width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(16, 47, 53,.12)", background: "#fff", color: NAVY, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, textDecoration: "none" };
 
   return (
-    <div className="wg-warm" style={{ border: "1px solid rgba(38,50,58,.08)", background: "#ffffff", borderRadius: 16, overflow: "hidden" }}>
+    <div className="wg-warm" style={{ border: "1px solid rgba(16, 47, 53,.08)", background: "#ffffff", borderRadius: 16, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "14px 16px" }}>
         <a href={openHref} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 13, textDecoration: "none" }}>
-          <span style={{ flex: "none", width: 42, height: 42, borderRadius: 12, background: "#e7edf1", display: "flex", alignItems: "center", justifyContent: "center", font: `400 18px/1 ${serif}`, color: "#1f3f5c" }}>
+          <span style={{ flex: "none", width: 42, height: 42, borderRadius: 12, background: "#FAF8F3", display: "flex", alignItems: "center", justifyContent: "center", font: `400 18px/1 ${serif}`, color: "#193F46" }}>
             {(trip.client || trip.name || "?").charAt(0).toUpperCase()}
           </span>
           <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, color: "#26323a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <span style={{ fontSize: 15.5, fontWeight: 600, lineHeight: 1.25, color: "#102F35", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {trip.client || trip.name}
             </span>
             <span style={{ fontSize: 12.5, color: "#78716c", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -365,7 +365,7 @@ function TripRow({ trip, openHref, actions }: { trip: AdvisorTripRow; openHref: 
               aria-label={hasCodeUI ? "See the client's code" : "Add a traveller to give a code"}
               aria-expanded={showCode}
               title={hasCodeUI ? "See the client's code" : "No one to share with yet"}
-              style={{ ...btn, cursor: hasCodeUI ? "pointer" : "default", opacity: hasCodeUI ? 1 : 0.4, borderColor: showCode ? GOLD : "rgba(38,50,58,.12)", color: showCode ? GOLD_ON_DARK : NAVY }}
+              style={{ ...btn, cursor: hasCodeUI ? "pointer" : "default", opacity: hasCodeUI ? 1 : 0.4, borderColor: showCode ? GOLD : "rgba(16, 47, 53,.12)", color: showCode ? GOLD_ON_DARK : NAVY }}
             >
               {/* A QR-ish "code" mark — the same on every row, so the icons line up. */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3M21 14v.01M14 21h.01M21 21v-4M17 21h.01" /></svg>
@@ -387,12 +387,12 @@ function TripRow({ trip, openHref, actions }: { trip: AdvisorTripRow; openHref: 
           each named traveller can be given THEIR OWN code, which carries their
           name into the chat so you can tell one person's messages from another's. */}
       {showCode && hasCodeUI && (
-        <div style={{ borderTop: "1px solid rgba(38,50,58,.08)", background: "#faf8f3", padding: "11px 16px 13px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ borderTop: "1px solid rgba(16, 47, 53,.08)", background: "#faf8f3", padding: "11px 16px 13px", display: "flex", flexDirection: "column", gap: 12 }}>
           {code && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={{ fontSize: 11.5, color: "#78716c" }}>Whole trip — send this to open their trip in the app.</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <code style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.4, color: "#26323a", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{code}</code>
+                <code style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.4, color: "#102F35", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{code}</code>
                 <button
                   type="button"
                   onClick={copy}
@@ -461,11 +461,11 @@ function TravelerCode({ tripId, traveler, origin }: { tripId: string; traveler: 
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid rgba(38,50,58,.06)", paddingTop: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid rgba(16, 47, 53,.06)", paddingTop: 8 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: NAVY }}>{traveler.name}</span>
       {link ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 1.4, color: "#26323a", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{link}</code>
+          <code style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 1.4, color: "#102F35", wordBreak: "break-all", fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{link}</code>
           <button
             type="button"
             onClick={copy}

@@ -48,7 +48,7 @@ export default function MobileBottomBar({ signedIn, brand }: { signedIn: boolean
   return (
     <nav
       aria-label="Quick links"
-      className="fixed inset-x-0 bottom-0 z-[var(--wg-z-header)] flex border-t border-[var(--gold-light)] bg-[#fffdf9] pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(23,45,82,.08)] sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-[var(--wg-z-header)] flex border-t border-[var(--gold-light)] bg-[#FAF8F3] pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(16, 47, 53,.08)] sm:hidden"
     >
       {items.map((item) => {
         const active = isCurrent(item.href, pathname);

@@ -15,7 +15,7 @@ export default function KosherFinder({ showAddToTrip = true }: { showAddToTrip?:
         Search White Glove&apos;s curated kosher restaurants, bakeries and groceries by city, country or name. Confirm
         current supervision directly before you go.
       </p>
-      <div className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <div className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <label className="block">
           <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">Search White Glove listings</span>
           <input

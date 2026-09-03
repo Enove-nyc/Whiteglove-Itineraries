@@ -123,7 +123,7 @@ export default async function HechsherimPage() {
           ))}
         </div>
 
-        <div className="mt-14 rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+        <div className="mt-14 rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
           <SectionHeading eyebrow="On a listing" title="What the circle beside a place means" />
           <p className="mt-5 max-w-3xl leading-7 text-stone-600">
             Gold means the hechsher was confirmed against a teudah, the rov, or the agency&rsquo;s list; grey means it

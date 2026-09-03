@@ -78,7 +78,7 @@ export default async function AdminDestinationsPage({
 
       {!dbReady ? (
         <section className="mx-auto max-w-3xl px-5 py-16 sm:px-8">
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Not connected yet</p>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">The content database isn&apos;t connected.</h2>
             <p className="mt-4 text-sm leading-7 text-stone-600">
@@ -88,7 +88,7 @@ export default async function AdminDestinationsPage({
         </section>
       ) : needsSetup ? (
         <section className="mx-auto max-w-3xl px-5 py-16 sm:px-8">
-          <div className="border border-[var(--gold)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold)] bg-[#FAF8F3] p-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">One-time setup</p>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Set up your content database.</h2>
             <p className="mt-4 text-sm leading-7 text-stone-600">
@@ -141,7 +141,7 @@ export default async function AdminDestinationsPage({
                 moment the database is set up — so the only button left was the
                 destructive one, and pressing that to fix a database error is
                 how work got deleted. */}
-            <div className="border border-[var(--gold)] bg-[#fcfaf6] p-5">
+            <div className="border border-[var(--gold)] bg-[#FAF8F3] p-5">
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Database</p>
               <p className="mt-2 text-sm leading-6 text-stone-600">
                 Adds anything the database is missing — new columns, new kinds of listing. Nothing you have entered

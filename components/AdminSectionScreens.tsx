@@ -31,7 +31,7 @@ export default function AdminSectionScreens({ sectionHref }: { sectionHref: stri
                 className={`flex flex-col rounded-lg border px-4 py-3 transition ${
                   current
                     ? "border-[var(--navy)] bg-[var(--navy)] text-white"
-                    : "border-[var(--gold-light)] bg-[#fffdf9] hover:border-[var(--gold)]"
+                    : "border-[var(--gold-light)] bg-[#FAF8F3] hover:border-[var(--gold)]"
                 }`}
               >
                 <span className={`block text-sm font-semibold ${current ? "text-white" : "text-[var(--navy)]"}`}>{child.label}</span>

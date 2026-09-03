@@ -179,7 +179,7 @@ export default async function TzaddikPage({ params }: { params: Promise<{ person
             />
             <Link
               href={`/cemeteries/${cemetery.slug}`}
-              className="block border border-[var(--gold-light)] bg-[#fcfaf6] p-5 text-sm leading-6 text-stone-600 transition hover:border-[var(--gold)]"
+              className="block border border-[var(--gold-light)] bg-[#FAF8F3] p-5 text-sm leading-6 text-stone-600 transition hover:border-[var(--gold)]"
             >
               <span className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Getting in</span>
               <span className="mt-1 block font-semibold text-[var(--navy)]">

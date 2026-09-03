@@ -128,7 +128,7 @@ export default async function KosherStaysPage({
 
       <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
         {searching && kosherAreas.length === 0 && kosherStays.length === 0 ? (
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
             <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">
               Planning a kosher stay in {heading}
             </h2>

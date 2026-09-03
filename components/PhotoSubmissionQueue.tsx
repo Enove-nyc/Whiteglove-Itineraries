@@ -60,7 +60,7 @@ function Card({ submission }: { submission: PendingSubmission }) {
   const reply = submissionReply(submission, "declined", "");
 
   return (
-    <article className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <article className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">

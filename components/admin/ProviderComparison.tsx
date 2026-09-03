@@ -147,7 +147,7 @@ export default function ProviderComparison() {
                   .filter((price): price is { amount: number; currency: string } => Boolean(price))
                   .sort((a, b) => a.amount - b.amount)[0];
                 return (
-                  <div key={attempt.provider} className="rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+                  <div key={attempt.provider} className="rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
                     <div className="flex items-baseline justify-between gap-3">
                       <h3 className="font-semibold text-[var(--navy)]">{PROVIDER_LABELS[attempt.provider]}</h3>
                       <span className="tabular-nums text-xs text-stone-500">{attempt.ms}ms</span>

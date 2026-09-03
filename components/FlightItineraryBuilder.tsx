@@ -230,7 +230,7 @@ export default function FlightItineraryBuilder({ storeReady }: { storeReady: boo
 
   function legFieldset(listName: ListName, leg: LegDraft, index: number, count: number) {
     return (
-      <fieldset key={leg.key} className="rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] p-5">
+      <fieldset key={leg.key} className="rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
         <div className="flex items-center justify-between">
           <legend className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
             Flight {index + 1}
@@ -248,7 +248,7 @@ export default function FlightItineraryBuilder({ storeReady }: { storeReady: boo
         </div>
 
         {index > 0 && (
-          <label className="mt-3 block rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] p-3">
+          <label className="mt-3 block rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
             <span className={label}>Connection from the flight above</span>
             <select
               value={leg.connectionType}

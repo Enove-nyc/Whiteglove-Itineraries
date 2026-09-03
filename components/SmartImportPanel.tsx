@@ -179,7 +179,7 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+    <div className="mt-4 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
       <p className="text-sm font-semibold text-[var(--navy)]">Smart Import</p>
       <p className="mt-1 text-xs leading-5 text-stone-600">
         Paste a confirmation email or reservation text, or attach one — the PDF, a screenshot, or a photo of a printed

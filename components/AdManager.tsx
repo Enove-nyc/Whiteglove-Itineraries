@@ -134,7 +134,7 @@ export default function AdManager({ initial, configured, today }: { initial: Pro
           {ads.map((ad) => {
             const status = adStatus(ad);
             return (
-              <li key={ad.id} className="flex flex-col border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+              <li key={ad.id} className="flex flex-col border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">
                     {ad.title || "Untitled"}

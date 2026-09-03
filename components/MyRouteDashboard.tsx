@@ -108,7 +108,7 @@ export default function MyRouteDashboard({
       <h1 className="font-[family-name:var(--font-display)] text-5xl leading-tight text-[var(--navy)] sm:text-6xl">My Route</h1>
 
       {activeRoute.length === 0 ? (
-        <div className="wg-card mt-12 border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+        <div className="wg-card mt-12 border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
           {/* "No stops" over a button marked "Add" told somebody who had just
               arrived neither what a route is nor what it is for. Two lines and
               the same one button. */}
@@ -122,7 +122,7 @@ export default function MyRouteDashboard({
         </div>
       ) : (
         <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_.6fr]">
-          <div className="wg-card border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-9">
+          <div className="wg-card border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-9">
             <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Saved places</h2>
             <ol className="mt-7 space-y-4">
               {optimized.map((place, index) => (

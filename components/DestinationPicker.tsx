@@ -34,7 +34,7 @@ export default function DestinationPicker({
   }, [query, destinations]);
 
   return (
-    <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <label htmlFor="dest-search" className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">
         Find a destination
       </label>

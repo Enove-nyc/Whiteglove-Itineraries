@@ -123,7 +123,7 @@ export default function TrelloForm({ current, storeReady }: { current: TrelloSet
           <legend className={label}>What should make a card</legend>
           <div className="mt-3 space-y-2">
             {CARD_KINDS.map((k) => (
-              <label key={k.kind} className="flex items-start gap-3 rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] p-3">
+              <label key={k.kind} className="flex items-start gap-3 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
                 <input
                   type="checkbox"
                   name={`kind-${k.kind}`}

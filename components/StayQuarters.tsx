@@ -43,7 +43,7 @@ export default async function StayQuarters({
   const searchable = Boolean(route.destinationLabel);
 
   return (
-    <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+    <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
       <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Where should I stay?</h2>
 
       <ul className="mt-6 divide-y divide-[var(--gold-light)] border-t border-[var(--gold-light)]">

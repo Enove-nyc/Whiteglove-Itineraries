@@ -84,7 +84,7 @@ export default function TripSetupPanel({
   const canSeed = hasAnswers(answers) && answersAreFresh(answers) && untouched;
 
   return (
-    <section aria-labelledby="trip-setup-heading" className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-6">
+    <section aria-labelledby="trip-setup-heading" className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 id="trip-setup-heading" className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">
@@ -186,7 +186,7 @@ export default function TripSetupPanel({
               </p>
               <ul className="mt-4 grid gap-3 md:grid-cols-2">
                 {templates.map((template) => (
-                  <li key={template.slug} className="rounded-lg border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+                  <li key={template.slug} className="rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
                     <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">
                       {template.destination} · {template.country}
                     </p>

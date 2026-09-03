@@ -108,7 +108,7 @@ export default function ExperienceRatingForm({
       className={
         compact
           ? "mt-4 space-y-4 border-t border-[var(--gold-light)] pt-4"
-          : "space-y-5 border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8"
+          : "space-y-5 border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8"
       }
     >
       {!compact && (

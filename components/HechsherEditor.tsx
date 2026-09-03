@@ -78,7 +78,7 @@ export default function HechsherEditor({ confirmed, agencies, ownAdded, storeRea
         </p>
       )}
 
-      <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Find places to confirm</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
           Search White Glove&apos;s curated kosher listings and record the supervision you have checked. Nothing is
@@ -183,7 +183,7 @@ export default function HechsherEditor({ confirmed, agencies, ownAdded, storeRea
         )}
       </section>
 
-      <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
           Recorded
         </h2>
@@ -285,7 +285,7 @@ function AgencyList({ agencies, ownAdded, storeReady, saveAction, savePending, s
   );
 
   return (
-    <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">

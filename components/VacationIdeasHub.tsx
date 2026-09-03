@@ -151,7 +151,7 @@ export default function VacationIdeasHub({
 
   return (
     <div>
-      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5 sm:p-7">
+      <div className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-7">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* A REAL LABEL, TIED TO THE FIELD BY ID, and visible whether or
               not anything has been typed. The placeholder is a hint and not a
@@ -232,7 +232,7 @@ export default function VacationIdeasHub({
       ) : (
         /* An empty result has to say what to do next. "No matches" and a blank
            page is where somebody leaves. */
-        <div className="mt-4 rounded-2xl border border-dashed border-[var(--gold)] bg-[#fcfaf6] p-8 text-center">
+        <div className="mt-4 rounded-2xl border border-dashed border-[var(--gold)] bg-[#FAF8F3] p-8 text-center">
           <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">
             Nothing here matches all of those at once.
           </p>

@@ -81,7 +81,7 @@ export default async function AdminPhotosPage() {
         )}
       </section>
 
-      <p className="mt-8 border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-600">
+      <p className="mt-8 border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-600">
         A picture goes up with the credit under it, so the credit box has to be filled before you can put one on the
         site. If you are not sure a person really had the right to send it, write back and ask before you do —
         &ldquo;found online&rdquo; is not permission, and neither is &ldquo;somebody sent it to me&rdquo;.

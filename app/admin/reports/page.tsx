@@ -4,7 +4,7 @@ import { buildDemandReport } from "@/lib/demand-data";
 
 export const dynamic = "force-dynamic";
 
-const card = "rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] p-5 sm:p-6";
+const card = "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6";
 
 /**
  * What people came looking for, set against what the site has.

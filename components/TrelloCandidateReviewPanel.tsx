@@ -89,7 +89,7 @@ export default function TrelloCandidateReviewPanel({
 
   return (
     <div className="mt-8 space-y-6">
-      <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Private workflow</p>
         <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Review cards, not public listings</h2>
         {candidateSourceAvailable ? (
@@ -140,15 +140,15 @@ export default function TrelloCandidateReviewPanel({
             </p>
           ) : (
             <dl className="mt-4 grid grid-cols-3 gap-3">
-              <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-3">
+              <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
                 <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">Mapped</dt>
                 <dd className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{mappings.synced}</dd>
               </div>
-              <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-3">
+              <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
                 <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">Creating</dt>
                 <dd className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{mappings.creating}</dd>
               </div>
-              <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-3">
+              <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
                 <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">Reconcile</dt>
                 <dd className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{mappings.unknown}</dd>
               </div>
@@ -186,7 +186,7 @@ export default function TrelloCandidateReviewPanel({
               <input name="doneListId" defaultValue={settings?.doneListId ?? ""} className={input} disabled={!readiness.configurationStoreAvailable || saving} />
             </label>
           </div>
-          <label className="flex items-start gap-3 border border-[var(--gold-light)] bg-[#fcfaf6] p-4 text-sm leading-6 text-stone-700">
+          <label className="flex items-start gap-3 border border-[var(--gold-light)] bg-[#FAF8F3] p-4 text-sm leading-6 text-stone-700">
             <input name="enabled" type="checkbox" defaultChecked={settings?.enabled ?? false} disabled={!readiness.configurationStoreAvailable || saving} className="mt-1" />
             <span>
               <span className="block font-semibold text-[var(--navy)]">Allow protected candidate-card sync</span>
@@ -206,7 +206,7 @@ export default function TrelloCandidateReviewPanel({
         </form>
       </section>
 
-      <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">Export or sync</p>
         <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Prepare the review queue</h2>
         {candidateCount === 0 ? (

@@ -224,7 +224,7 @@ export default function SiteAssistant() {
         // Above the mobile bottom bar on a phone, on the edge everywhere else.
         // The colour flips with the band behind it — cream over navy, navy over
         // cream — and both go to gold on hover.
-        className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-[var(--wg-z-popover)] inline-flex h-12 min-h-11 items-center gap-2 rounded-full border px-4 text-xs font-bold uppercase tracking-[0.1em] shadow-[0_10px_30px_rgba(23,45,82,.28)] transition hover:border-[var(--gold)] hover:bg-[var(--gold)] hover:text-white sm:bottom-5 ${
+        className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-[var(--wg-z-popover)] inline-flex h-12 min-h-11 items-center gap-2 rounded-full border px-4 text-xs font-bold uppercase tracking-[0.1em] shadow-[0_10px_30px_rgba(16, 47, 53,.28)] transition hover:border-[var(--gold)] hover:bg-[var(--gold)] hover:text-white sm:bottom-5 ${
           onDark
             ? "border-[var(--cream)] bg-[var(--cream)] text-[var(--navy)]"
             : "border-[var(--navy)] bg-[var(--navy)] text-white"
@@ -243,7 +243,7 @@ export default function SiteAssistant() {
           role="dialog"
           aria-modal="false"
           aria-label={SITE_ASSISTANT_LABEL}
-          className="fixed bottom-[calc(8rem+env(safe-area-inset-bottom))] right-4 z-[var(--wg-z-popover)] flex max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] flex-col rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] shadow-[0_24px_60px_rgba(23,45,82,.24)] outline-none sm:bottom-20"
+          className="fixed bottom-[calc(8rem+env(safe-area-inset-bottom))] right-4 z-[var(--wg-z-popover)] flex max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] flex-col rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] shadow-[0_24px_60px_rgba(16, 47, 53,.24)] outline-none sm:bottom-20"
         >
           <div className="flex items-start justify-between gap-3 border-b border-[var(--gold-light)] px-4 py-3">
             <div>

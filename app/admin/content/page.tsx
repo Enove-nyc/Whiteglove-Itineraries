@@ -116,7 +116,7 @@ export default async function AdminContentPage({ searchParams }: {
 // on is a number that gets ignored.
 function Metric({ label, value, href }: { label: string; value: number; href: string }) {
   return (
-    <Link href={href} className="block border border-[var(--gold-light)] bg-[#fcfaf6] p-5 transition hover:border-[var(--gold)] hover:shadow-md">
+    <Link href={href} className="block border border-[var(--gold-light)] bg-[#FAF8F3] p-5 transition hover:border-[var(--gold)] hover:shadow-md">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--navy)]">{value}</p>
       <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">Show them →</p>

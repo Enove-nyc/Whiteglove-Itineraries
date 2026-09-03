@@ -142,7 +142,7 @@ export default function TripComments({
   const live = new Set(liveIds);
 
   return (
-    <section className="mt-10 border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+    <section className="mt-10 border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Notes</p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">What people have said</h2>
       <p className="mt-2 text-sm leading-6 text-stone-600">{describeComments(comments)}</p>

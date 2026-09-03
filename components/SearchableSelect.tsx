@@ -105,7 +105,7 @@ export default function SearchableSelect({
   }
 
   const base =
-    "w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
+    "w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
 
   return (
     <div ref={boxRef} className="relative">
@@ -136,7 +136,7 @@ export default function SearchableSelect({
       <span aria-hidden="true" className="pointer-events-none absolute bottom-3 right-3 text-[var(--gold-ink)]">▾</span>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-40 mt-1 border border-[var(--gold)] bg-[#fcfaf6] shadow-[0_16px_36px_rgba(23,45,82,.16)]">
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 border border-[var(--gold)] bg-[#FAF8F3] shadow-[0_16px_36px_rgba(16, 47, 53,.16)]">
           <p className="border-b border-[var(--gold-light)] px-3 py-1.5 text-[11px] text-stone-500">
             {matches.length === options.length ? "Choose an option" : "Filtered options"}
           </p>

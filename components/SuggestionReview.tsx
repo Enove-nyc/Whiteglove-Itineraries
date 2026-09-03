@@ -60,7 +60,7 @@ export default function SuggestionReview({ suggestions, links, readAt, currentLi
 
   if (suggestions.length === 0) {
     return (
-      <div className="mt-6 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+      <div className="mt-6 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
         <p className="text-sm leading-6 text-stone-600">
           Nothing sent in yet. Every page carries a &ldquo;Suggest an edit&rdquo; link, and what people write there arrives here.
         </p>
@@ -149,7 +149,7 @@ function SuggestionCard({ item, publicHref, readAt, current, currentConsent = fa
   }
 
   return (
-    <article className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+    <article className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">

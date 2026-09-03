@@ -75,7 +75,7 @@ export default function SuggestEditPanel({
       </button>
 
       {open && (
-        <div className="mt-3 max-w-xl rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+        <div className="mt-3 max-w-xl rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
           {state === "sent" ? (
             <p className="text-sm font-semibold text-[var(--navy)]" role="status">
               Sent. Thank you — we check every correction before changing the page.

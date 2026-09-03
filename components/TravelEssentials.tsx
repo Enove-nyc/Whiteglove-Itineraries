@@ -100,7 +100,7 @@ export default async function TravelEssentials({
 
   return (
     <section
-      className="border-t border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-14 sm:px-8 sm:py-16"
+      className="border-t border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-14 sm:px-8 sm:py-16"
       aria-labelledby="travel-essentials-heading"
       data-travel-essentials={pageType}
     >

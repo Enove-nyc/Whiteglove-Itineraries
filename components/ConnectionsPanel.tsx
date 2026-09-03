@@ -18,7 +18,7 @@ export default function ConnectionsPanel({ readings }: { readings: Reading[] }) 
   const missingEssential = sorted.some((r) => !r.ready && r.connection.weight === "essential");
 
   return (
-    <section className="border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+    <section className="border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
       <p className="text-xs font-bold uppercase tracking-[0.17em] text-[var(--gold-ink)]">Before you go live</p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">What the site is plugged into</h2>
       <p className={`mt-3 max-w-2xl text-sm leading-6 ${missingEssential ? "font-semibold text-red-700" : "text-stone-600"}`}>

@@ -136,7 +136,7 @@ export default async function CommandCenterPage() {
                     ? "border-red-600 bg-red-50"
                     : alert.urgency === 2
                       ? "border-amber-500 bg-amber-50"
-                      : "border-[var(--gold)] bg-[#fcfaf6]"
+                      : "border-[var(--gold)] bg-[#FAF8F3]"
                 }`}
               >
                 <p className={`font-[family-name:var(--font-display)] text-2xl leading-snug ${alert.urgency === 1 ? "text-red-900" : "text-[var(--navy)]"}`}>
@@ -241,7 +241,7 @@ function StopCard({ item, today }: { item: StopReadiness; today: string }) {
   const worst = concerns[0]?.weight;
 
   return (
-    <article className={`wg-card border bg-[#fcfaf6] p-5 sm:p-6 ${worst === 1 ? "border-amber-400" : "border-[var(--gold-light)]"}`}>
+    <article className={`wg-card border bg-[#FAF8F3] p-5 sm:p-6 ${worst === 1 ? "border-amber-400" : "border-[var(--gold-light)]"}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           {stop.yiddishName && (

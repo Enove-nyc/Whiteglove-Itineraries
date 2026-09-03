@@ -116,11 +116,11 @@ export default async function EarningsSettings() {
         </p>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
           Live inventory on Search booking partners uses a server API key (
-          <code className="rounded bg-[#fcfaf6] px-1.5 py-0.5 text-xs">STAY22_API_KEY</code>
+          <code className="rounded bg-[#FAF8F3] px-1.5 py-0.5 text-xs">STAY22_API_KEY</code>
           ), not this ID. Kayak flights earn from this ID — Stay22 has no flights
           inventory API, so travellers compare on Kayak and book with the partner.
           A Travelpayouts fare list is optional (
-          <code className="rounded bg-[#fcfaf6] px-1.5 py-0.5 text-xs">TRAVELPAYOUTS_TOKEN</code>
+          <code className="rounded bg-[#FAF8F3] px-1.5 py-0.5 text-xs">TRAVELPAYOUTS_TOKEN</code>
           ) and is not required for flights to work or earn. Keys belong in
           environment settings / Connections — never in this form.
         </p>
@@ -188,7 +188,7 @@ export default async function EarningsSettings() {
           kept visible rather than hidden.
         </p>
         {!travelEssentialsStoreAvailable() && (
-          <p className="mt-4 rounded-lg border border-[var(--gold-light)] bg-[#fffdf9] p-4 text-sm leading-6 text-amber-900">
+          <p className="mt-4 rounded-lg border border-[var(--gold-light)] bg-[#FAF8F3] p-4 text-sm leading-6 text-amber-900">
             Waiting on the private store. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN, then return here.
           </p>
         )}

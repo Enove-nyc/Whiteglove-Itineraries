@@ -130,7 +130,7 @@ export default async function Home() {
       <section className="relative bg-[var(--navy)] px-5 py-14 text-white sm:px-8 sm:py-20">
         {/* The photograph slot: wash first, then the navy overlay that keeps
             the words readable over whatever eventually sits underneath it. */}
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-[var(--navy)] via-[#24405f] to-[#3a5462]" />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-[var(--navy)] via-[#193F46] to-[#193F46]" />
         <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(to_top,rgba(13,25,45,.78),rgba(13,25,45,.30)_45%,transparent_80%)]" />
         <div className="relative mx-auto max-w-7xl">
           {/* The whole opening is the search, at the owner's word: no visible
@@ -203,7 +203,7 @@ export default async function Home() {
               href={card.href}
               aria-label={card.name}
               title={card.name}
-              className="wg-card flex min-h-28 flex-col items-center justify-center gap-2 border border-[var(--gold-light)] bg-[var(--surface)] p-5 text-[var(--navy)] transition hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_10px_28px_rgba(23,45,82,.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--navy)] focus-visible:outline-offset-2"
+              className="wg-card flex min-h-28 flex-col items-center justify-center gap-2 border border-[var(--gold-light)] bg-[var(--surface)] p-5 text-[var(--navy)] transition hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[0_10px_28px_rgba(16, 47, 53,.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--navy)] focus-visible:outline-offset-2"
             >
               <Icon name={card.icon} className="h-7 w-7" />
               <span className="text-sm font-bold uppercase tracking-[0.12em]">{card.label}</span>

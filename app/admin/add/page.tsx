@@ -36,7 +36,7 @@ export default async function AdminAddPage({ searchParams }: { searchParams: Pro
       </header>
 
       {wanted && (
-        <p className="mt-6 border-l-4 border-[var(--gold)] bg-[#fcfaf6] px-4 py-3 text-sm leading-6 text-stone-700">
+        <p className="mt-6 border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-4 py-3 text-sm leading-6 text-stone-700">
           Somebody searched for <strong className="text-[var(--navy)]">{wanted}</strong> and this site showed them
           nothing. It is filled in below — change it to whatever the entry should really be called.
         </p>
@@ -44,12 +44,12 @@ export default async function AdminAddPage({ searchParams }: { searchParams: Pro
 
       <section className="mt-8">
         {!dbReady ? (
-          <div className="border border-[var(--gold-light)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold-light)] bg-[#FAF8F3] p-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Not connected yet</p>
             <p className="mt-3 text-sm leading-7 text-stone-600">Connect the content database (add <code className="rounded bg-[var(--cream)] px-1">DATABASE_URL</code> and run setup on the Destination editor) before adding new entries.</p>
           </div>
         ) : needsSetup ? (
-          <div className="border border-[var(--gold)] bg-[#fcfaf6] p-8">
+          <div className="border border-[var(--gold)] bg-[#FAF8F3] p-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">One-time setup needed</p>
             <p className="mt-3 text-sm leading-7 text-stone-600">Run the database import once on the <Link href="/admin/destinations" className="underline">Destination editor</Link>, then come back here.</p>
           </div>
@@ -58,7 +58,7 @@ export default async function AdminAddPage({ searchParams }: { searchParams: Pro
             <AddEntryForms prefillName={wanted || undefined} />
 
             {infoPages.length > 0 && (
-              <div className="mt-10 border border-[var(--gold-light)] bg-[#fcfaf6] p-6">
+              <div className="mt-10 border border-[var(--gold-light)] bg-[#FAF8F3] p-6">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Your info pages</p>
                 <ul className="mt-4 divide-y divide-[var(--gold-light)]">
                   {infoPages.map((page) => (

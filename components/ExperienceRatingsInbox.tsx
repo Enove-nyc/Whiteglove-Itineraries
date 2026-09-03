@@ -76,7 +76,7 @@ export default function ExperienceRatingsInbox({
           ) : (
             <ul className="mt-6 space-y-4">
               {shown.map((rating) => (
-                <li key={rating.id} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+                <li key={rating.id} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
                     {ratingSummary(rating)}
                   </p>
@@ -111,7 +111,7 @@ export default function ExperienceRatingsInbox({
         ) : (
           <ul className="mt-6 space-y-4">
             {reported.map((review) => (
-              <li key={review.id} className="border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+              <li key={review.id} className="border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
                   {review.reportCount} {review.reportCount === 1 ? "report" : "reports"} · {review.placeKind} ·{" "}
                   {review.placeLabel}

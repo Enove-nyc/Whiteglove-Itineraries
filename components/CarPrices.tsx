@@ -109,7 +109,7 @@ export default function CarPrices({
         <h3 id="car-partner-heading" className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">
           Rental cars in {destination}
         </h3>
-        <div className="mt-3 rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6] px-5 py-4">
+        <div className="mt-3 rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] px-5 py-4">
           <p className="text-sm leading-6 text-stone-700">{partner.message}</p>
           <a
             href={partner.href}
@@ -132,7 +132,7 @@ export default function CarPrices({
       <h3 id="car-prices-heading" className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">
         Rental cars in {destination}
       </h3>
-      <ul className="mt-3 divide-y divide-[var(--gold-light)] rounded-2xl border border-[var(--gold-light)] bg-[#fcfaf6]">
+      <ul className="mt-3 divide-y divide-[var(--gold-light)] rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3]">
         {cars.map((car) => (
           <li key={car.id} className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
             <div className="flex min-w-0 flex-1 items-start gap-4">

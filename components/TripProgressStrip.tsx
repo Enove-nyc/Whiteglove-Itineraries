@@ -82,7 +82,7 @@ export function useDeviceClock(): { today: string; nowMinutes: number | null } {
 
 // ---- The strip -------------------------------------------------------
 
-const cardClass = "rounded-2xl border p-4 shadow-[0_10px_30px_rgba(23,45,82,.06)] sm:p-6";
+const cardClass = "rounded-2xl border p-4 shadow-[0_10px_30px_rgba(16, 47, 53,.06)] sm:p-6";
 
 function Stop({ label, stop, tone }: { label: string; stop: FollowStop; tone: "now" | "next" }) {
   return (
@@ -152,7 +152,7 @@ export default function TripProgressStrip({
 
   const during = progress.phase === "during";
   const tone = during
-    ? "border-[var(--gold)] bg-[#fffdf4]"
+    ? "border-[var(--gold)] bg-[#FAF8F3]"
     : progress.phase === "after"
       ? "border-[var(--gold-light)] bg-[var(--surface)]"
       : "border-[var(--gold-light)] bg-[var(--surface)]";

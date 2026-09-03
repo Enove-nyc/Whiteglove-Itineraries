@@ -101,7 +101,7 @@ export default function BusinessBrandPanel({ brand, siteBrand }: { brand: Busine
   }
 
   return (
-    <section className="mt-10 border border-[var(--gold-light)] bg-[#fcfaf6] p-6 sm:p-8">
+    <section className="mt-10 border border-[var(--gold-light)] bg-[#FAF8F3] p-6 sm:p-8">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Advisor Pro</p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Your name on the itinerary</h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600">

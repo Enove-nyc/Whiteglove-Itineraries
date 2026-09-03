@@ -15,8 +15,8 @@ import { useEffect, useRef, useState } from "react";
  * pretending.
  */
 
-const NAVY = "#14213d";
-const CREAM = "#f7f5f0";
+const NAVY = "#102F35";
+const CREAM = "#D5CEC3";
 
 // A standard, stable Web-Push helper — the same one the client control uses;
 // duplicated here (ten pure lines) rather than reaching into the 4,000-line
@@ -149,7 +149,7 @@ export default function AdvisorNotify() {
         <div
           role="dialog"
           aria-label="Notifications"
-          style={{ position: "absolute", top: 42, right: 0, zIndex: 40, width: 250, background: "#ffffff", border: "1px solid rgba(38,50,58,.12)", borderRadius: 16, boxShadow: "0 18px 44px rgba(15,20,25,.22)", padding: 14, color: "#26323a", fontFamily: "Inter,system-ui,sans-serif" }}
+          style={{ position: "absolute", top: 42, right: 0, zIndex: 40, width: 250, background: "#ffffff", border: "1px solid rgba(16, 47, 53,.12)", borderRadius: 16, boxShadow: "0 18px 44px rgba(15,20,25,.22)", padding: 14, color: "#102F35", fontFamily: "Inter,system-ui,sans-serif" }}
         >
           <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Notifications</p>
           {status === "unsupported" ? (
@@ -168,7 +168,7 @@ export default function AdvisorNotify() {
               <button
                 onClick={() => (on ? void unsubscribe() : void subscribe())}
                 disabled={busy || status === "checking"}
-                style={{ width: "100%", border: 0, cursor: busy ? "default" : "pointer", background: on ? "#eef2f5" : NAVY, color: on ? NAVY : CREAM, borderRadius: 12, padding: "10px 12px", font: "600 13px/1 Inter,sans-serif", opacity: busy || status === "checking" ? 0.6 : 1 }}
+                style={{ width: "100%", border: 0, cursor: busy ? "default" : "pointer", background: on ? "#FAF8F3" : NAVY, color: on ? NAVY : CREAM, borderRadius: 12, padding: "10px 12px", font: "600 13px/1 Inter,sans-serif", opacity: busy || status === "checking" ? 0.6 : 1 }}
               >
                 {status === "checking" ? "Checking…" : busy ? "One moment…" : on ? "Turn notifications off" : "Turn on notifications"}
               </button>

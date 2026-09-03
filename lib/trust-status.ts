@@ -121,7 +121,7 @@ export const TRUST_CLASSES: Record<TrustTone, { text: string; border: string; ba
   verified: { text: "text-emerald-900", border: "border-emerald-700", background: "bg-emerald-50" },
   reported: { text: "text-amber-900", border: "border-amber-600", background: "bg-amber-50" },
   pending: { text: "text-stone-700", border: "border-stone-400", background: "bg-stone-100" },
-  caution: { text: "text-[var(--navy)]", border: "border-[var(--gold)]", background: "bg-[#fcf6e9]" },
+  caution: { text: "text-[var(--navy)]", border: "border-[var(--gold)]", background: "bg-[#FAF8F3]" },
 };
 
 /**

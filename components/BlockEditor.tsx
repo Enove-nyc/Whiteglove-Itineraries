@@ -19,7 +19,7 @@ import {
 // slug, or a field name — the labels say what the thing is on the page.
 
 const inputClass =
-  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#fcfaf6] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
+  "mt-1.5 w-full rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] px-3 py-2.5 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
 const captionClass = "text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500";
 const smallButton =
   "min-h-[36px] border border-[var(--gold-light)] px-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)] disabled:opacity-30";
@@ -301,7 +301,7 @@ export default function BlockEditor({ page }: { page: Page }) {
         {blocks.map((block, i) => {
           const open = openId === block.id;
           return (
-            <li key={block.id} className={`border bg-[#fcfaf6] ${block.hidden ? "border-dashed border-stone-300" : "border-[var(--gold-light)]"}`}>
+            <li key={block.id} className={`border bg-[#FAF8F3] ${block.hidden ? "border-dashed border-stone-300" : "border-[var(--gold-light)]"}`}>
               <div className="flex flex-wrap items-center gap-2 p-4">
                 <button
                   type="button"
@@ -346,7 +346,7 @@ export default function BlockEditor({ page }: { page: Page }) {
 
       <div className="mt-4">
         {adding ? (
-          <div className="border border-[var(--gold)] bg-[#fcfaf6] p-4">
+          <div className="border border-[var(--gold)] bg-[#FAF8F3] p-4">
             <p className={captionClass}>What kind of section?</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {(Object.keys(BLOCK_LABELS) as BlockKind[]).map((kind) => (
@@ -377,7 +377,7 @@ export default function BlockEditor({ page }: { page: Page }) {
         )}
       </div>
 
-      <details className="mt-8 border border-[var(--gold-light)] bg-[#fcfaf6] p-4">
+      <details className="mt-8 border border-[var(--gold-light)] bg-[#FAF8F3] p-4">
         <summary className="cursor-pointer text-sm font-semibold text-[var(--navy)]">
           What this page looks like in a search result
         </summary>

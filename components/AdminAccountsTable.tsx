@@ -81,7 +81,7 @@ export default function AdminAccountsTable({ accounts }: { accounts: AdminAccoun
   }
 
   return (
-    <div className="overflow-x-auto border border-[var(--gold-light)] bg-[#fcfaf6]">
+    <div className="overflow-x-auto border border-[var(--gold-light)] bg-[#FAF8F3]">
       {error && <p className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">{error}</p>}
       <table className="w-full min-w-[960px] text-left text-sm">
         <thead className="border-b border-[var(--gold-light)] text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">

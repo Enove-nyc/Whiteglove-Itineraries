@@ -267,7 +267,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
       <nav
         ref={navRef}
         aria-label="Main"
-        className={`relative sticky top-0 z-[var(--wg-z-header)] border-b border-[var(--gold-light)] bg-[rgba(252,250,246,0.97)] shadow-[0_1px_12px_rgba(23,45,82,.05)] backdrop-blur-md transition-[min-height] ${
+        className={`relative sticky top-0 z-[var(--wg-z-header)] border-b border-[var(--gold-light)] bg-[rgba(252,250,246,0.97)] shadow-[0_1px_12px_rgba(16, 47, 53,.05)] backdrop-blur-md transition-[min-height] ${
           scrolled ? "min-h-16" : "min-h-20"
         }`}
       >
@@ -337,7 +337,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
                       role="menu"
                       onMouseEnter={stayOpen}
                       onMouseLeave={closeOnHoverOut}
-                      className={`absolute left-0 top-full z-20 mt-1 rounded-xl border border-[var(--gold-light)] bg-[#fffdf9] shadow-[0_18px_40px_rgba(23,45,82,.15)] ${
+                      className={`absolute left-0 top-full z-20 mt-1 rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] shadow-[0_18px_40px_rgba(16, 47, 53,.15)] ${
                         category.groups ? "grid w-[26rem] grid-cols-2 gap-x-6 p-4" : "min-w-48 py-2"
                       }`}
                     >
@@ -447,7 +447,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
           // header is one stacking context, so two explicit numbers settle it
           // for good rather than leaving it to the order things happen to be
           // written in.
-          <div className="relative z-0 border-t border-[var(--gold-light)] bg-[#fcfaf6]">
+          <div className="relative z-0 border-t border-[var(--gold-light)] bg-[#FAF8F3]">
             <div className="mx-auto flex max-w-7xl items-center gap-2 px-5 py-3 sm:px-8">
               <div className="min-w-0 flex-1">
                 <DestinationSearch compact autoFocus id="header-search" />
@@ -465,7 +465,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
         )}
 
         {mobileOpen && (
-          <div id="mobile-menu" className="absolute left-0 right-0 top-full z-20 max-h-[calc(100vh-4rem)] w-full overflow-y-auto border-b border-[var(--gold-light)] bg-[#fffdf9] shadow-[0_18px_40px_rgba(23,45,82,.15)] lg:hidden">
+          <div id="mobile-menu" className="absolute left-0 right-0 top-full z-20 max-h-[calc(100vh-4rem)] w-full overflow-y-auto border-b border-[var(--gold-light)] bg-[#FAF8F3] shadow-[0_18px_40px_rgba(16, 47, 53,.15)] lg:hidden">
             <ul className="divide-y divide-[var(--gold-light)]/60 px-5 sm:px-8">
               {categories.map((category) => {
                 const key = category.label;

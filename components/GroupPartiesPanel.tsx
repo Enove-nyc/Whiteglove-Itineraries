@@ -105,7 +105,7 @@ export function GroupParties({ data }: { data: Payload }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-xl border border-[var(--gold-light)] bg-[#fcfaf6] p-5">
+      <div className="rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
         <p className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">{data.tripName}</p>
         <p className="mt-1 text-sm text-stone-600">
           {totals?.travelers} travelers · {totals?.parties} families
