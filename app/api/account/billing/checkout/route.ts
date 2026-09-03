@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const account = await getCurrentAccountData(cookieStore.get(accountCookieName())?.value);
   if (!account) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
-  const body = (await request.json().catch(() => null)) as { plan?: unknown; period?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { plan?: unknown; period?: unknown; trip?: unknown } | null;
   const plan = body?.plan;
   if (!isPaidPlan(plan)) return NextResponse.json({ error: "Choose which account you want." }, { status: 400 });
   const oneTime = isOneTimePlan(plan);
@@ -61,7 +61,12 @@ export async function POST(request: NextRequest) {
   }
 
   const current = await getPlan(account.email);
-  if (current === plan) {
+  // A SECOND TRIP PASS IS A REAL PURCHASE, not a duplicate. A pass is bought
+  // per trip now, so somebody taking a second trip is meant to buy a second
+  // one, and "you are already on Trip Pass" would be the site turning down
+  // money for a thing it says it sells one at a time. The check still stands
+  // for a subscription, where paying twice buys nothing.
+  if (current === plan && !oneTime) {
     return NextResponse.json({ error: `You are already on ${PLAN_LABELS[plan]}.` }, { status: 409 });
   }
 
@@ -79,6 +84,9 @@ export async function POST(request: NextRequest) {
     successUrl: `${origin}/account?subscribed=${encodeURIComponent(plan)}`,
     cancelUrl: `${origin}/account?subscribed=cancelled`,
     mode: oneTime ? "payment" : "subscription",
+    // Which trip they were looking at, so the pass lands on it — see the
+    // `trip` note in createCheckoutSession.
+    trip: oneTime && typeof body?.trip === "string" && body.trip ? body.trip : undefined,
     trialDays: trialEligible(plan, Boolean(existing)) ? TRIAL_DAYS : undefined,
   });
 

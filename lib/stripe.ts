@@ -203,6 +203,15 @@ export async function createCheckoutSession(input: {
   cancelUrl: string;
   /** So the webhook knows which plan was bought without looking the price up. */
   plan: string;
+  /**
+   * The trip a Trip Pass was bought FROM, if there was one.
+   *
+   * Carried so the webhook can land the pass already spent on it — somebody
+   * who pressed buy while looking at their trip should not have to come back
+   * and choose it again. Bought from the pricing page there is no trip yet,
+   * this is left off, and the pass is spare until they spend it.
+   */
+  trip?: string;
   /** "subscription" unless told otherwise — see the note above. */
   mode?: "subscription" | "payment";
   /**
@@ -220,7 +229,11 @@ export async function createCheckoutSession(input: {
     cancel_url: input.cancelUrl,
     client_reference_id: input.account.slice(0, 200),
     allow_promotion_codes: true,
-    metadata: { account: input.account.slice(0, 200), plan: input.plan },
+    metadata: {
+      account: input.account.slice(0, 200),
+      plan: input.plan,
+      ...(input.trip ? { trip: input.trip.slice(0, 200) } : {}),
+    },
   };
   if (mode === "subscription") {
     // Repeated on the subscription itself: the events that arrive months later

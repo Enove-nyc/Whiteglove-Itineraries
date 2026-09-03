@@ -89,6 +89,16 @@ export type PlanFeatures = {
    */
   companionApp: boolean;
   /**
+   * The app on EVERY trip the account runs, rather than one trip at a time.
+   *
+   * Advisor Starter and Pro, whose whole job is running several trips at once.
+   * A Trip Pass is the other shape: it is bought per trip and spent on one
+   * (lib/trip-pass.ts), because a pass that opened every trip forever would be
+   * a subscription sold as a single fee. Personal holds no passes until one is
+   * bought, so it is false here for the same reason.
+   */
+  appOnEveryTrip: boolean;
+  /**
    * The app for OTHER PEOPLE — the client-facing half. Starter and Pro.
    *
    * A link that opens one trip as the app on a client's phone, the chat with
@@ -112,10 +122,10 @@ export type PlanFeatures = {
 };
 
 export const PLAN_FEATURES: Record<AccountPlan, PlanFeatures> = {
-  free: { ownBranding: false, assistantHistory: false, companionApp: false, companionClients: false, templates: false, analytics: false },
-  one_trip: { ownBranding: false, assistantHistory: true, companionApp: true, companionClients: false, templates: false, analytics: false },
-  starter: { ownBranding: false, assistantHistory: true, companionApp: true, companionClients: true, templates: false, analytics: false },
-  pro: { ownBranding: true, assistantHistory: true, companionApp: true, companionClients: true, templates: true, analytics: true },
+  free: { ownBranding: false, assistantHistory: false, companionApp: false, appOnEveryTrip: false, companionClients: false, templates: false, analytics: false },
+  one_trip: { ownBranding: false, assistantHistory: true, companionApp: true, appOnEveryTrip: false, companionClients: false, templates: false, analytics: false },
+  starter: { ownBranding: false, assistantHistory: true, companionApp: true, appOnEveryTrip: true, companionClients: true, templates: false, analytics: false },
+  pro: { ownBranding: true, assistantHistory: true, companionApp: true, appOnEveryTrip: true, companionClients: true, templates: true, analytics: true },
 };
 
 export function featuresFor(plan: AccountPlan): PlanFeatures {
@@ -132,9 +142,25 @@ export function mayBrandOwnItinerary(plan: AccountPlan): boolean {
   return featuresFor(plan).ownBranding;
 }
 
-/** Whether this plan reaches the White Glove app at /app for its own trips. */
+/**
+ * Whether the app is part of this plan at all — what the pricing page
+ * advertises. It does NOT say which trips; that is appCoversEveryTrip below,
+ * and the per-trip answer is mayOpenTripInApp in lib/companion-access.ts.
+ */
 export function mayUseCompanionApp(plan: AccountPlan): boolean {
   return featuresFor(plan).companionApp;
+}
+
+/**
+ * Whether the app comes with every trip, or one trip at a time.
+ *
+ * True is the advisor plans, whose trips are their work. False is everybody
+ * else, where a trip opens in the app because a Trip Pass was spent on it —
+ * see mayOpenTripInApp in lib/companion-access.ts, which is the only thing
+ * that should be asking either question at a door.
+ */
+export function appCoversEveryTrip(plan: AccountPlan): boolean {
+  return featuresFor(plan).appOnEveryTrip;
 }
 
 /** Whether this plan may hand the app to clients — links, chat, the inbox. */
@@ -167,11 +193,20 @@ export const SAME_PRINT_GRACE_MS = 30 * 60 * 1000;
 
 /** What each plan gets, before the owner changes anything. */
 export const BUILT_IN_LIMITS: Record<AccountPlan, PlanLimits> = {
-  // Nothing bought yet — signed in, and able to choose a plan, and nothing
-  // else. Not a locked account by accident; this is the whole point of it.
-  free: { trips: 0, printsPerWeek: 0 },
-  // Exactly the one trip the fee was for.
-  one_trip: { trips: 1, printsPerWeek: UNLIMITED },
+  // PERSONAL, AND IT PLANS TRIPS. This was `{ trips: 0, printsPerWeek: 0 }` —
+  // an account that existed to choose a plan from and could not hold a single
+  // trip. The planner is the free product now, so the free plan has to be able
+  // to use it, and UNLIMITED here is not unbounded: cannotAddTrip still refuses
+  // a twenty-sixth trip on any plan. What the Trip Pass adds is not a bigger
+  // number — it is the app on the phone during the trip, a feature flag, not a
+  // count.
+  free: { trips: UNLIMITED, printsPerWeek: UNLIMITED },
+  // THE PASS BUYS THE APP, NOT A TRIP SLOT — and it had to stop capping trips
+  // the moment Personal stopped being capped. It was `trips: 1`, from when free
+  // could hold none: paying now would leave somebody able to keep FEWER trips
+  // than they could for nothing, which is a penalty, not a plan. The pass is
+  // spent on ONE trip (lib/trip-pass.ts); the count is not where that lives.
+  one_trip: { trips: UNLIMITED, printsPerWeek: UNLIMITED },
   // Nothing has been decided about these, so nothing is limited. An invented
   // number here would be a promise nobody made.
   starter: { trips: UNLIMITED, printsPerWeek: UNLIMITED },
@@ -214,7 +249,6 @@ export function limitsFor(plan: AccountPlan, overrides?: LimitOverrides | null):
 export function newTripProblem(plan: AccountPlan, existing: number, limits: PlanLimits): string | null {
   if (limits.trips === UNLIMITED) return null;
   if (existing < limits.trips) return null;
-  if (plan === "free") return "Choose a plan to start your first trip.";
   const n = limits.trips;
   return (
     `${PLAN_LABELS[plan]} can have ${n} ${n === 1 ? "trip" : "trips"} at a time, and you have ${existing}. ` +
@@ -342,7 +376,6 @@ export function describePrints(prints: PrintEvent[], limits: PlanLimits, now: nu
  * restrictions with no floor under it reads as though the rest might go next.
  */
 export function describeLimits(plan: AccountPlan, limits: PlanLimits): string {
-  if (plan === "free") return "Choose a plan below to start planning a trip.";
   const parts: string[] = [];
   if (limits.trips !== UNLIMITED) parts.push(`${limits.trips} ${limits.trips === 1 ? "trip" : "trips"} at a time`);
   if (limits.printsPerWeek !== UNLIMITED) {

@@ -2097,7 +2097,16 @@ export async function getSharedTraveler(shareId: string) {
  */
 export async function resolveCompanionShare(shareId: string): Promise<{ ownerEmail: string; chatKey: string } | null> {
   const ownerEmail = await getShareOwnerEmail(shareId);
-  if (ownerEmail) return { ownerEmail, chatKey: shareId };
+  if (ownerEmail) {
+    // A code somebody made for their own phone has no second person on it, so
+    // it resolves to no thread at all. THIS is the block: every messaging
+    // route goes through here, so refusing once closes the chat route, the
+    // report route and anything added later, rather than each of them
+    // remembering to ask. The app is told the same thing by being handed no
+    // chat at all — see app/i/[shareId]/app/page.tsx.
+    if ((await getShareKind(shareId)) === "self") return null;
+    return { ownerEmail, chatKey: shareId };
+  }
   const traveler = await getSharedTraveler(shareId);
   if (traveler?.internalChatKey) return { ownerEmail: traveler.ownerEmail, chatKey: traveler.internalChatKey };
   return null;
@@ -2461,9 +2470,41 @@ export async function markShareRevoked(shareId: string, at = new Date().toISOStr
   await writeJson(shareOpensKey(shareId), withRevoked(current, at));
 }
 
+/**
+ * WHO IS ON THE OTHER END OF A CODE.
+ *
+ * "client" — the code an adviser sends to the person taking the trip. Two
+ * people, so there is a conversation, and the app shows Messages.
+ *
+ * "self" — the code somebody makes for their own trip, on their own phone.
+ * One person. There is nobody to message, so the app shows no Messages tab
+ * and resolveCompanionShare refuses the token outright, which closes the chat
+ * and report routes to it server-side rather than hiding a tab.
+ *
+ * This is a fact about the CODE, not about the plan behind it. An Advisor Pro
+ * carrying her own family's trip gets the same silence as a Trip Pass holder,
+ * because in both cases the thread would be addressed to the reader.
+ */
+export type ShareKind = "client" | "self";
+
+function isShareKind(value: unknown): value is ShareKind {
+  return value === "client" || value === "self";
+}
+
 export async function getShareOwnerEmail(shareId: string): Promise<string | null> {
   const rec = await readJson<{ ownerEmail: string }>(shareKey(shareId));
   return rec?.ownerEmail ?? null;
+}
+
+/**
+ * What kind of code this is. A record written before kinds existed has none,
+ * and reads as "client" — every code that exists today was made by an adviser
+ * to send to somebody, so the default has to keep their threads open.
+ */
+export async function getShareKind(shareId: string): Promise<ShareKind | null> {
+  const rec = await readJson<{ ownerEmail?: unknown; kind?: unknown }>(shareKey(shareId));
+  if (!rec?.ownerEmail) return null;
+  return isShareKind(rec.kind) ? rec.kind : "client";
 }
 
 /**
@@ -2517,7 +2558,7 @@ export async function getTripShareState(email: string, tripId: string): Promise<
  * maps it back to this owner. Reusing an existing token self-heals the lookup,
  * the same way the account-level share does.
  */
-export async function ensureTripShare(email: string, tripId: string): Promise<string | null> {
+export async function ensureTripShare(email: string, tripId: string, kind: ShareKind = "client"): Promise<string | null> {
   if (!hasAccountStorage()) return null;
   const normalized = normalizeId(email);
   const data = await getAccountData(normalized);
@@ -2525,11 +2566,20 @@ export async function ensureTripShare(email: string, tripId: string): Promise<st
   const trip = trips.find((t) => t.id === tripId);
   if (!trip) return null;
   if (trip.shareId) {
-    await writeJson(shareKey(trip.shareId), { ownerEmail: normalized, createdAt: new Date().toISOString() });
+    // Self-healing rewrite. The kind is NOT overwritten from the argument
+    // here: a code already sent to a client stays a client code even if this
+    // is later called for the owner's own phone, because downgrading it would
+    // silently close a conversation that is already running.
+    const existing = await readJson<{ kind?: unknown }>(shareKey(trip.shareId));
+    await writeJson(shareKey(trip.shareId), {
+      ownerEmail: normalized,
+      kind: isShareKind(existing?.kind) ? existing.kind : "client",
+      createdAt: new Date().toISOString(),
+    });
     return trip.shareId;
   }
   const token = shareToken();
-  const wrote = await writeJson(shareKey(token), { ownerEmail: normalized, createdAt: new Date().toISOString() });
+  const wrote = await writeJson(shareKey(token), { ownerEmail: normalized, kind, createdAt: new Date().toISOString() });
   if (!wrote) return null;
   const next = trips.map((t) => (t.id === tripId ? { ...t, shareId: token, updatedAt: new Date().toISOString() } : t));
   const saved = await writeTrips(normalized, next, activeId);

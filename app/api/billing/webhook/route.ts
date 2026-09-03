@@ -6,6 +6,7 @@ import { isOwner as isAgencyOwner } from "@/lib/agency";
 import { sendSubscriptionNotification } from "@/lib/email";
 import { identityKey } from "@/lib/identity";
 import { isOneTimePlan, isPaidPlan } from "@/lib/plan-billing";
+import { grantTripPass } from "@/lib/trip-pass-store";
 import {
   accountForCustomer,
   ownEntitledPlan,
@@ -40,9 +41,17 @@ export const dynamic = "force-dynamic";
  * and cancelled it, keeps what the owner gave them.
  */
 
-/** Grant a One Trip purchase — the one thing common to it settling immediately
+/** Grant a Trip Pass purchase — the one thing common to it settling immediately
  *  (a card, at checkout) and settling days later (an async payment method). */
-async function grantOneTimePurchase(account: string, plan: AccountPlan): Promise<void> {
+async function grantOneTimePurchase(account: string, plan: AccountPlan, trip?: string): Promise<void> {
+  // THE PASS IS THE THING BOUGHT. It is granted first and its failure is the
+  // loud one, because this — not the plan field — is what actually opens a
+  // trip in the app (lib/companion-access.ts). A pass bought while looking at
+  // a trip lands already spent on it; bought from the pricing page it is spare
+  // until the buyer chooses which trip it is for.
+  if (!(await grantTripPass(account, trip))) {
+    console.error("[billing] paid but the Trip Pass could not be written:", { account, plan, trip });
+  }
   if (!(await setPlan(account, plan, "Stripe one-time purchase"))) {
     console.error("[billing] paid but the plan could not be set:", { account, plan });
   }
@@ -54,6 +63,45 @@ async function grantOneTimePurchase(account: string, plan: AccountPlan): Promise
   await sendSubscriptionNotification({ account, plan: PLAN_LABELS[plan], event: "started" });
 }
 
+/**
+ * Has this checkout session's grant already been handled?
+ *
+ * Stripe redelivers events — a slow 200, a manual resend — and grantTripPass
+ * APPENDS a pass, so a second delivery of the same completed session would mint
+ * a second (spare) pass for a single $9 payment. The checkout session id is
+ * stable across redeliveries of that purchase, so claiming it once with a TTL'd
+ * set-if-absent makes the grant idempotent: the first delivery claims it and
+ * proceeds, every later one is turned away here.
+ *
+ * A store that is not configured, or a write that fails, returns false — better
+ * to risk handling a rare duplicate than to drop a real payment when Redis is
+ * down. The TTL is comfortably longer than Stripe's own retry window.
+ */
+const PROCESSED_PREFIX = "white-glove:stripe-events:";
+const PROCESSED_TTL_SECONDS = 60 * 60 * 24 * 3;
+
+async function grantAlreadyHandled(object: Record<string, unknown>): Promise<boolean> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const sessionId = typeof object.id === "string" ? object.id : "";
+  if (!url || !token || !sessionId) return false;
+  try {
+    const key = encodeURIComponent(`${PROCESSED_PREFIX}${sessionId}`);
+    const res = await fetch(`${url.replace(/\/$/, "")}/set/${key}/1?NX=true&EX=${PROCESSED_TTL_SECONDS}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return false;
+    const payload = (await res.json()) as { result?: unknown };
+    // "OK" — we just claimed it, so this is the first time. null — NX found the
+    // key already there, so the grant has run before and must not run again.
+    return payload.result !== "OK";
+  } catch {
+    return false;
+  }
+}
+
 async function accountFor(object: Record<string, unknown>): Promise<string> {
   const metadata = (object.metadata ?? {}) as Record<string, string>;
   if (typeof metadata.account === "string" && metadata.account) return metadata.account;
@@ -61,6 +109,12 @@ async function accountFor(object: Record<string, unknown>): Promise<string> {
   if (typeof reference === "string" && reference) return reference;
   const customer = customerIdOf(object.customer);
   return customer ? ((await accountForCustomer(customer)) ?? "") : "";
+}
+
+/** The trip a Trip Pass was bought from, if the checkout carried one. */
+function tripFrom(object: Record<string, unknown>): string | undefined {
+  const metadata = (object.metadata ?? {}) as Record<string, string>;
+  return typeof metadata.trip === "string" && metadata.trip ? metadata.trip : undefined;
 }
 
 function planFrom(object: Record<string, unknown>): AccountPlan | null {
@@ -123,7 +177,10 @@ export async function POST(request: NextRequest) {
           console.log("[billing] one-time checkout completed but not yet paid — waiting on async settlement:", { account, plan });
           return NextResponse.json({ received: true });
         }
-        await grantOneTimePurchase(account, plan);
+        // A redelivered "completed" for this same session must not mint a
+        // second pass — see grantAlreadyHandled.
+        if (await grantAlreadyHandled(object)) return NextResponse.json({ received: true });
+        await grantOneTimePurchase(account, plan, tripFrom(object));
         return NextResponse.json({ received: true });
       }
 
@@ -174,7 +231,8 @@ export async function POST(request: NextRequest) {
       // Starter/Pro subscription — one that would outlive the subscription
       // itself ending.
       if (object.mode === "payment" || isOneTimePlan(plan)) {
-        await grantOneTimePurchase(account, plan);
+        if (await grantAlreadyHandled(object)) return NextResponse.json({ received: true });
+        await grantOneTimePurchase(account, plan, tripFrom(object));
       }
       return NextResponse.json({ received: true });
     }

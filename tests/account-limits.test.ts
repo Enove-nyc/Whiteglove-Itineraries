@@ -33,16 +33,27 @@ const print = (tripId: string, ms: number): PrintEvent => ({ tripId, at: ago(ms)
 const ONE_TRIP = BUILT_IN_LIMITS.one_trip;
 
 describe("what was asked for", () => {
-  it("is nothing at all before a plan is chosen", () => {
-    // A "free" account exists so somebody can sign in and choose a plan, and
-    // nothing else — an invented number here would be a promise nobody made.
-    assert.equal(BUILT_IN_LIMITS.free.trips, 0);
-    assert.equal(BUILT_IN_LIMITS.free.printsPerWeek, 0);
+  it("PLANS TRIPS ON PERSONAL, which is the whole point of it", () => {
+    // It used to be { trips: 0, printsPerWeek: 0 } — an account that existed to
+    // choose a plan from and could not hold one trip. The planner is the free
+    // product now, so the free plan has to be able to use it. UNLIMITED is not
+    // unbounded: cannotAddTrip still refuses a twenty-sixth trip on every plan.
+    assert.equal(BUILT_IN_LIMITS.free.trips, UNLIMITED);
+    assert.equal(BUILT_IN_LIMITS.free.printsPerWeek, UNLIMITED);
   });
 
-  it("is exactly the one trip One Trip was paid for, with no print limit", () => {
-    assert.equal(BUILT_IN_LIMITS.one_trip.trips, 1);
+  it("NEVER LEAVES A PAYING ACCOUNT WITH LESS ROOM THAN A FREE ONE", () => {
+    // The Trip Pass capped an account at one trip, from when free could hold
+    // none. The moment Personal became unlimited that cap turned into a
+    // penalty: nine dollars to keep fewer trips than costs nothing. The pass
+    // buys the app on the phone, a feature flag, not a count.
+    assert.equal(BUILT_IN_LIMITS.one_trip.trips, UNLIMITED);
     assert.equal(BUILT_IN_LIMITS.one_trip.printsPerWeek, UNLIMITED);
+    for (const plan of ["one_trip", "starter", "pro"] as const) {
+      const paid = BUILT_IN_LIMITS[plan].trips;
+      const free = BUILT_IN_LIMITS.free.trips;
+      assert.ok(paid === UNLIMITED || free === UNLIMITED || paid >= free, `${plan} allows ${paid}, free allows ${free}`);
+    }
   });
 
   it("limits nothing on Advisor Starter or Advisor Pro", () => {
@@ -67,26 +78,32 @@ describe("the owner's own numbers", () => {
   });
 
   it("REFUSES ZERO, which would be a locked account rather than a limit", () => {
-    assert.equal(limitsFor("one_trip", { one_trip: { trips: 0 } }).trips, 1);
+    // Falls back to whatever the plan's own number is, rather than nought.
+    assert.equal(limitsFor("one_trip", { one_trip: { trips: 0 } }).trips, BUILT_IN_LIMITS.one_trip.trips);
   });
 
   it("falls back rather than throwing on nonsense", () => {
-    assert.equal(limitsFor("one_trip", { one_trip: { trips: "lots" as never } }).trips, 1);
-    assert.equal(limitsFor("one_trip", null).trips, 1);
+    assert.equal(limitsFor("one_trip", { one_trip: { trips: "lots" as never } }).trips, BUILT_IN_LIMITS.one_trip.trips);
+    assert.equal(limitsFor("one_trip", null).trips, BUILT_IN_LIMITS.one_trip.trips);
   });
 });
 
 describe("starting a trip", () => {
-  it("says to choose a plan first, before any plan has been bought", () => {
-    assert.equal(newTripProblem("free", 0, BUILT_IN_LIMITS.free), "Choose a plan to start your first trip.");
+  // No plan ships with a trip cap any more, so the cap rules are exercised with
+  // a limit of the kind /admin/settings/limits can set.
+  const CAPPED = { trips: 1, printsPerWeek: UNLIMITED };
+
+  it("LETS PERSONAL START ONE, where it used to send them to the pricing page", () => {
+    assert.equal(newTripProblem("free", 0, BUILT_IN_LIMITS.free), null);
+    assert.equal(newTripProblem("free", 7, BUILT_IN_LIMITS.free), null);
   });
 
-  it("allows the first trip on One Trip", () => {
+  it("allows the first trip on the Trip Pass", () => {
     assert.equal(newTripProblem("one_trip", 0, ONE_TRIP), null);
   });
 
-  it("refuses the second, and says what to do about it", () => {
-    const said = newTripProblem("one_trip", 1, ONE_TRIP);
+  it("refuses one past a limit the owner HAS set, and says what to do about it", () => {
+    const said = newTripProblem("one_trip", 1, CAPPED);
     assert.match(said!, /1 trip at a time/);
     assert.match(said!, /Delete one/);
   });
@@ -95,7 +112,7 @@ describe("starting a trip", () => {
     // Somebody with five trips — made before there was a limit, or after it was
     // lowered — keeps five. Only a SIXTH is refused. Nothing here can close,
     // hide or delete a trip, and this is the test that says so.
-    const said = newTripProblem("one_trip", 5, ONE_TRIP);
+    const said = newTripProblem("one_trip", 5, CAPPED);
     assert.match(said!, /you have 5/);
     assert.doesNotMatch(said!, /delet(ed|ing) for you|removed|closed/i);
   });
@@ -105,9 +122,9 @@ describe("starting a trip", () => {
   });
 
   it("always has something to say about where they stand", () => {
-    assert.match(describeTrips(0, ONE_TRIP), /0 of 1/);
-    assert.match(describeTrips(0, ONE_TRIP), /One more/);
-    assert.match(describeTrips(1, ONE_TRIP), /Delete one/);
+    assert.match(describeTrips(0, CAPPED), /0 of 1/);
+    assert.match(describeTrips(0, CAPPED), /One more/);
+    assert.match(describeTrips(1, CAPPED), /Delete one/);
     assert.match(describeTrips(9, BUILT_IN_LIMITS.pro), /9 trips/);
   });
 });
@@ -229,8 +246,10 @@ describe("what somebody is told before they meet any of it", () => {
     assert.match(describeLimits("pro", BUILT_IN_LIMITS.pro), /no limits/);
   });
 
-  it("says a plan is needed before anything is chosen", () => {
-    assert.equal(describeLimits("free", BUILT_IN_LIMITS.free), "Choose a plan below to start planning a trip.");
+  it("says Personal limits nothing on trips or printing, now that it plans", () => {
+    // The free plan used to answer "Choose a plan below to start planning a
+    // trip." It is a real planning plan now, with no trip or print ceiling.
+    assert.match(describeLimits("free", BUILT_IN_LIMITS.free), /no limits/);
   });
 
   it("says how many copies are left", () => {

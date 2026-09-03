@@ -19,6 +19,8 @@ import {
   switchTrip,
 } from "@/lib/account-store";
 import { mayServeCompanionClients, mayViewPipelineAnalytics } from "@/lib/account-limits";
+import { mayOpenTripInApp, whyTripIsNotInApp } from "@/lib/companion-access";
+import { releaseDeletedTripPasses, spendTripPass } from "@/lib/trip-pass-store";
 import { PLAN_LABELS } from "@/lib/account-plans";
 import { getPlan } from "@/lib/account-plan-store";
 import { sameOrigin } from "@/lib/secure-access";
@@ -151,6 +153,35 @@ export async function POST(request: NextRequest) {
       const result = await setTripCommission(email, body.id, cents, body.commissionCurrency ?? "USD");
       return NextResponse.json(result, { status: result.ok ? 200 : 400 });
     }
+    case "app-code": {
+      /**
+       * THIS TRIP, ON MY OWN PHONE.
+       *
+       * The other half of "share" below. That one makes a code an adviser
+       * SENDS to a client; this one makes the code somebody keeps for
+       * themselves, and it is what a Trip Pass buys. It is deliberately one
+       * action rather than two: spending the pass and getting the code are the
+       * same intention, and splitting them would leave a pass spent on a trip
+       * with no way in.
+       *
+       * The code is marked "self" (ShareKind in lib/account-store.ts), which
+       * is what keeps Messages off it — there is nobody on the other end.
+       */
+      if (!body.id) return NextResponse.json({ ok: false, error: "Name the trip." }, { status: 400 });
+      const appPlan = await getPlan(email);
+      if (!(await mayOpenTripInApp(email, appPlan, body.id))) {
+        const spent = await spendTripPass(email, body.id);
+        if (!spent.ok && spent.reason === "none_left") {
+          return NextResponse.json({ ok: false, error: whyTripIsNotInApp(appPlan), needsPass: true }, { status: 403 });
+        }
+        if (!spent.ok && spent.reason === "storage") {
+          return NextResponse.json({ ok: false, error: "That could not be saved just now." }, { status: 503 });
+        }
+      }
+      const code = await ensureTripShare(email, body.id, "self");
+      if (!code) return NextResponse.json({ ok: false, error: "Could not create the code." }, { status: 503 });
+      return NextResponse.json({ ok: true, code, trips: await getTrips(email) });
+    }
     case "share":
     case "unshare": {
       // The client's per-trip code, locked to this one trip. Advisor Starter
@@ -182,6 +213,13 @@ export async function POST(request: NextRequest) {
     case "delete": {
       if (!body.id) return NextResponse.json({ ok: false, error: "Name the trip." }, { status: 400 });
       const result = await deleteTrip(email, body.id);
+      // A pass spent on a trip that no longer exists is a pass on nothing.
+      // Handing it back is not a way to move one — see releaseOrphaned in
+      // lib/trip-pass.ts — it is the difference between a purchase and a
+      // deleted row taking somebody's money with it.
+      if (result.ok) {
+        await releaseDeletedTripPasses(email, (await getTrips(email)).map((t) => t.id)).catch(() => {});
+      }
       return NextResponse.json(result, { status: result.ok ? 200 : 400 });
     }
     default:
