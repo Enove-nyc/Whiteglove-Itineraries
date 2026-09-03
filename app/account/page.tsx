@@ -5,6 +5,7 @@ import AccountPlanPanel, { type PlanOffer } from "@/components/AccountPlanPanel"
 import BusinessBrandPanel from "@/components/BusinessBrandPanel";
 import CompanionSettings from "@/components/companion/CompanionSettings";
 import AccountRoutePanel from "@/components/AccountRoutePanel";
+import ForwardingAddress from "@/components/ForwardingAddress";
 import AccountSettings from "@/components/AccountSettings";
 import Footer from "@/components/Footer";
 import LogoutButton from "@/components/LogoutButton";
@@ -140,6 +141,12 @@ export default async function AccountPage() {
 
         {/* Itineraries, Route, Favorites. */}
         <AccountRoutePanel />
+
+        {/* The address to forward a booking to. In the planner it sits inside
+            Smart Import, which is where it is least useful — forwarding is
+            done in a mail app, so the address has to be somewhere it can be
+            copied from. Absent entirely until inbound mail is actually wired. */}
+        <ForwardingAddress />
 
         <section aria-labelledby="account-details" className="mt-8">
           <h2 id="account-details" className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Details</h2>

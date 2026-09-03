@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IMPORTED_KIND_LABEL, type ImportedItem, type ImportedItemKind } from "@/data/smart-import";
 import {
   IMPORT_ACCEPT,
@@ -10,6 +10,7 @@ import {
   isImportMediaType,
 } from "@/data/smart-import-files";
 import { ANSWER_LABEL } from "@/lib/assistant-disclosure";
+import { isUnconfirmed, waitingLine, type PendingImport } from "@/data/inbound-import";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-[var(--gold-light)] bg-white px-3 py-2 text-sm text-[var(--navy)] shadow-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold-light)]";
@@ -47,11 +48,43 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
    */
   const [alreadyAdded, setAlreadyAdded] = useState<Set<string>>(new Set());
   const [duplicate, setDuplicate] = useState(false);
+  /** The address to forward to, and anything already forwarded and waiting. */
+  const [inbox, setInbox] = useState<{ address: string; pending: PendingImport[] }>({ address: "", pending: [] });
+  /** Which forwarded entry is open, so keeping its rows can clear it. */
+  const [reviewing, setReviewing] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<ImportedItem[] | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+
+  // Read once when the panel opens. The address is made on first read, so an
+  // account that never forwards anything never has a mailbox at all.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/account/inbound", { cache: "no-store" });
+        const data = (await res.json().catch(() => null)) as { address?: string; pending?: PendingImport[] } | null;
+        if (!cancelled && data?.address) setInbox({ address: data.address, pending: data.pending ?? [] });
+      } catch {
+        // Forwarding is the second way in, not the only one. If it cannot be
+        // read, the paste box and the file picker still work.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Open a forwarded confirmation in this same review screen. */
+  function review(entry: PendingImport) {
+    setItems(entry.items as ImportedItem[]);
+    setWarnings(entry.warnings);
+    setExcluded(new Set());
+    setReviewing(entry.id);
+    setError("");
+  }
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -129,6 +162,18 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
     // before it is added a second time.
     const print = importFingerprint({ text, base64: fileDataUrl });
     if (print) setAlreadyAdded((prev) => new Set(prev).add(print));
+    // A forwarded confirmation leaves the queue once its rows have been dealt
+    // with — that is what makes the queue a thing to clear rather than a second
+    // inbox. Best effort: the rows are already on the trip either way.
+    if (reviewing) {
+      void fetch("/api/account/inbound", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear", id: reviewing }),
+      }).catch(() => {});
+      setInbox((prev) => ({ ...prev, pending: prev.pending.filter((e) => e.id !== reviewing) }));
+      setReviewing("");
+    }
     onImport(chosen);
     onCancel();
   }
@@ -147,6 +192,51 @@ export default function SmartImportPanel({ onImport, onCancel }: { onImport: (it
           wording the assistant uses, from lib/assistant-disclosure.ts, so the
           site has one phrase for this and not two. */}
       <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--gold-ink)]">{ANSWER_LABEL}</p>
+
+      {/* THE THIRD WAY IN: forward it. Shown above the paste box because for
+          most confirmations it is the least work — the email is already in your
+          inbox, and forwarding it is one tap. Absent entirely when the store is
+          not connected, rather than showing an address that goes nowhere. */}
+      {!items && inbox.address && (
+        <div className="mt-3 rounded-lg border border-[var(--gold-light)] bg-white p-3">
+          <p className="text-xs font-semibold text-[var(--navy)]">Or forward the email</p>
+          <p className="mt-1 break-all font-mono text-xs text-[var(--navy)]">{inbox.address}</p>
+          <p className="mt-1 text-[11px] leading-4 text-stone-500">
+            Yours alone. Anything sent here waits below until you check it — nothing is added to a trip on its own.
+          </p>
+          {inbox.pending.length > 0 && (
+            <div className="mt-3 border-t border-[var(--gold-light)] pt-3">
+              <p className="text-xs font-semibold text-[var(--gold-ink)]">{waitingLine(inbox.pending.length)}</p>
+              <ul className="mt-2 flex flex-col gap-2">
+                {inbox.pending.map((entry) => (
+                  <li key={entry.id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="min-w-0 text-xs text-stone-600">
+                      <span className="font-semibold text-[var(--navy)]">{entry.subject || "A confirmation"}</span>
+                      {entry.from ? ` · from ${entry.from}` : ""}
+                      {/* SAID BEFORE IT IS OPENED, not after. This one came to
+                          the plain mailbox and was matched on its From line,
+                          which anybody can type — so the planner should know
+                          that before they read a word of it. */}
+                      {isUnconfirmed(entry) && (
+                        <span className="mt-0.5 block font-semibold text-[var(--gold-ink)]">
+                          Sender not confirmed — check who sent this before you use it
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => review(entry)}
+                      className="inline-flex min-h-11 items-center rounded-full border border-[var(--gold-light)] bg-white px-3.5 text-xs font-bold text-[var(--navy)]"
+                    >
+                      Check it
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {!items && (
         <>
