@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { getAppPrefs } from "@/lib/app-prefs-store";
+import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
 import { pageMetadata } from "@/lib/seo";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { requireSignedIn } from "@/lib/require-signed-in";
 import Footer from "@/components/Footer";
 import ItineraryFooter from "@/components/ItineraryFooter";
@@ -37,6 +39,20 @@ export default async function ItineraryPage() {
   // Itineraries is not a kosher product — the builder hides kosher/heritage-
   // specific tools (kevarim, zmanim, kosher food nearby) on that brand.
   const itineraries = (await currentBrand()) === "itineraries";
+  /**
+   * Whether this account asked for the kosher & Shabbos layer — the switch on
+   * /account (AppPrefs.kosherFeatures). It decides whether the planner offers
+   * zmanim at all on this brand. Read here rather than in the builder: a
+   * component may not go to a store while it renders, and the answer is the
+   * same for the whole page.
+   */
+  const kosher = itineraries
+    ? await (async () => {
+        const account = await getCurrentAccountData((await cookies()).get(accountCookieName())?.value);
+        if (!account?.email) return false;
+        return (await getAppPrefs(account.email).catch(() => ({ kosherFeatures: false }))).kosherFeatures;
+      })()
+    : true;
   const userAgent = (await headers()).get("user-agent") || "";
   const device = /Mobi|Android/i.test(userAgent) ? "mobile" : "desktop";
   const footerPromotions = await getActivePromotions("itinerary-footer", "/itinerary", device);
@@ -78,7 +94,7 @@ export default async function ItineraryPage() {
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-12">
         <div className="itinerary-planner mt-6">
           <SharedWithMe />
-          <ItineraryBuilder crossings={crossings} today={new Date().toISOString().slice(0, 10)} assume={assume} templates={templates} itineraries={itineraries} />
+          <ItineraryBuilder crossings={crossings} today={new Date().toISOString().slice(0, 10)} assume={assume} templates={templates} itineraries={itineraries} kosher={kosher} />
         </div>
 
         <ItineraryFooter promotion={footerPromotions[0] ?? null} />

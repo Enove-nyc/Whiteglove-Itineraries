@@ -6,17 +6,25 @@
  * itself to behave, across every trip they hand out — kept on its own key so it
  * neither rides on the auth record nor has to be written onto each trip.
  *
- * THE KOSHER-AND-SHABBOS LAYER IS OFF UNTIL ASKED FOR. The app is a general
- * itinerary tool; candle-lighting, when Shabbos ends and the kosher places near
- * a trip are a real feature, but not every agency plans kosher travel, so they
- * are hidden until an account turns them on. An account that plans kosher trips
- * flips one switch and every trip they hand out carries them.
+ * THE KOSHER-AND-SHABBOS LAYER IS OFF UNTIL ASKED FOR. This is a general
+ * itinerary product; candle-lighting, when Shabbos ends, the kosher places near
+ * a trip and a warning that a stop falls on Shabbos are a real feature, but not
+ * every agency plans kosher travel, so they are hidden until an account turns
+ * them on. An account that plans kosher trips flips one switch.
+ *
+ * ONE SWITCH, EVERY SURFACE. It began as an app-only setting while the planner
+ * and the command centre showed Shabbos to everybody regardless — which meant a
+ * general travel agency saw "this stop is planned for Shabbos" on a screen they
+ * never asked for it on, and could not turn it off. `kosherFeatures` is now the
+ * single gate: the companion app, the planner's zmanim, and the command
+ * centre's Shabbos warnings all read it. Anything Shabbos-shaped added later
+ * reads it too — tests/shabbos-behind-the-switch.test.ts fails if it does not.
  */
 
 import { identityKey } from "@/lib/identity";
 
 export type AppPrefs = {
-  /** Whether the app shows candle-lighting, Shabbos times and kosher places. */
+  /** Whether candle-lighting, Shabbos times, Shabbos warnings and kosher places are shown at all. */
   kosherFeatures: boolean;
 };
 
