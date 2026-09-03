@@ -8,8 +8,52 @@
 // styles are therefore network-first: the newest version always wins when
 // online, and the cache is only a fallback when offline. Only truly static
 // media (images, fonts) is cache-first.
-const CACHE = "wg-cache-v5";
+const CACHE = "wg-cache-v6";
 const PRECACHE = ["/", "/offline", "/icon-192.png", "/icon-512.png"];
+
+/**
+ * Pages that belong to one signed-in person, and must not outlive their session.
+ *
+ * Every successful navigation is cached by networkFirst below — which is what
+ * makes a trip readable at a gate with no signal — and also meant a rendered
+ * itinerary, carrying its flight numbers, hotel and the client's name, stayed
+ * on the device after they signed out. Nothing deliberate put it there:
+ * visiting the page was enough.
+ *
+ * These prefixes are swept on sign-out (see forgetPrivate + the wg-offline-forget
+ * message). Public pages are left alone — a cached destination guide is nobody's
+ * business but the site's, and clearing the whole cache would take the offline
+ * shell (/offline) with it.
+ */
+const PRIVATE_PREFIXES = [
+  "/command-center",
+  "/itinerary",
+  "/my-route",
+  "/account",
+  "/advisor",
+  "/clients",
+  "/commissions",
+  "/library",
+  "/forms",
+  "/form/",
+  "/pipeline",
+  "/payments",
+  "/pay/",
+  "/proposal",
+  "/group",
+  "/app",
+  "/i/",
+  "/f/",
+  "/p/",
+  "/t/",
+  "/r/",
+];
+
+function isPrivatePath(pathname) {
+  return PRIVATE_PREFIXES.some((prefix) =>
+    prefix.endsWith("/") ? pathname.startsWith(prefix) : pathname === prefix || pathname.startsWith(prefix + "/"),
+  );
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).catch(() => {}));
@@ -58,6 +102,48 @@ function networkFirst(req) {
     })
     .catch(() => caches.match(req).then((r) => r || (req.mode === "navigate" ? caches.match("/offline") : undefined)));
 }
+
+/**
+ * Sweep every cached page belonging to the session that has just ended.
+ *
+ * Across every app-shell cache, whatever its version — this worker bumps its
+ * cache name on its own release schedule, so a sweep pinned to one name would
+ * miss a rendered itinerary sitting in the current one. The private pages are
+ * the only ones removed; the public site and the /offline shell stay cached.
+ */
+async function forgetPrivate() {
+  try {
+    const names = await caches.keys();
+    await Promise.all(
+      names.map(async (name) => {
+        const cache = await caches.open(name);
+        const requests = await cache.keys();
+        await Promise.all(
+          requests.filter((req) => isPrivatePath(new URL(req.url).pathname)).map((req) => cache.delete(req)),
+        );
+      }),
+    );
+  } catch {
+    // A browser that will not open the cache has nothing in it to leak.
+  }
+}
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || typeof data.type !== "string") return;
+  // Signing out. The private navigation cache holds a rendered itinerary with
+  // its flight numbers, hotel and client's name; leaving it on a borrowed or
+  // shared computer after sign-out is the whole risk. The page also sweeps and
+  // deletes the offline database directly — this is the tidy path for when the
+  // worker is awake.
+  if (data.type === "wg-offline-forget") {
+    const reply = (payload) => {
+      const port = event.ports && event.ports[0];
+      if (port) port.postMessage(payload);
+    };
+    event.waitUntil(forgetPrivate().then(() => reply({ ok: true }), () => reply({ ok: false })));
+  }
+});
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;

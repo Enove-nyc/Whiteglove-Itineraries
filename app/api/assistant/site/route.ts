@@ -88,8 +88,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ covered: true, text, sources: citedSources(text, sources) } satisfies Answer);
   };
 
-  try {
-    if (geminiKey) {
+  // ORDERED FAILOVER, not a single-provider preference. The preferred provider
+  // (Gemini when its key is set) is tried first; on a transport failure, a
+  // non-2xx, or an empty/malformed answer, the other provider is tried within
+  // the same request. A provider that ANSWERS — including a valid "not on the
+  // site" answer, which is a real answer, not a failure — is used as-is and
+  // never retried. Only when every configured provider fails does the traveler
+  // get notCovered(), so one provider's outage never takes the assistant down.
+  const tryGemini = async (): Promise<string | null> => {
+    if (!geminiKey) return null;
+    try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(geminiKey)}`,
         {
@@ -106,34 +114,45 @@ export async function POST(request: NextRequest) {
       );
       if (!response.ok) {
         console.warn("[site-assistant] gemini", response.status);
-        return notCovered();
+        return null;
       }
       const data = (await response.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-      return answered((data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text).filter(Boolean).join("\n").trim());
+      const text = (data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text).filter(Boolean).join("\n").trim();
+      return text || null;
+    } catch {
+      return null;
     }
+  };
+  const tryAnthropic = async (): Promise<string | null> => {
+    if (!anthropicKey) return null;
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 800,
+          temperature: 0.2,
+          system,
+          messages: [{ role: "user", content: userMessage }],
+        }),
+      });
+      if (!response.ok) {
+        console.warn("[site-assistant] anthropic", response.status);
+        return null;
+      }
+      const data = (await response.json()) as { content?: Array<{ type: string; text?: string }> };
+      const text = (data.content ?? []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+      return text || null;
+    } catch {
+      return null;
+    }
+  };
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicKey as string,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 800,
-        temperature: 0.2,
-        system,
-        messages: [{ role: "user", content: userMessage }],
-      }),
-    });
-    if (!response.ok) {
-      console.warn("[site-assistant] anthropic", response.status);
-      return notCovered();
-    }
-    const data = (await response.json()) as { content?: Array<{ type: string; text?: string }> };
-    return answered((data.content ?? []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim());
-  } catch {
-    return notCovered();
-  }
+  const raw = (await tryGemini()) ?? (await tryAnthropic());
+  return raw ? answered(raw) : notCovered();
 }

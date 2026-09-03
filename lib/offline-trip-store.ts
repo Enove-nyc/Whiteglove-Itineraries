@@ -139,6 +139,39 @@ export async function forgetTripOffline(key: string): Promise<void> {
   await idbDelete(TRIP_STORE, key);
 }
 
+/**
+ * Empty everything this device kept for offline use — every saved trip, every
+ * wallet document, every cached thread — by dropping the whole database.
+ *
+ * This is the sign-out sweep for the on-device store. The document store holds
+ * boarding-pass bytes carrying a full name and a booking reference, and the
+ * trip store holds a rendered itinerary with flight numbers, a hotel and the
+ * client's name; none of it may outlive the session on a shared or borrowed
+ * device. Deleting the database outright clears all three stores at once and
+ * needs no list of keys the session happened to know. Best effort, like
+ * everything here: signing out must never throw, and a blocked delete (another
+ * tab still holding the database open) resolves rather than hangs.
+ */
+export async function forgetAllOffline(): Promise<void> {
+  if (typeof indexedDB === "undefined") return;
+  try {
+    await new Promise<void>((resolve) => {
+      let req: IDBOpenDBRequest;
+      try {
+        req = indexedDB.deleteDatabase(DB_NAME);
+      } catch {
+        resolve();
+        return;
+      }
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    });
+  } catch {
+    /* signing out must never throw */
+  }
+}
+
 // --- Wallet documents (boarding passes, confirmations) ---------------------
 
 /**

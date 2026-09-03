@@ -15,6 +15,7 @@ import { ACCOUNT_PLACES, advisorPlacesFor } from "@/lib/account-places";
 import type { AccountPlan } from "@/lib/account-plans";
 import { useOpenSignIn } from "@/components/SignInGate";
 import { signInHref, useViewer } from "@/lib/use-signed-in";
+import { forgetOfflineData } from "@/lib/offline-forget";
 import { useBookingLink } from "@/components/BookingLinkProvider";
 
 /**
@@ -255,6 +256,8 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
   async function signOut() {
     await fetch("/api/account/logout", { method: "POST" }).catch(() => undefined);
     setSignedIn(false);
+    // Take the trip off this device with the session — see lib/offline-forget.ts.
+    await forgetOfflineData().catch(() => undefined);
     router.push("/");
     router.refresh();
   }

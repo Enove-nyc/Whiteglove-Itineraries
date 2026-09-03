@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { withReturnPath } from "@/lib/return-path";
+import { forgetOfflineData } from "@/lib/offline-forget";
 
 /**
  * Signs the user out after a period of inactivity. Any of the listed user
@@ -32,6 +33,11 @@ export default function IdleLogout({
 
     async function logout() {
       await fetch(endpoint, { method: "POST" }).catch(() => undefined);
+      // The likeliest place an uncleared trip ever hurts somebody: a hotel
+      // business centre, walked away from, signing itself out on its own with
+      // the itinerary and boarding passes still on the machine. See
+      // lib/offline-forget.ts.
+      await forgetOfflineData().catch(() => undefined);
       if (cancelled) return;
       if (redirectTo) {
         // The page they were on, so signing back in returns them to it rather
