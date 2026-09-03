@@ -1065,6 +1065,33 @@ export default function CompanionApp({
     };
   }, [isClientViewer, liveChat?.shareId, trip.walletGroups]);
 
+  // How many wallet documents are ACTUALLY on this device — so the wallet badge
+  // tells the truth rather than promising "works with no signal" for a boarding
+  // pass that never finished caching (a large PDF, a short online session, or a
+  // device where IndexedDB is blocked). Re-checked whenever the connection
+  // flips or the traveller opens the wallet, by which point the background save
+  // loop above has usually caught up.
+  const walletFileIds = trip.walletGroups
+    .flatMap((g) => g.rows)
+    .flatMap((r) => r.attachments ?? [])
+    .map((a) => a.id)
+    .join("|");
+  const [offlineDocs, setOfflineDocs] = useState<{ kept: number; total: number }>({ kept: 0, total: 0 });
+  useEffect(() => {
+    const ids = walletFileIds ? walletFileIds.split("|") : [];
+    let cancelled = false;
+    void (async () => {
+      let kept = 0;
+      for (const id of ids) {
+        if (await readDocumentOffline(id)) kept += 1;
+      }
+      if (!cancelled) setOfflineDocs({ kept, total: ids.length });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [walletFileIds, st.screen]);
+
   // Opening the thread marks it read server-side (LiveChat's own fetch), but the
   // 15s peek poll is what clears this badge — so without clearing it here the
   // dot flashed back onto the Advisor tab for a few seconds after reading and
@@ -1970,9 +1997,21 @@ export default function CompanionApp({
 
   const walletScreen = (
     <div style={{ padding: "16px 16px 28px", display: "flex", flexDirection: "column", gap: 16, animation: "wgIn .28s ease both" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, font: "400 11.5px/1 ui-monospace,Menlo,monospace", color: "#1f3f5c", background: "#e7edf1", padding: "10px 14px", borderRadius: 14, alignSelf: "flex-start" }}>
-        <span style={{ width: 7, height: 7, borderRadius: 14, background: "#15324b" }} />Kept on the phone — works with no signal
-      </div>
+      {(() => {
+        // Only promise "works with no signal" when every document is actually
+        // on the device. Until then, say plainly how many are kept and what to
+        // do — never let a traveller reach the gate trusting a pass that was
+        // never saved.
+        const allKept = offlineDocs.total === 0 || offlineDocs.kept >= offlineDocs.total;
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, font: "400 11.5px/1 ui-monospace,Menlo,monospace", color: allKept ? "#1f3f5c" : "#765321", background: allKept ? "#e7edf1" : "#fbf1dd", padding: "10px 14px", borderRadius: 14, alignSelf: "flex-start" }}>
+            <span style={{ width: 7, height: 7, borderRadius: 14, background: allKept ? "#15324b" : GOLD }} />
+            {allKept
+              ? "Kept on the phone — works with no signal"
+              : `${offlineDocs.kept} of ${offlineDocs.total} kept on the phone — open the rest with a connection`}
+          </div>
+        );
+      })()}
       {trip.payment && (
         <button
           onClick={() => go("pay")}

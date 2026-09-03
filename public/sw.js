@@ -8,8 +8,8 @@
 // styles are therefore network-first: the newest version always wins when
 // online, and the cache is only a fallback when offline. Only truly static
 // media (images, fonts) is cache-first.
-const CACHE = "wg-cache-v4";
-const PRECACHE = ["/", "/icon-192.png", "/icon-512.png"];
+const CACHE = "wg-cache-v5";
+const PRECACHE = ["/", "/offline", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).catch(() => {}));
@@ -56,7 +56,7 @@ function networkFirst(req) {
       }
       return res;
     })
-    .catch(() => caches.match(req).then((r) => r || (req.mode === "navigate" ? caches.match("/") : undefined)));
+    .catch(() => caches.match(req).then((r) => r || (req.mode === "navigate" ? caches.match("/offline") : undefined)));
 }
 
 self.addEventListener("fetch", (event) => {
