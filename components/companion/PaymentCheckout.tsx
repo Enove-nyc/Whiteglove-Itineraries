@@ -9,7 +9,15 @@ const GOLD = "#b78a4a";
 const serif = "Georgia,'Times New Roman',serif";
 
 function formatCents(cents: number, currency: string): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
+  // A currency that isn't a valid ISO 4217 code makes Intl throw a RangeError,
+  // which would white-screen the one screen where a customer is trying to pay.
+  // Fall back to USD rather than crash — the same guard the main app's
+  // currencyFmt already carries.
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
+  } catch {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  }
 }
 
 let stripePromise: Promise<Stripe | null> | null = null;

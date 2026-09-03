@@ -53,15 +53,19 @@ export const dynamic = "force-dynamic";
  */
 export default async function TravelerAppPage({ params }: { params: Promise<{ shareId: string }> }) {
   const { shareId } = await params;
+  // A dead or downgraded traveller link (revoked, dates removed, advisor plan
+  // lapsed, or the trip lost its days) must not dump the family on the
+  // marketing homepage with no way back in. Send them to /app, which shows a
+  // "have a code?" field they can retry from — the same recovery /i uses.
   const shared = await getSharedTraveler(shareId);
-  if (!shared) redirect("/");
+  if (!shared) redirect("/app");
 
   // A traveller's own door is its own link with its own status, so it is this
   // token that is recorded, not the trip-wide one.
   await noteShareOpened(shareId, shared.ownerEmail);
 
   const plan = await getPlan(shared.ownerEmail);
-  if (!mayServeCompanionClients(plan)) redirect("/");
+  if (!mayServeCompanionClients(plan)) redirect("/app");
 
   const label = shared.traveler.family?.trim() || shared.traveler.name;
   const [brand, prefs, payment] = await Promise.all([
@@ -76,7 +80,7 @@ export default async function TravelerAppPage({ params }: { params: Promise<{ sh
     client: label,
     kosher: prefs.kosherFeatures,
   });
-  if (!trip) redirect("/");
+  if (!trip) redirect("/app");
   if (payment) trip.payment = payment;
   await checkTripFlightStatus(shared.ownerEmail, shared.tripId).catch(() => []);
   trip.liveAlerts = await getTripAlerts(shared.ownerEmail, shared.tripId).catch(() => []);
