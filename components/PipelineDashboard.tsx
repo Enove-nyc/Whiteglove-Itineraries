@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { actionForReminder } from "@/lib/needs-attention";
+import type { TripReminder } from "@/data/trip-reminders";
 import { useRouter } from "next/navigation";
 import { pipelineStats, TRIP_STAGE_LABEL, TRIP_STAGE_ORDER, type TripStage } from "@/data/trip-pipeline";
 import { ShareOpenStatus } from "@/components/ShareOpenStatus";
@@ -21,6 +23,7 @@ type Row = {
   endDate: string;
   stage: TripStage;
   needsAttention: boolean;
+  reminders: TripReminder[];
   shareId?: string;
   unread: boolean;
   /** Whether the client has opened the trip link, and when. Only when shared. */
@@ -169,6 +172,35 @@ function RowCard({
         <p className="mt-2 text-xs text-stone-500">
           {row.startDate} {row.endDate ? `→ ${row.endDate}` : ""}
         </p>
+      )}
+      {row.reminders.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-1">
+          {row.reminders.map((r) => {
+            // EVERY REASON GETS ITS ONE ACTION. Otherwise a nudge is a sentence
+            // with a flag in front of it — "2 add-ons still waiting on an
+            // answer", agreed, and then work out for yourself which screen
+            // answers add-ons. See lib/needs-attention.ts.
+            const action = actionForReminder(r.reason);
+            // The kosher copy has a second branch here for sending a rating
+            // request. There are no rating requests on this product, and that
+            // reason is filtered out server-side in the pipeline route, so this
+            // renders the flag alone rather than a button to nowhere.
+            return (
+              <li key={r.reason} className="text-xs font-semibold text-[var(--gold-ink)]">
+                ⚑ {r.message}
+                {action.kind === "open" && (
+                  <button
+                    type="button"
+                    onClick={() => onOpen(action.path)}
+                    className="ml-2 inline-flex min-h-11 items-center text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2 sm:min-h-0"
+                  >
+                    {action.label}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
       <div className="mt-3 flex flex-wrap gap-3">
         <button type="button" onClick={() => onOpen("/itinerary")} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">

@@ -1,3 +1,4 @@
+import OfflineDocuments from "@/components/OfflineDocuments";
 import { formatDateLong } from "@/data/itinerary";
 import { KIND_LABELS, type AttachmentKind, describeSize } from "@/lib/attachments";
 import { type TripDocument, documentSummary, documentsByDay, ownerWord } from "@/lib/trip-documents";
@@ -29,6 +30,10 @@ export default function TripDocuments({
         On your phone
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{documentSummary(documents)}</p>
+
+      {/* Offered only where there is something to save. An offer over an empty
+          list is a button that does nothing. */}
+      {documents.length > 0 && <OfflineDocuments ids={documents.map((d) => d.attachment.id)} />}
 
       {days.length > 0 && (
         <div className="mt-6 space-y-6">

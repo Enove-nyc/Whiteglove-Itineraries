@@ -88,3 +88,33 @@ test("nothing ported points back at the other product's site", () => {
     assert.ok(!read(path).includes("whiteglovekoshertravel.com"), `${path} links to the other product`);
   }
 });
+
+test("no rating nudge on this product — there are no rating requests here", () => {
+  // tripReminders raises "trip's over — send a rating request" and clears it
+  // once ratingRequestSentAt is set. That flag can never be set here, so the
+  // nudge would arrive on every completed trip, point at a screen that does
+  // not exist, and never go away.
+  const route = read("app/api/account/pipeline/route.ts");
+  assert.match(route, /reason !== "trip_completed_no_rating_sent"/);
+  // Code only — the comment explaining the omission is the record of the
+  // decision and must not be linted away.
+  const code = route.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!code.includes("ratingRequestSentAt"), "this product has no rating requests to read");
+});
+
+test("readiness alerts are shown on a page here, never pushed to a phone", () => {
+  const alerts = read("lib/trip-alerts.ts");
+  // The command centre has long shown Shabbos clashes on a page somebody chose
+  // to open. Pushing one to a phone unbidden from a general travel product is
+  // a different thing, and not one to start doing on its own.
+  assert.match(alerts, /alert\.kind !== "no-dates" && alert\.kind !== "shabbos"/);
+});
+
+test("sign-out still has exactly one cleaner, not two", () => {
+  // lib/offline-forget.ts says in capitals that there is one function because
+  // this is the failure that matters. The port added a cache name to it rather
+  // than a second implementation beside it.
+  assert.throws(() => read("lib/offline-documents.ts"));
+  const forget = read("lib/offline-forget.ts");
+  assert.match(forget, /caches\.delete\("wg-offline-docs-v1"\)/);
+});
