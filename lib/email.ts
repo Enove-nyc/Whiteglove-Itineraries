@@ -680,3 +680,54 @@ export async function sendItineraryToClient(input: {
     "itinerary to client",
   );
 }
+
+/**
+ * The email that says a trip needs looking at before it leaves.
+ *
+ * WHY EMAIL AS WELL AS A NOTIFICATION. A push has to be turned on, on a
+ * device, by somebody who thought to. Email reaches whoever has an account.
+ * These are the two alerts that get worse the longer nobody notices — a stop
+ * planned for Shabbos, loose ends as departure closes — so the channel that
+ * needs no setup is the one that must not be missing.
+ *
+ * ONCE PER ALERT, NOT PER DAY. The caller records each alert's key before
+ * sending, so nobody is emailed twice about the same Shabbos clash; see
+ * app/api/cron/trip-alerts/route.ts.
+ */
+export async function sendTripAlertsEmail(
+  to: string,
+  opts: { tripTitle: string; leaving?: string; alerts: Array<{ headline: string; detail?: string }>; url: string },
+): Promise<boolean> {
+  const title = escapeHtml(opts.tripTitle || "your trip");
+  const url = escapeHtml(opts.url);
+  const when = opts.leaving ? ` — ${escapeHtml(opts.leaving)}` : "";
+  const rows = opts.alerts
+    .map(
+      (alert) =>
+        `<li style="margin-bottom:10px;"><strong>${escapeHtml(alert.headline)}</strong>` +
+        (alert.detail ? `<br><span style="color:#555;">${escapeHtml(alert.detail)}</span>` : "") +
+        `</li>`,
+    )
+    .join("");
+  const result = await postResend(
+    {
+      to,
+      subject:
+        opts.alerts.length === 1
+          ? `${opts.alerts[0].headline} — "${opts.tripTitle}"`
+          : `${opts.alerts.length} things to look at before "${opts.tripTitle}"`,
+      html:
+        `<h2 style="font-family:Georgia,serif;color:#1e2a44;">Before you go</h2>` +
+        `<p style="font-family:Arial,sans-serif;font-size:14px;color:#333;"><strong>${title}</strong>${when}.</p>` +
+        `<ul style="font-family:Arial,sans-serif;font-size:14px;color:#333;padding-left:18px;">${rows}</ul>` +
+        `<p style="font-family:Arial,sans-serif;font-size:14px;"><a href="${url}" style="display:inline-block;background:#1e2a44;color:#fff;text-decoration:none;padding:12px 20px;font-weight:bold;">Open your trip →</a></p>`,
+      text:
+        `Before you go — ${opts.tripTitle}${opts.leaving ? ` (${opts.leaving})` : ""}:\n\n` +
+        opts.alerts.map((alert) => `• ${alert.headline}${alert.detail ? `\n  ${alert.detail}` : ""}`).join("\n") +
+        `\n\nOpen your trip: ${opts.url}`,
+    },
+    to,
+    "trip alerts",
+  );
+  return result.ok;
+}

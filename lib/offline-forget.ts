@@ -15,7 +15,9 @@ import { forgetAllOffline } from "@/lib/offline-trip-store";
  * So every sign-out calls this. It clears three things:
  *   1. the on-device database (saved trips, wallet document bytes, cached chat)
  *      — deleted outright by forgetAllOffline();
- *   2. the private pages the service worker's navigation cache picked up on its
+ *   2. the documents a traveller explicitly asked to keep for offline use,
+ *      in the worker's own wg-offline-docs cache;
+ *   3. the private pages the service worker's navigation cache picked up on its
  *      own — a rendered itinerary carries flight numbers, a hotel and the
  *      client's name — swept by path, both by asking the worker (the tidy path)
  *      and directly here (the one that still works when the worker is asleep,
@@ -38,6 +40,13 @@ export async function forgetOfflineData(): Promise<void> {
       registration?.active?.postMessage({ type: "wg-offline-forget" });
     }
     if (!("caches" in window)) return;
+    // The documents somebody chose to keep, deleted here as well as asked of
+    // the worker above. The message is the tidy path; this is the one that
+    // still works when the worker is asleep, unregistered or mid-update — and
+    // a boarding pass left on a borrowed laptop is not something to leave to
+    // whether a worker happened to be listening. Name kept in step with
+    // OFFLINE_DOCS in public/sw.js.
+    await caches.delete("wg-offline-docs-v1");
     await sweepPrivatePages();
   } catch {
     // Signing out must succeed regardless.
@@ -92,14 +101,20 @@ function isPrivatePath(pathname: string): boolean {
 async function sweepPrivatePages(): Promise<void> {
   const names = await caches.keys();
   await Promise.all(
-    names.map(async (name) => {
-      const cache = await caches.open(name);
-      const requests = await cache.keys();
-      await Promise.all(
-        requests
-          .filter((request) => isPrivatePath(new URL(request.url).pathname))
-          .map((request) => cache.delete(request)),
-      );
-    }),
+    // The documents cache is not a page cache and is never swept by path — it
+    // is deleted outright above. Excluded explicitly rather than relying on
+    // that having already happened, so reordering the two calls later cannot
+    // quietly turn a wholesale delete into a sweep that matches nothing.
+    names
+      .filter((name) => name !== "wg-offline-docs-v1")
+      .map(async (name) => {
+        const cache = await caches.open(name);
+        const requests = await cache.keys();
+        await Promise.all(
+          requests
+            .filter((request) => isPrivatePath(new URL(request.url).pathname))
+            .map((request) => cache.delete(request)),
+        );
+      }),
   );
 }

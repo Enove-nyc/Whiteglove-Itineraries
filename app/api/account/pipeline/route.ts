@@ -7,6 +7,7 @@ import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients, mayViewPipelineAnalytics } from "@/lib/account-limits";
 import { readChat, readMarkers } from "@/lib/companion-chat-store";
 import { needsAttention, tripStage, type ManualTripStage, type TripStage } from "@/data/trip-pipeline";
+import { tripReminders, type TripReminder } from "@/data/trip-reminders";
 import { hasBalance, outstandingCents } from "@/data/trip-payments";
 import { sameOrigin } from "@/lib/secure-access";
 import { allCrossings } from "@/lib/border-store";
@@ -25,6 +26,9 @@ export type PipelineRow = {
   endDate: string;
   stage: TripStage;
   needsAttention: boolean;
+  /** What needs the advisor on this trip, worked out fresh every time and
+   *  never stored. See data/trip-reminders.ts. */
+  reminders: TripReminder[];
   shareId?: string;
   /** True when the client's last word in the thread hasn't been read yet. */
   unread: boolean;
@@ -112,6 +116,24 @@ export async function GET() {
         endDate: t.itinerary?.endDate ?? "",
         stage,
         needsAttention: needsAttention(t.proposal),
+        // NO RATING NUDGE ON THIS PRODUCT. tripReminders raises
+        // "trip's over — send a rating request" for a completed trip whose
+        // request has not gone yet, and clears it once ratingRequestSentAt is
+        // set. There are no rating requests here, so that flag can never be
+        // set: the nudge would arrive on every completed trip, point at a
+        // screen that does not exist, and never go away. Dropped at the source
+        // rather than passed through and ignored.
+        reminders: tripReminders(
+          {
+            stage,
+            proposal: t.proposal,
+            balance: t.balance,
+            addons: t.addons,
+            startDate: t.itinerary?.startDate,
+            endDate: t.itinerary?.endDate,
+          },
+          today,
+        ).filter((reminder) => reminder.reason !== "trip_completed_no_rating_sent"),
         shareId: t.shareId,
         unread,
         ...(opened ? { openStatus: opened } : {}),

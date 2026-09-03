@@ -28,7 +28,45 @@ export type TripAlert = {
   kind: "shabbos" | "leaving-soon" | "no-dates";
   headline: string;
   detail?: string;
+  /**
+   * WHAT MAKES THIS ALERT THE SAME ALERT TOMORROW.
+   *
+   * The page recomputes these from scratch every time it is opened, which is
+   * right for a page and useless for anything that sends. A daily job needs to
+   * tell "the Shabbos clash I already told you about" from "a new one", and it
+   * cannot do that from the headline: "You leave in 5 days, and 2 stops still
+   * need something" is a different string tomorrow describing the identical
+   * situation, and keying on it would mean a notification every morning until
+   * departure.
+   *
+   * So the key is deliberately built from what the alert is ABOUT and never
+   * from how many days are left or how it happens to be worded — see each one
+   * below for what that means for its own kind.
+   */
+  key: string;
 };
+
+/**
+ * Which readiness alerts are worth a notification on somebody's phone.
+ *
+ * "No dates on the trip yet" is not one: it is a nudge to go and fill
+ * something in — true for weeks on end, urgent on none of them, and the one
+ * thing here that would arrive as a notification saying, in effect, "you have
+ * not finished typing". A page can afford to say that quietly. A notification
+ * cannot say it at all without teaching somebody to turn notifications off,
+ * and the alerts that matter go with them when they do.
+ *
+ * NEITHER IS "shabbos", AND THAT IS THIS PRODUCT'S OWN RULE — the one thing in
+ * this file that differs from the kosher copy. White Glove Itineraries is a
+ * general travel product. The command centre has long shown these clashes on a
+ * page somebody chose to open, which is one thing; pushing "your stop is
+ * planned for Shabbos" to a phone unbidden is another, and not something a
+ * neutral travel product should begin doing on its own. The kosher deployment,
+ * whose travellers asked for exactly that, pushes them.
+ */
+export function pushableAlerts(alerts: readonly TripAlert[]): TripAlert[] {
+  return alerts.filter((alert) => alert.kind !== "no-dates" && alert.kind !== "shabbos");
+}
 
 export type AlertInput = {
   stops: StopFacts[];
@@ -65,6 +103,10 @@ export function tripAlerts({ stops, readiness, startDate, today, timesById = {} 
           ? `${onShabbos[0].stop.name} is planned for Shabbos.`
           : `${onShabbos.length} stops are planned for Shabbos.`,
       detail: onShabbos.map((c) => c.stop.name).join(", "),
+      // The stops themselves, sorted so their order on the itinerary cannot
+      // change the key. Moving one off Shabbos and leaving another on it IS a
+      // different alert and should be said again; nothing else here is.
+      key: `shabbos:on:${onShabbos.map((c) => c.stop.id).sort().join(",")}`,
     });
   }
 
@@ -82,6 +124,7 @@ export function tripAlerts({ stops, readiness, startDate, today, timesById = {} 
       detail: nearCandles
         .map((c) => (c.warning.candleLighting ? `${c.stop.name} — candles ${c.warning.candleLighting}` : c.stop.name))
         .join(" · "),
+      key: `shabbos:erev:${nearCandles.map((c) => c.stop.id).sort().join(",")}`,
     });
   }
 
@@ -95,6 +138,13 @@ export function tripAlerts({ stops, readiness, startDate, today, timesById = {} 
       kind: "leaving-soon",
       headline: `You leave ${leaving}, and ${unresolved} ${unresolved === 1 ? "stop still needs" : "stops still need"} something.`,
       detail: readiness.needsAttention.map((r) => r.stop.name).join(", "),
+      // ONE KEY FOR THE WHOLE TRIP, carrying neither the countdown nor which
+      // stops are outstanding. Both change constantly — the countdown every
+      // day, the stop list every time one is sorted out — and either in the
+      // key would turn "you have loose ends" into a notification every
+      // morning, or one for each stop they fix. Said once; the page carries
+      // the running detail, which is what a page is for.
+      key: "leaving-soon",
     });
   }
 
@@ -110,6 +160,7 @@ export function tripAlerts({ stops, readiness, startDate, today, timesById = {} 
       kind: "no-dates",
       headline: "No dates on the trip yet, so nothing has been checked against Shabbos.",
       detail: "Put a date on each stop and this page will tell you what falls on Shabbos or close to candle-lighting.",
+      key: "no-dates",
     });
   }
 

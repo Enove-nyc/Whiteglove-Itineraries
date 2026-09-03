@@ -1,6 +1,6 @@
 import type { AdvisorWelcome } from "@/data/advisor-welcome";
 import { recentActivity, withActivity, type ActivityEntry } from "@/data/trip-activity";
-import { emptyPackingList, toggleItem, tripSignature, type PackingItem, type PackingList } from "@/data/packing-list";
+import { tripSignature, type PackingList } from "@/data/packing-list";
 import { suggestPackingList } from "@/lib/packing-ai";
 import { dismissSuggestion, itinerarySignature, type OptimizationResult } from "@/data/itinerary-optimization";
 import { emptyTranslation, type TranslatedItinerary } from "@/data/itinerary-translation";
@@ -36,7 +36,7 @@ import { accountCookieName, createAccountSession, parseAccountSession } from "@/
 import { templateFromTrip, tripFromTemplate } from "@/lib/trip-templates";
 import { readTemplatesStore, writeTemplatesStore, type SavedTemplate } from "@/lib/trip-templates-store";
 import type { PushSubscriptionRecord } from "@/data/push-subscriptions";
-import { sendPushToSubscriptions } from "@/lib/push-notify";
+import { sendPushToSubscriptions, type PushPayload } from "@/lib/push-notify";
 
 type RedisResult<T> = { result?: T };
 
@@ -121,6 +121,12 @@ export type SavedTrip = {
   addonsShareId?: string;
   /** What happened on this trip, newest first. */
   activity?: ActivityEntry[];
+  /**
+   * Which readiness alerts have already gone to the owner's phone, by
+   * lib/trip-alerts.ts's stable `key`, with the day each went — so "the clash
+   * you already know about" does not arrive again every morning.
+   */
+  alertsPushed?: Record<string, string>;
   /** The packing list generated for this trip, and what is ticked off. */
   packingList?: PackingList;
   /** The AI's pacing and flow suggestions for this trip, and which are dismissed. */
@@ -3404,4 +3410,59 @@ export async function generateTranslation(email: string, tripId: string, languag
   const next = trips.map((t) => (t.id === tripId ? { ...t, translations: nextTranslations, updatedAt: new Date().toISOString() } : t));
   const ok = await writeTrips(normalized, next, activeId);
   return ok ? result : null;
+}
+
+// ---- Readiness alerts on a phone ---------------------------------------
+
+/**
+ * Push to the account owner's own devices, and forget the endpoints the push
+ * service says are gone.
+ *
+ * The same best-effort contract as pushToTripSubscribers: the caller has
+ * already recorded whatever this announces, this never throws into it, and
+ * its result never decides any bookkeeping.
+ */
+export async function pushToAccountSubscribers(email: string, payload: PushPayload): Promise<number> {
+  try {
+    const normalized = normalizeId(email);
+    const data = await getAccountData(normalized);
+    if (!data.pushSubscriptions?.length) return 0;
+
+    const { sent, expired } = await sendPushToSubscriptions(data.pushSubscriptions, payload);
+    if (!expired.length) return sent;
+
+    const fresh = await getAccountData(normalized);
+    if (!fresh.pushSubscriptions?.length) return sent;
+    const next: AccountData = {
+      ...fresh,
+      pushSubscriptions: fresh.pushSubscriptions.filter((s) => !expired.includes(s.endpoint)),
+      updatedAt: new Date().toISOString(),
+    };
+    await writeJson(dataKey(normalized), next);
+    return sent;
+  } catch (error) {
+    console.error("[account-store] account push failed:", error);
+    return 0;
+  }
+}
+
+/**
+ * Remember that these readiness alerts have gone to the owner's phone.
+ *
+ * Keys come from lib/trip-alerts.ts and are deliberately stable across days,
+ * so "the Shabbos clash you already know about" does not arrive again every
+ * morning. Recorded per trip rather than per account: two trips can hold the
+ * same key ("leaving-soon") and mean different things.
+ */
+export async function markAlertsPushed(email: string, tripId: string, keys: readonly string[], day: string): Promise<boolean> {
+  if (!hasAccountStorage() || !keys.length) return false;
+  const normalized = normalizeId(email);
+  const data = await getAccountData(normalized);
+  const { trips, activeId } = withTrips(data);
+  const trip = trips.find((t) => t.id === tripId);
+  if (!trip) return false;
+  const pushed = { ...(trip.alertsPushed ?? {}) };
+  for (const key of keys) pushed[key] = day;
+  const nextTrips = trips.map((t) => (t.id === tripId ? { ...t, alertsPushed: pushed } : t));
+  return Boolean(await writeTrips(normalized, nextTrips, activeId));
 }
