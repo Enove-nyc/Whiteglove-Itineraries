@@ -7,6 +7,11 @@ type Config = {
   apiKeySet?: boolean;
   from?: string;
   usingTestSender?: boolean;
+  /** What each front door actually sends as. */
+  senderKosher?: string;
+  senderItineraries?: string;
+  /** One line per brand sending from a domain that is not its own. */
+  senderMismatch?: string[];
   editsInbox?: string;
   contactInboxKosher?: string;
   contactInboxItineraries?: string;
@@ -71,6 +76,10 @@ export default function EmailDeliveryTest() {
               {config.from}
               {config.usingTestSender ? " — sandbox sender" : ""}
             </dd>
+            <dt className="text-stone-500">Kosher Travel sends as</dt>
+            <dd className="text-stone-700">{config.senderKosher || "—"}</dd>
+            <dt className="text-stone-500">Itineraries sends as</dt>
+            <dd className="text-stone-700">{config.senderItineraries || "—"}</dd>
           </div>
           <div>
             <dt className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500">Contact form — Kosher Travel</dt>
@@ -99,6 +108,25 @@ export default function EmailDeliveryTest() {
             </div>
           )}
         </dl>
+      )}
+
+      {/* THE FAILURE NOTHING ELSE HERE WOULD MENTION. Mail from the wrong
+          domain sends perfectly: Resend answers 200, the log shows a success,
+          and the only person who finds out is a customer who signed up on one
+          site and got their code from the other one's address. */}
+      {(config?.senderMismatch?.length ?? 0) > 0 && (
+        <div className="mt-5 border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900">
+          <strong>A site is sending from the wrong domain.</strong>
+          <ul className="mt-1 list-disc pl-5">
+            {config!.senderMismatch!.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p className="mt-2">
+            Somebody signing up there gets their code from the other site&apos;s address. Set
+            <code className={code}>RESEND_FROM_EMAIL</code> on this deployment to an address on its own domain, then redeploy.
+          </p>
+        </div>
       )}
 
       {config?.usingTestSender && (

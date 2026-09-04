@@ -37,10 +37,54 @@ const TEST_SENDER = "White Glove <onboarding@resend.dev>";
  * exactly as it did, because silence would be a worse regression than the
  * wrong name.
  */
+/**
+ * The domain part of a sender, or "" when there is not one.
+ * Handles both `Name <a@b.com>` and a bare address.
+ */
+export function senderDomain(sender: string): string {
+  const match = /<([^<>\s]+)>|^([^\s<>]+)$/.exec(sender.trim());
+  const address = (match?.[1] || match?.[2] || "").trim();
+  return address.includes("@") ? address.split("@").pop()!.toLowerCase() : "";
+}
+
+/**
+ * Whether the configured sender actually belongs to this brand, and what is
+ * wrong when it does not. Null when everything is in order.
+ *
+ * THE FAILURE THIS CATCHES IS SILENT IN EVERY OTHER WAY. Somebody signs up on
+ * one site and the code arrives from the other one's domain: the mail sends,
+ * Resend answers 200, the delivery log shows a success, and the only person
+ * who ever finds out is the customer reading the wrong company's name.
+ *
+ * A SUBDOMAIN COUNTS. Mail is very often sent from send.example.com with the
+ * apex left to the real inbox, and that is the same business — so the test is
+ * "is it the brand's domain or under it", not string equality, which would
+ * raise a false alarm on a perfectly good setup. The dot matters: it is what
+ * stops notwhitegloveitineraries.com passing as a subdomain.
+ *
+ * The test sender is not a mismatch either. It means nothing is configured at
+ * all, which the admin panel already reports on its own line.
+ */
+export function senderMismatch(brand: SiteBrand, sender: string): string | null {
+  if (!sender || sender === TEST_SENDER) return null;
+  const from = senderDomain(sender);
+  if (!from) return null;
+  const want = BRAND_DOMAIN[brand];
+  if (from === want || from.endsWith(`.${want}`)) return null;
+  return `${BRAND_NAME[brand]} is sending from ${from}, which is not ${want}.`;
+}
+
 export function senderForBrand(brand: SiteBrand): string {
   const shared = process.env.RESEND_FROM_EMAIL?.trim();
   const own = brand === "itineraries" ? process.env.RESEND_FROM_EMAIL_ITINERARIES?.trim() : shared;
-  return own || shared || TEST_SENDER;
+  const sender = own || shared || TEST_SENDER;
+  const wrong = senderMismatch(brand, sender);
+  // Said once per send, in the log the owner can read, rather than swallowed.
+  // Not thrown: an email that arrives from the wrong name is still better than
+  // one that never arrives, and the admin's email panel carries the same
+  // warning where it will actually be seen.
+  if (wrong) console.error("[email] sender does not match the brand:", wrong);
+  return sender;
 }
 
 function resendConfig(from?: string) {
@@ -162,6 +206,13 @@ async function postResend(payload: Record<string, unknown>, to: string, kind = "
 export async function emailConfigStatus() {
   const apiKeySet = Boolean(process.env.RESEND_API_KEY);
   const from = process.env.RESEND_FROM_EMAIL?.trim() || TEST_SENDER;
+  // What each front door actually sends as, and whether it belongs to that
+  // door — the one failure nothing else on this screen would mention.
+  const senderKosher = senderForBrand("kosher");
+  const senderItineraries = senderForBrand("itineraries");
+  const mismatch = [senderMismatch("kosher", senderKosher), senderMismatch("itineraries", senderItineraries)].filter(
+    (line): line is string => Boolean(line),
+  );
   const edits = editsInbox();
   const contactKosher = contactInbox("kosher");
   const contactItineraries = contactInbox("itineraries");
@@ -169,6 +220,10 @@ export async function emailConfigStatus() {
     apiKeySet,
     from,
     usingTestSender: from === TEST_SENDER,
+    senderKosher,
+    senderItineraries,
+    /** Empty when each brand sends from its own domain. */
+    senderMismatch: mismatch,
     editsInbox: edits,
     contactInboxKosher: contactKosher,
     contactInboxItineraries: contactItineraries,
