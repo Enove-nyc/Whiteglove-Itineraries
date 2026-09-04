@@ -46,32 +46,84 @@ export const maxDuration = 60;
  * account. An unverified account is never matched: a stranger must not be
  * able to open a queue by registering an address and never confirming it.
  *
- * AND IT VERIFIES THE PROVIDER'S SIGNATURE FIRST. Without that, this URL is an
- * open door: anybody who learns a token could post to it directly. An
- * unsigned deployment refuses everything rather than accepting anything, so a
- * missing secret fails closed.
+ * AND IT VERIFIES THE PROVIDER'S SIGNATURE FIRST, in the provider's own scheme
+ * — see signatureOk. Without that, this URL is an open door: anybody who
+ * learns a token could post to it directly. An unsigned deployment refuses
+ * everything rather than accepting anything, so a missing secret fails closed.
  */
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 /** A confirmation, not a photo album. Extra attachments are ignored, not read. */
 const MAX_ATTACHMENTS = 3;
 
-function signatureOk(raw: string, header: string | null, secret: string): boolean {
-  if (!header || !secret) return false;
+/**
+ * Whether the provider really sent this, in the scheme the provider uses.
+ *
+ * THE FIRST VERSION OF THIS WOULD HAVE REJECTED EVERY REAL DELIVERY. It hashed
+ * the raw body alone and compared hex against a `webhook-signature` header.
+ * Resend signs with Svix, which is a different scheme in four ways at once: the
+ * signed content is `id.timestamp.body`, the key is the BASE64-DECODED part of
+ * the secret after `whsec_`, the digest is base64 rather than hex, and the
+ * header holds a SPACE-separated list of `v1,<sig>` versions. Any one of those
+ * on its own is a silent, permanent rejection — the route fails closed, which
+ * is right, so nothing would ever have arrived and nothing would have said why.
+ *
+ * THE TIMESTAMP IS CHECKED TOO. A signature stays valid for ever on its own, so
+ * without this anybody who captured one delivery could replay it indefinitely.
+ * Five minutes is Svix's own tolerance.
+ *
+ * The plain-HMAC scheme is still accepted when there are no Svix headers, so a
+ * different provider — or a hand-rolled test post — keeps working.
+ */
+const REPLAY_TOLERANCE_SECONDS = 5 * 60;
+
+function timingEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
+
+function svixOk(raw: string, headers: Headers, secret: string): boolean {
+  const id = headers.get("svix-id");
+  const timestamp = headers.get("svix-timestamp");
+  const signature = headers.get("svix-signature");
+  if (!id || !timestamp || !signature) return false;
+
+  const sent = Number(timestamp);
+  if (!Number.isFinite(sent)) return false;
+  if (Math.abs(Date.now() / 1000 - sent) > REPLAY_TOLERANCE_SECONDS) {
+    console.warn("[inbound] a message arrived with a timestamp outside the replay window.");
+    return false;
+  }
+
+  // The key is the base64 payload of the secret, not the secret's characters.
+  const key = Buffer.from(secret.startsWith("whsec_") ? secret.slice("whsec_".length) : secret, "base64");
+  const expected = createHmac("sha256", key).update(`${id}.${timestamp}.${raw}`).digest("base64");
+
+  // Space-separated versions; only v1 is this scheme. An unknown version is
+  // skipped rather than guessed at.
+  return signature
+    .split(" ")
+    .filter((part) => part.startsWith("v1,"))
+    .some((part) => timingEqual(part.slice("v1,".length), expected));
+}
+
+function signatureOk(raw: string, headers: Headers, secret: string): boolean {
+  if (!secret) return false;
+  if (headers.get("svix-signature")) return svixOk(raw, headers, secret);
+
+  // Anything that is not Svix: a plain HMAC of the body, hex, in a header that
+  // may carry more than one signature during a secret rotation.
+  const header = headers.get("webhook-signature") ?? headers.get("x-signature");
+  if (!header) return false;
   const expected = createHmac("sha256", secret).update(raw).digest("hex");
-  // Compare every candidate in constant time — the header may carry more than
-  // one signature during a secret rotation.
   return header
     .split(",")
     .map((part) => part.split("=").pop()?.trim() ?? "")
-    .some((candidate) => {
-      if (candidate.length !== expected.length) return false;
-      try {
-        return timingSafeEqual(Buffer.from(candidate), Buffer.from(expected));
-      } catch {
-        return false;
-      }
-    });
+    .some((candidate) => timingEqual(candidate, expected));
 }
 
 type InboundMessage = {
@@ -98,7 +150,7 @@ export async function POST(request: NextRequest) {
   if (raw.length > MAX_BODY_BYTES) {
     return NextResponse.json({ error: "That message is too large." }, { status: 413 });
   }
-  if (!signatureOk(raw, request.headers.get("webhook-signature") ?? request.headers.get("x-signature"), secret)) {
+  if (!signatureOk(raw, request.headers, secret)) {
     return NextResponse.json({ error: "Bad signature." }, { status: 400 });
   }
 
