@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import NewSiteNotice from "@/components/NewSiteNotice";
 import SiteAssistant from "@/components/SiteAssistant";
+import AppShellFlag from "@/components/AppShellFlag";
 import { BookingLinkProvider } from "@/components/BookingLinkProvider";
 import { SignInGateProvider } from "@/components/SignInGate";
 import IdleLogout from "@/components/IdleLogout";
@@ -121,6 +122,9 @@ export default async function RootLayout({
         <TravelpayoutsScript />
         <RequiredFields />
         <ServiceWorkerRegister />
+        {/* Flags <html data-app-shell> when running inside the installed app so
+            website-only chrome (the marketing footer) is hidden there. */}
+        <AppShellFlag />
         <IdleLogout minutes={45} endpoint="/api/account/logout" requireAccount />
         {/* tabIndex -1 so the skip link can actually put the focus here.
             Without it the browser scrolls to the anchor and leaves the focus

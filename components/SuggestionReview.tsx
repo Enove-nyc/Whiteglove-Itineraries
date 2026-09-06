@@ -129,6 +129,9 @@ function SuggestionCard({ item, publicHref, readAt, current, currentConsent = fa
   // accepting writes the listing instead of the owner retyping the paragraph.
   const listing = item.draft;
   const changes = listing ? changedFields(current ?? {}, listing) : [];
+  // A place sent in from a traveller's itinerary. Accepting publishes it as a
+  // real listing (see publishSubmittedPlace) rather than only filing the note.
+  const newPlace = item.targetType === "new" ? item.place : undefined;
 
   async function decide(status: ReviewDecision, apply = false) {
     const complaint = reviewProblem({ status, notes });
@@ -215,6 +218,33 @@ function SuggestionCard({ item, publicHref, readAt, current, currentConsent = fa
               </p>
             )
           )}
+        </div>
+      ) : item.place ? (
+        /* A place sent in from a traveller's itinerary. Shown as its own fields
+           — the "info doesn't get filled in" complaint was this arriving as one
+           run-together paragraph. Accepting publishes these straight to the
+           directory. */
+        <div className="mt-3 border border-[var(--gold-light)] bg-white">
+          <p className="border-b border-[var(--gold-light)] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">
+            A new {item.place.kind === "stay" ? "place to stay" : "thing to do"}, sent in from a trip
+          </p>
+          <dl className="divide-y divide-[var(--gold-light)]">
+            {([
+              ["Name", item.place.name],
+              ["Address", item.place.address],
+              ["Coordinates", item.place.coordinates],
+              ["Country", item.place.country],
+              ["Link", item.place.href],
+              ["Phone", item.place.phone],
+            ] as const)
+              .filter(([, value]) => Boolean(value))
+              .map(([label, value]) => (
+                <div key={label} className="px-4 py-2.5">
+                  <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">{label}</dt>
+                  <dd className="mt-0.5 text-sm leading-6 text-[var(--navy)]">{value}</dd>
+                </div>
+              ))}
+          </dl>
         </div>
       ) : (
         <p className="mt-2 text-sm leading-6 text-stone-700"><strong>Their correction:</strong> {item.suggestedInfo}</p>
@@ -306,6 +336,12 @@ function SuggestionCard({ item, publicHref, readAt, current, currentConsent = fa
             </p>
           )}
 
+          {newPlace && (
+            <p className="mt-3 text-xs leading-5 text-stone-500">
+              Accepting publishes this live as a {newPlace.kind === "stay" ? "place to stay" : "thing to do"}, with no source. Tidy the city and add a source afterwards from the listing itself.
+            </p>
+          )}
+
           {problem && <p className="mt-2 text-sm leading-6 text-red-700">{problem}</p>}
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -314,7 +350,7 @@ function SuggestionCard({ item, publicHref, readAt, current, currentConsent = fa
                 key={status}
                 type="button"
                 disabled={busy !== "" || (status === "approved" && Boolean(listing) && changes.length === 0)}
-                onClick={() => decide(status, status === "approved" && Boolean(listing))}
+                onClick={() => decide(status, status === "approved" && (Boolean(listing) || Boolean(newPlace)))}
                 className={`min-h-11 border px-4 text-xs font-bold uppercase tracking-[0.12em] disabled:opacity-60 ${
                   status === "approved"
                     ? "border-[var(--navy)] bg-[var(--navy)] text-white"
@@ -325,7 +361,9 @@ function SuggestionCard({ item, publicHref, readAt, current, currentConsent = fa
                   ? "Saving…"
                   : status === "approved" && listing
                     ? current && Object.keys(current).length ? "Accept and update the listing" : "Accept and add the listing"
-                    : DECISION_LABEL[status]}
+                    : status === "approved" && newPlace
+                      ? "Accept and publish to the directory"
+                      : DECISION_LABEL[status]}
               </button>
             ))}
             {item.status !== "pending" && (

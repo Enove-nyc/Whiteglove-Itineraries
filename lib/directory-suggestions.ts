@@ -1,6 +1,7 @@
 import { getAdminContent } from "@/lib/admin-content";
 import { applyDraft, draftFromProvider, type DirectoryDraft } from "@/lib/directory-fields";
 import { listStoredProviders, saveStoredProvider, type StoredProvider } from "@/lib/directory-store";
+import { publishSubmittedPlace } from "@/lib/content-admin";
 
 /**
  * Accepting a directory submission, as one press.
@@ -70,4 +71,29 @@ export async function applyDirectorySuggestion(id: string): Promise<ApplyResult>
 
   const saved = await saveStoredProvider(next);
   return Boolean(saved);
+}
+
+export type PlaceApplyResult = boolean | "missing" | "not-a-place";
+
+/**
+ * Accepting a place a traveller sent in from their itinerary — publish it.
+ *
+ * Mirrors applyDirectorySuggestion but for the planner "send it in" path: the
+ * submission carries a structured `place` rather than a directory `draft`, and
+ * a stop/stay becomes a real thing-to-do / where-to-stay listing rather than a
+ * service-provider entry. "not-a-place" tells the caller this suggestion is not
+ * one of these, so it can fall through to the directory path.
+ */
+export async function applyPlaceSuggestion(id: string): Promise<PlaceApplyResult> {
+  const { bundle } = await getAdminContent();
+  const suggestion = bundle.suggestions.find((item) => item.id === id);
+  if (!suggestion) return "missing";
+  if (suggestion.targetType !== "new" || !suggestion.place) return "not-a-place";
+  try {
+    await publishSubmittedPlace(suggestion.place);
+    return true;
+  } catch (error) {
+    console.error("[place-suggestion] could not publish", error);
+    return false;
+  }
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { forgetSignedIn } from "@/lib/use-signed-in";
 import { MIN_PASSWORD_LENGTH, passwordProblem } from "@/lib/password-rules";
+import { biometricAvailable, forgetSecret, hasRememberedSecret, rememberSecret, unlockCredential } from "@/lib/native-biometric";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -98,6 +99,29 @@ export default function LoginForm({
   const [mode, setMode] = useState<"signup" | "login" | "verify" | "forgot" | "reset">("signup");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  /**
+   * Fingerprint / face unlock, only inside the native app with the plugin
+   * present. Stores this account's email + password in the phone's secure store
+   * after a successful log-in, and offers a one-touch sign-in on return. A
+   * silent no-op on the plain website — the button never renders there.
+   */
+  const BIO_SERVER = "white-glove-account";
+  const [bioReady, setBioReady] = useState(false);
+  const [bioStored, setBioStored] = useState(false);
+  const [rememberBio, setRememberBio] = useState(true);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const available = await biometricAvailable();
+      if (!live) return;
+      setBioReady(available);
+      if (available) setBioStored(await hasRememberedSecret(BIO_SERVER));
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Inside the dialog this form is only ever mounted while signed out —
@@ -195,6 +219,52 @@ export default function LoginForm({
         setSaving(false);
         return;
       }
+      // The password was right. Remember it behind biometrics if the person
+      // asked and the app can, so next time is a fingerprint. Login only — never
+      // from the verify step, where there is no password to store.
+      if (mode === "login" && bioReady && rememberBio && email && password) {
+        const stored = await rememberSecret(BIO_SERVER, password, email.trim());
+        if (stored) setBioStored(true);
+      }
+      forgetSignedIn();
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+      router.push(next ?? "/account");
+      router.refresh();
+    } catch {
+      setMessage("Could not reach the server. Please check your connection and try again.");
+      setSaving(false);
+    }
+  }
+
+  /**
+   * The fingerprint button. Confirm the person, read their stored email +
+   * password, and log in with them. A cancel just leaves them on the form; a
+   * stored password the server now rejects is forgotten so the stale button
+   * stops offering.
+   */
+  async function signInWithBiometric() {
+    setMessage("");
+    const creds = await unlockCredential(BIO_SERVER, "Unlock your White Glove account");
+    if (!creds) return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/account/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: creds.username, password: creds.password }),
+      });
+      const data = await response.json().catch(() => null) as Delivery | null;
+      if (!response.ok) {
+        await forgetSecret(BIO_SERVER);
+        setBioStored(false);
+        setMessage(data?.error || "Please log in again.");
+        setSaving(false);
+        if (data?.verificationRequired) setMode("verify");
+        return;
+      }
       forgetSignedIn();
       if (onSuccess) {
         onSuccess();
@@ -210,6 +280,18 @@ export default function LoginForm({
 
   return (
     <form className="mt-8 space-y-5" onSubmit={continueToAccount}>
+      {/* Inside the app, with an account already remembered here, the
+          fingerprint is the fast way in. Never rendered on the website. */}
+      {bioStored && (mode === "login" || mode === "signup") && (
+        <button
+          type="button"
+          onClick={signInWithBiometric}
+          disabled={saving}
+          className="w-full border border-[var(--navy)] px-5 py-4 text-sm font-bold uppercase tracking-[0.14em] text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white disabled:opacity-60"
+        >
+          Unlock with fingerprint or face
+        </button>
+      )}
       {/* A LINK, not a form. Google's flow is a redirect this server starts,
           and the sign-in page is already one <form> — a second one inside it
           would be dropped by the browser. */}
@@ -358,6 +440,24 @@ export default function LoginForm({
           nothing to recover yet. Somebody who already has an account switches to
           Log in with the tabs above and finds it here, under the password.
           Thumb-sized, like every other control on the site. */}
+      {/* Offer to remember only inside the app, on the log-in tab, and only
+          when nothing is stored here yet — once it is, the unlock button at the
+          top is the standing offer. */}
+      {mode === "login" && bioReady && !bioStored && (
+        <label className="flex items-start gap-3 text-sm font-normal leading-6 text-stone-700">
+          <input
+            type="checkbox"
+            checked={rememberBio}
+            onChange={(event) => setRememberBio(event.target.checked)}
+            className="mt-1 size-4 shrink-0 accent-[var(--navy)]"
+          />
+          <span>
+            <span className="font-semibold text-[var(--navy)]">Unlock with fingerprint or face next time</span> on this
+            device. Your details are kept in the phone&rsquo;s secure store and never leave it.
+          </span>
+        </label>
+      )}
+
       {mode === "login" && (
         <button type="button" onClick={() => { setMode("forgot"); setMessage(""); }} className="inline-flex min-h-11 items-center self-start text-xs font-bold uppercase tracking-[0.13em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4">
           Forgot password?

@@ -222,5 +222,19 @@ export function submissionFor(place: TripPlace, from: { name: string; email: str
     currentInfo: "Not on the site — sent in by a traveller who added it to their own trip.",
     suggestedInfo: submissionText(place),
     source: "Added to their itinerary, and sent in when asked.",
+    // The same fields, carried structured as well as in the paragraph, so the
+    // review card shows them one by one and accepting can publish a listing
+    // from them. The paragraph stays for the notification email, which is plain
+    // text. Only the place is sent — never anything of the trip (see the file
+    // header): these are exactly the fields the traveller saw named in fieldsSent.
+    place: {
+      kind: place.kind,
+      name: place.name,
+      address: place.address,
+      coordinates: place.coordinates,
+      country: place.country,
+      href: place.href,
+      phone: place.phone,
+    },
   };
 }

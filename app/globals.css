@@ -172,6 +172,22 @@ body {
   }
 }
 
+/* The marketing footer is website chrome — the mark, the name of the other
+ * product's brand, the sales/legal links. Inside the installed app it is a
+ * website surface bleeding into an app that has its own navigation, so hide it
+ * everywhere in the app. The media query covers the common case (every TWA and
+ * installed PWA runs standalone) with no flash; [data-app-shell] on <html>,
+ * set by AppShellFlag, covers the iOS navigator.standalone and android-app://
+ * referrer cases the media query alone misses. */
+@media (display-mode: standalone) {
+  footer#contact {
+    display: none !important;
+  }
+}
+html[data-app-shell] footer#contact {
+  display: none !important;
+}
+
 main,
 section,
 article,
