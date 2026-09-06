@@ -67,6 +67,24 @@ export type SuggestionReview = {
   accepted?: string;
 };
 
+/**
+ * A place a traveller sent in from their own itinerary — the fields lifted out
+ * of the trip in lib/place-offers.ts, carried structured so the review card can
+ * show them field by field and accepting can write a real listing from them
+ * rather than the owner retyping a paragraph. Present only on `targetType:
+ * "new"` submissions that came from the planner "send it in" path.
+ */
+export type SubmittedPlace = {
+  kind: "stop" | "stay";
+  name: string;
+  address?: string;
+  coordinates?: string;
+  country?: string;
+  /** A link they put on it — a map, the place's own site. */
+  href?: string;
+  phone?: string;
+};
+
 export type EditSuggestion = {
   id: string;
   targetType: "location" | "accommodation" | "site" | "directory" | "new";
@@ -96,6 +114,12 @@ export type EditSuggestion = {
    * the owner retyping it.
    */
   draft?: DirectoryDraft;
+  /**
+   * A place lifted from a traveller's itinerary and sent in. Present only for
+   * planner "send it in" submissions; when it is here, accepting publishes it
+   * as a listing (see publishSubmittedPlace) instead of only filing the note.
+   */
+  place?: SubmittedPlace;
   /** Consent the submitter gave for their own number, if they gave any. */
   contactConsent?: boolean;
   contactConsentNote?: string;

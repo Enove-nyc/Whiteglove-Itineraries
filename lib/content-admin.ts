@@ -7,6 +7,7 @@
 
 import { randomUUID } from "node:crypto";
 import type { ContentStatus, Photo, PlaceCategory, VerificationStatus, ProviderCategory } from "@prisma/client";
+import type { SubmittedPlace } from "@/lib/admin-content";
 import { ATTRACTIONS_PUBLIC_TAG } from "@/lib/attractions-view";
 import { bustTag } from "@/lib/cache-tags";
 import { DIRECTORY_PUBLIC_TAG } from "@/lib/directory";
@@ -1223,4 +1224,58 @@ export async function createKosherStay(fields: NewStayFields) {
   invalidateSiteSearchIndex();
   await bustTag(ATTRACTIONS_PUBLIC_TAG);
   return row;
+}
+
+/**
+ * Publish a place a traveller sent in from their own itinerary.
+ *
+ * The site's standing rule is that nothing is published without saying where it
+ * came from; the owner waived it for these — a place someone actually visited
+ * and asked us to add — so they go live on accept with an empty source and
+ * best-effort fields he can tidy from the listing editor afterwards. A stop
+ * becomes a thing-to-do; a stay becomes a where-to-stay entry anchored to its
+ * own coordinates, because what was sent carries no separate anchor. The phone
+ * lives in the notes: neither the attraction nor the stay row has a phone
+ * column, and dropping it would lose the one field a traveller most often has.
+ */
+export async function publishSubmittedPlace(place: SubmittedPlace): Promise<{ slug: string; name: string }> {
+  const city = cityFromAddress(place.address) || place.country || "";
+  const summary = "Sent in by a traveller.";
+  const notes = place.phone ? [`Phone: ${place.phone}`] : [];
+  if (place.kind === "stay") {
+    return createKosherStay({
+      name: place.name,
+      city,
+      country: place.country || "—",
+      kind: "Ordinary hotel, well placed",
+      summary,
+      anchorName: place.name,
+      anchorCoords: place.coordinates || "",
+      season: null,
+      kosherClaim: "none",
+      website: place.href || null,
+      notes,
+      sourceUrl: "",
+    });
+  }
+  return createAttraction({
+    name: place.name,
+    city,
+    country: place.country || "—",
+    kind: "Landmark",
+    summary,
+    address: place.address || null,
+    coordinates: place.coordinates || null,
+    website: place.href || null,
+    notes,
+    sourceUrl: "",
+  });
+}
+
+/** Best-effort city from a free-text address: the segment before the country. */
+function cityFromAddress(address?: string): string {
+  if (!address) return "";
+  const parts = address.split(",").map((s) => s.trim()).filter(Boolean);
+  if (parts.length >= 2) return parts[parts.length - 2];
+  return parts[0] ?? "";
 }

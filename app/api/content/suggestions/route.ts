@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addSuggestion } from "@/lib/admin-content";
+import { addSuggestion, type SubmittedPlace } from "@/lib/admin-content";
 import { cleanDraft, consentFromSubmission, draftProblems, type DirectoryDraft, type SubmitterConsent } from "@/lib/directory-fields";
 import { sendSubmissionNotification } from "@/lib/email";
 import { siteOrigin } from "@/lib/seo";
@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
     source?: string;
     /** A directory listing, field by field, from the same form the owner uses. */
     draft?: DirectoryDraft;
+    /** A place lifted from a traveller's itinerary — the planner "send it in" path. */
+    place?: SubmittedPlace;
     consent?: SubmitterConsent;
   } | null;
   if (!body?.targetType || !body.targetId || !body.title || !body.name || !body.email || !body.issue || !body.suggestedInfo) {
@@ -39,6 +41,11 @@ export async function POST(request: NextRequest) {
     const problems = draftProblems(draft);
     if (problems.length) return NextResponse.json({ error: problems[0] }, { status: 400 });
   }
+
+  // A place sent in from the planner, kept to only its known fields — the same
+  // reason the draft is cleaned above: the browser's copy can be skipped, and
+  // free text under an unknown key must never reach the store.
+  const place = cleanSubmittedPlace(body.place);
 
   // Consent counts only when the submitter says the business is theirs AND
   // says the number may be published. Anything else is no consent, which is
@@ -76,6 +83,7 @@ export async function POST(request: NextRequest) {
       suggestedInfo: body.suggestedInfo,
       source: body.source ?? "",
       draft,
+      place,
       ...consent,
     }),
   ]);
@@ -95,6 +103,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "We couldn't record your submission just now. Please try again shortly." }, { status: 503 });
   }
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Keep a sent-in place to only its known fields, or drop it entirely.
+ *
+ * A whitelist, not a trim: an unknown key never survives, and a place with no
+ * name or with a kind that is not "stop"/"stay" is not a place we can publish,
+ * so it is discarded rather than stored half-formed.
+ */
+function cleanSubmittedPlace(raw: unknown): SubmittedPlace | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const p = raw as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const name = str(p.name);
+  const kind = p.kind === "stay" ? "stay" : p.kind === "stop" ? "stop" : undefined;
+  if (!name || !kind) return undefined;
+  return {
+    kind,
+    name,
+    address: str(p.address),
+    coordinates: str(p.coordinates),
+    country: str(p.country),
+    href: str(p.href),
+    phone: str(p.phone),
+  };
 }
 
 export async function GET() {

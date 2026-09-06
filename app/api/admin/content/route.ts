@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidAccessToken, sameOrigin } from "@/lib/secure-access";
 import { deletePromotion, getAdminContent, saveSiteSettings, upsertAccommodation, upsertLocation, upsertLocations, upsertPromotion, reviewSuggestion } from "@/lib/admin-content";
-import { applyDirectorySuggestion } from "@/lib/directory-suggestions";
+import { applyDirectorySuggestion, applyPlaceSuggestion } from "@/lib/directory-suggestions";
 import { reviewProblem, type ReviewDecision } from "@/lib/suggestions";
 
 function isAdmin(request: NextRequest) {
@@ -43,10 +43,18 @@ export async function POST(request: NextRequest) {
     // Doing it in that order means a failed write leaves the suggestion
     // waiting rather than marked approved with nothing having happened.
     if (payload.status === "approved" && payload.apply) {
-      const applied = await applyDirectorySuggestion(payload.id);
-      if (applied === "missing") return NextResponse.json({ error: "That suggestion is no longer there." }, { status: 404 });
-      if (applied === "not-a-listing") return NextResponse.json({ error: "That suggestion has no listing to apply." }, { status: 400 });
-      if (!applied) return NextResponse.json({ error: "The listing could not be saved, so nothing was accepted. Try again." }, { status: 503 });
+      // A place a traveller sent in from the planner publishes as a real
+      // listing; anything else is a directory submission. Try the place path
+      // first and fall through to the directory path when it is not one.
+      const place = await applyPlaceSuggestion(payload.id);
+      if (place === "missing") return NextResponse.json({ error: "That suggestion is no longer there." }, { status: 404 });
+      if (place === false) return NextResponse.json({ error: "The listing could not be published, so nothing was accepted. Try again." }, { status: 503 });
+      if (place === "not-a-place") {
+        const applied = await applyDirectorySuggestion(payload.id);
+        if (applied === "missing") return NextResponse.json({ error: "That suggestion is no longer there." }, { status: 404 });
+        if (applied === "not-a-listing") return NextResponse.json({ error: "That suggestion has no listing to apply." }, { status: 400 });
+        if (!applied) return NextResponse.json({ error: "The listing could not be saved, so nothing was accepted. Try again." }, { status: 503 });
+      }
     }
     const saved = await reviewSuggestion(payload.id, {
       status: payload.status,
