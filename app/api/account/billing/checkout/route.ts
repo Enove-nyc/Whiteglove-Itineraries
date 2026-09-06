@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sameOrigin } from "@/lib/secure-access";
 import { PLAN_LABELS } from "@/lib/account-plans";
 import { getPlan } from "@/lib/account-plan-store";
-import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
+import { accountCookieName, getCurrentAccountData, getTrips } from "@/lib/account-store";
 import { isBillingPeriod, isOneTimePlan, isPaidPlan, planIsOfferable, priceIdFor, TRIAL_DAYS, trialEligible } from "@/lib/plan-billing";
 import { readPlanOffering, readSubscription, rememberCustomer } from "@/lib/plan-billing-store";
 import { siteOrigin } from "@/lib/seo";
@@ -29,6 +29,20 @@ export const dynamic = "force-dynamic";
  * anybody who clicked and then closed the tab. The plan is set by the webhook,
  * when Stripe says money moved.
  */
+/**
+ * The trip id to carry through Stripe, or undefined.
+ *
+ * Undefined for anything this account does not own — a tampered id, a stale
+ * one from a tab left open, or a trip deleted since the page was drawn. Never
+ * throws: a purchase must not fail because the trip list could not be read, so
+ * an unreadable list means the pass is granted spare rather than not at all.
+ */
+async function ownTrip(email: string, wanted: unknown): Promise<string | undefined> {
+  if (typeof wanted !== "string" || !wanted) return undefined;
+  const trips = await getTrips(email).catch(() => []);
+  return trips.some((trip) => trip.id === wanted) ? wanted : undefined;
+}
+
 export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) return NextResponse.json({ error: "That request did not come from this site." }, { status: 403 });
   const cookieStore = await cookies();
@@ -86,7 +100,17 @@ export async function POST(request: NextRequest) {
     mode: oneTime ? "payment" : "subscription",
     // Which trip they were looking at, so the pass lands on it — see the
     // `trip` note in createCheckoutSession.
-    trip: oneTime && typeof body?.trip === "string" && body.trip ? body.trip : undefined,
+    //
+    // CHECKED AGAINST THEIR OWN TRIPS, NEVER TAKEN ON TRUST. This arrives in
+    // the request body, so it can be edited to any string at all. Sending
+    // somebody else's trip id does NOT unlock their trip — a pass is only ever
+    // read back against the account that holds it, and opening a trip needs
+    // the trip to be yours as well — but it does bind a $9 purchase to a trip
+    // this account has not got, where nothing will ever release it and the
+    // account page will say "every Trip Pass you have bought is on a trip".
+    // The buyer pays and gets nothing. An id that is not theirs is dropped, so
+    // the pass arrives spare and they can choose a trip for it.
+    trip: oneTime ? await ownTrip(account.email, body?.trip) : undefined,
     trialDays: trialEligible(plan, Boolean(existing)) ? TRIAL_DAYS : undefined,
   });
 

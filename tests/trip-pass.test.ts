@@ -165,7 +165,7 @@ describe("messages are off a code somebody made for themselves", () => {
 describe("the pass is granted where the money actually lands", () => {
   it("the webhook writes a pass, not only a plan", () => {
     const hook = readFileSync("app/api/billing/webhook/route.ts", "utf8");
-    assert.match(hook, /await grantTripPass\(account, trip\)/);
+    assert.match(hook, /await grantTripPass\(account, stillTheirs \? trip : undefined\)/);
     // And it carries the trip the buyer was looking at, so a pass bought from
     // a trip does not have to be placed by hand afterwards.
     assert.match(hook, /grantOneTimePurchase\(account, plan, tripFrom\(object\)\)/);

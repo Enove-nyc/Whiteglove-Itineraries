@@ -211,9 +211,12 @@ function timingSafeEqual(a: string | undefined | null, b: string | undefined | n
  * clear just because it was reached on the admin hostname.
  */
 async function siteLockRedirect(request: NextRequest, pathname: string): Promise<NextResponse | null> {
-  // /version is the deployment health check and contains no private content.
+  // /version and /api/health are the deployment checks and contain no private
+  // content. Both must answer THROUGH the site lock: Railway calls the health
+  // path before it moves traffic, so a locked site that redirected it would
+  // fail every deploy while the site itself was perfectly fine.
   // It stays reachable while the site is locked so health checks keep working.
-  if (pathname === "/access" || pathname === "/version" || pathname.startsWith("/admin")) return null;
+  if (pathname === "/access" || pathname === "/version" || pathname === "/api/health" || pathname.startsWith("/admin")) return null;
 
   let locked = hostIsOpen(request) ? false : await edgeSiteIsLocked();
   if (!locked && !hostIsOpen(request)) {
