@@ -50,11 +50,22 @@ describe("the deploy configuration", () => {
     assert.equal(config.deploy?.overlapSeconds, 0);
   });
 
-  it("still health-checks a route that answers while the site is locked", () => {
-    // /version is reachable behind the site lock on purpose — see middleware.
-    assert.equal(config.deploy?.healthcheckPath, "/version");
+  it("health-checks READINESS, not merely a page that renders", () => {
+    // /version returns 200 with the database unreachable and the schema years
+    // behind this build, so Railway called a deploy healthy and moved traffic
+    // onto a container that could not answer an account request. /api/health
+    // answers 503 when the schema is older than the migrations this build
+    // ships — see lib/readiness.ts.
+    assert.equal(config.deploy?.healthcheckPath, "/api/health");
+  });
+
+  it("and that path answers THROUGH the site lock, or every deploy fails", () => {
+    // Railway calls the health path before it moves traffic. A locked site
+    // that redirected it would fail every deploy while the site itself was
+    // perfectly fine — which is why /version was allowed through, and why its
+    // replacement has to be too.
     const middleware = readFileSync("middleware.ts", "utf8");
-    assert.match(middleware, /pathname !== "\/version"/);
+    assert.match(middleware, /pathname === "\/api\/health"/);
   });
 
   it("restarts a container that genuinely fails, a bounded number of times", () => {

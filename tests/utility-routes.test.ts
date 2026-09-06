@@ -24,11 +24,13 @@ describe("the old planning address", () => {
 });
 
 describe("the version route", () => {
-  it("remains the Railway health check", () => {
-    const railway = JSON.parse(readFileSync("railway.json", "utf8")) as {
-      deploy?: { healthcheckPath?: string };
-    };
-    assert.equal(railway.deploy?.healthcheckPath, "/version");
+  it("is no longer the Railway health check — readiness replaced it", () => {
+    // /version stays as the human-readable "is the site up" page, and stays
+    // reachable behind the site lock. What it is NOT any more is what Railway
+    // waits on: it renders whether or not this build can do its job. See
+    // tests/readiness.test.ts.
+    const config = JSON.parse(readFileSync("railway.json", "utf8"));
+    assert.notEqual(config.deploy?.healthcheckPath, "/version");
   });
 
   it("SHOWS ONLY A SIMPLE CUSTOMER-SAFE STATUS PAGE TO A STRANGER", async () => {

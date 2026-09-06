@@ -6,6 +6,7 @@ import { isOwner as isAgencyOwner } from "@/lib/agency";
 import { sendSubscriptionNotification } from "@/lib/email";
 import { identityKey } from "@/lib/identity";
 import { isOneTimePlan, isPaidPlan } from "@/lib/plan-billing";
+import { getTrips } from "@/lib/account-store";
 import { grantTripPass } from "@/lib/trip-pass-store";
 import {
   accountForCustomer,
@@ -49,7 +50,17 @@ async function grantOneTimePurchase(account: string, plan: AccountPlan, trip?: s
   // trip in the app (lib/companion-access.ts). A pass bought while looking at
   // a trip lands already spent on it; bought from the pricing page it is spare
   // until the buyer chooses which trip it is for.
-  if (!(await grantTripPass(account, trip))) {
+  // AND CHECKED AGAIN HERE, because time passes between reaching Stripe's page
+  // and this arriving — seconds for a card, days for a delayed payment method.
+  // The trip can be deleted in that gap, and a pass bound to a trip that is
+  // already gone is a purchase the buyer can never use: the only thing that
+  // releases one runs when a trip is deleted, which has by then already
+  // happened. Granting it spare instead costs them one choice and nothing else.
+  const stillTheirs = trip ? (await getTrips(account).catch(() => [])).some((t) => t.id === trip) : false;
+  if (trip && !stillTheirs) {
+    console.warn("[billing] the trip a pass was bought for is gone; granting it spare instead:", { account, trip });
+  }
+  if (!(await grantTripPass(account, stillTheirs ? trip : undefined))) {
     console.error("[billing] paid but the Trip Pass could not be written:", { account, plan, trip });
   }
   if (!(await setPlan(account, plan, "Stripe one-time purchase"))) {
