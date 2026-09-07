@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useIsItineraries } from "@/components/useSiteBrand";
 import { Icon } from "@/components/icons/Icon";
 import { emptyLibraryItem, emptyLibraryPack, itemsInPack, type LibraryItem, type LibraryPack } from "@/data/library";
 import { PROPOSAL_COMPONENT_LABEL, type ProposalComponentKind } from "@/data/proposal";
@@ -42,6 +43,7 @@ async function uploadPhoto(file: File): Promise<string | null> {
 }
 
 function DestinationSearch({ onPick }: { onPick: (result: AttractionResult) => void }) {
+  const itineraries = useIsItineraries();
   const [q, setQ] = useState("");
   /**
    * THE ANSWER, AND THE QUESTION IT ANSWERS, kept together.
@@ -90,7 +92,15 @@ function DestinationSearch({ onPick }: { onPick: (result: AttractionResult) => v
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search White Glove's own listings — a shul, a kosher eatery, an attraction…"
+        // Named subjects, chosen by brand: an advisor on the itineraries
+        // domain is searching a general travel database, and telling them to
+        // look for a shul is this repository's own kosher language leaking
+        // onto the product that is explicitly not a kosher one.
+        placeholder={
+          itineraries
+            ? "Search White Glove's own listings — a hotel, an attraction, a restaurant…"
+            : "Search White Glove's own listings — a shul, a kosher eatery, an attraction…"
+        }
         className={inputCls}
       />
       {searching && <p className="mt-1 text-xs text-stone-400">Searching…</p>}
