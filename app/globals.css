@@ -188,6 +188,19 @@ html[data-app-shell] footer#contact {
   display: none !important;
 }
 
+/* The site header around an app page (/app, /advisor) is for the WEB: on the
+ * website the app sits inside the ordinary header and footer like any other
+ * page. Inside the installed app the app has its own header and tabs, so the
+ * site's header is hidden there the same way its footer is above. */
+@media (display-mode: standalone) {
+  .wg-web-chrome {
+    display: none !important;
+  }
+}
+html[data-app-shell] .wg-web-chrome {
+  display: none !important;
+}
+
 main,
 section,
 article,

@@ -39,7 +39,7 @@ import { useBookingLink } from "@/components/BookingLinkProvider";
 /** The hostname never changes, so subscribing is a no-op. */
 const NO_CHANGE = () => () => {};
 
-export default function Navbar({ brand: brandProp, minimal = false, homeHref }: { brand?: "kosher" | "itineraries"; minimal?: boolean; homeHref?: string } = {}) {
+export default function Navbar({ brand: brandProp, minimal = false, homeHref, bottomBar = true }: { brand?: "kosher" | "itineraries"; minimal?: boolean; homeHref?: string; /** Off on an app page: the app has its own bottom tabs, and a second fixed bar would sit on top of them. */ bottomBar?: boolean } = {}) {
   /**
    * WHICH BRAND THIS IS, DECIDED AS EARLY AS IT CAN BE.
    *
@@ -173,9 +173,12 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
   // set only while Navbar is mounted, so /admin — which never renders this
   // component — is never affected.
   useEffect(() => {
+    // No bar, no room reserved for it — or an app page would carry a band of
+    // dead space under its own tabs.
+    if (!bottomBar) return;
     document.body.classList.add("wg-has-mobile-bar");
     return () => document.body.classList.remove("wg-has-mobile-bar");
-  }, []);
+  }, [bottomBar]);
 
   // The header becomes slightly smaller once the page has moved under it —
   // a small cue that it's the same bar, not a different one.
@@ -529,7 +532,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref }: 
         )}
       </nav>
       <SitePromotions />
-      <MobileBottomBar signedIn={signedIn} brand={brand} />
+      {bottomBar && <MobileBottomBar signedIn={signedIn} brand={brand} />}
     </>
   );
 }

@@ -236,17 +236,27 @@ export default async function AppPage({
     }
 
     if (companionTrip) {
-      // The app fills the screen — its own header, tabs and chrome, no site
-      // furniture around it. On a phone it is the whole window; installed to the
-      // home screen it is the whole app.
+      // ON THE WEBSITE THE APP SITS INSIDE THE ORDINARY HEADER AND FOOTER, like
+      // any other page — the owner's word, once the site existed around it.
+      // Inside the installed app it is still the whole screen: the header is
+      // wrapped in .wg-web-chrome and the footer is footer#contact, and both are
+      // hidden there by the in-app rules in globals.css. No bottom bar from the
+      // Navbar here: the app has its own tabs, and a second fixed bar would sit
+      // on top of them.
       //
       // Business hands the app to clients, so it gets the Messages inbox — every
       // client they have shared a trip with. Gold has the app for its own trips
       // and no inbox; the tab simply is not there.
       return (
-        <main>
-          <CompanionApp trip={companionTrip} advisorInbox={servesClients} advisorShareId={selected?.shareId || undefined} sharedDraft={sharedDraft || undefined} initialScreen={((s) => (s === "messages" || s === "wallet" ? s : undefined))(firstParam(params.screen))} />
-        </main>
+        <div className="flex min-h-screen flex-col bg-[var(--cream)]">
+          <div className="wg-web-chrome">
+            <Navbar minimal homeHref="/app" bottomBar={false} />
+          </div>
+          <main className="flex-1">
+            <CompanionApp trip={companionTrip} advisorInbox={servesClients} advisorShareId={selected?.shareId || undefined} sharedDraft={sharedDraft || undefined} initialScreen={((s) => (s === "messages" || s === "wallet" ? s : undefined))(firstParam(params.screen))} />
+          </main>
+          <Footer minimal />
+        </div>
       );
     }
 

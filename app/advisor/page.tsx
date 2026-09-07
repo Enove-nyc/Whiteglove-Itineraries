@@ -220,7 +220,18 @@ export default async function AdvisorDashboardPage({
     }
   }
 
+  // ON THE WEBSITE THE DASHBOARD SITS INSIDE THE ORDINARY HEADER AND FOOTER,
+  // like any other page — the owner's word, once the site existed around it.
+  // Inside the installed app it is still the whole screen: the header is
+  // wrapped in .wg-web-chrome and the footer is footer#contact, both hidden
+  // there by the in-app rules in globals.css. No bottom bar from the Navbar —
+  // the app has its own tabs.
   return (
+    <div className="flex min-h-screen flex-col bg-[var(--cream)]">
+      <div className="wg-web-chrome">
+        <Navbar minimal homeHref="/advisor" bottomBar={false} />
+      </div>
+      <div className="flex-1">
     <AdvisorApp trips={tripRows} openTrip={openTrip} openTripInfo={openTripInfo} openScreen={openScreen} openShareId={openShareId} initialTab={initialTab}>
       <section className="mx-auto w-full max-w-3xl px-5 pb-8 pt-5 sm:px-8">
         {/* The navy app header above already says "Advisor · Dashboard", so the
@@ -327,6 +338,9 @@ export default async function AdvisorDashboardPage({
         </div>
       </section>
     </AdvisorApp>
+      </div>
+      <Footer minimal />
+    </div>
   );
 }
 
