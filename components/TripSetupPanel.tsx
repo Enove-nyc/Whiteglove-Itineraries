@@ -204,6 +204,10 @@ export default function TripSetupPanel({
           )}
 
           {/* ---- the five basics, with reasons ----------------------------- */}
+          {/* Not before the dates: until then the start card above IS the
+              checklist, and five more cards under it were most of the eleven
+              screens a first-time user scrolled through. */}
+          {datesDone && (
           <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {steps.map((step) => (
               <li
@@ -226,6 +230,7 @@ export default function TripSetupPanel({
               </li>
             ))}
           </ol>
+          )}
 
           {/* ---- somewhere to start from ----------------------------------- */}
           {untouched && templates.length > 0 && (
