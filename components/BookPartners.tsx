@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useOnValueChange } from "@/components/useOnValueChange";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { airportCode, describeSearch, searchProblem, type SearchShape } from "@/lib/kayak-search";
@@ -9,7 +10,6 @@ import DateField from "@/components/DateField";
 import type { AffiliateRequest } from "@/lib/affiliate/partners";
 import { goHref } from "@/lib/affiliate/request";
 import { isPricedFlightRow } from "@/lib/flight-book-href";
-import { useFocusTrap } from "@/components/useFocusTrap";
 import { useRequireSignIn } from "@/components/SignInGate";
 import { emptyItinerary, type ItinActivity, type ItinFlight, type ItinLodging, type Itinerary } from "@/data/itinerary";
 import { correctedEnd, earliestEnd, nextDay, notBefore, today } from "@/lib/date-range";
@@ -26,7 +26,9 @@ import type { PartnerLiveCapabilities } from "@/lib/partner-live";
 // out of the traveler's own loyalty account, so nobody but them can complete
 // the booking. There we help them find the award and check it's worth the
 // points, then send them to their own program.
-// After a cash partner handoff, a prompt asks them to save what they booked.
+// A booking made on the partner's site gets onto the trip through the
+// planner's Smart Import (the real confirmation), not through a guess — see
+// BookedPointer below.
 
 type Pay = "cash" | "miles";
 type Kind = "flights" | "hotels" | "cars";
@@ -171,7 +173,11 @@ export default function BookPartners({
   // frame of Flights on the way. The semantics are the same — it runs when the
   // prop's identity changes and never when chooseKind sets the tab here.
   useOnValueChange(initialKind, () => setKind(initialKind));
-  const [pending, setPending] = useState<PendingBooking | null>(null);
+  // The "did you book it?" prompt used to open here the moment a partner tab
+  // opened, asking for a booking reference and adding a flight built from the
+  // SEARCH. It is gone — see BookedPointer — so a partner opening is nothing
+  // this page needs to act on any more.
+  const partnerOpened = () => undefined;
   const [live, setLive] = useState<PartnerLiveCapabilities>({ hotels: false, flights: false, cars: false });
 
   useEffect(() => {
@@ -268,26 +274,18 @@ export default function BookPartners({
           Cars: Localrent partner form. White Glove never takes payment —
           Duffel checkout stays admin-only. */}
       {pay === "cash" && kind === "flights" && (
-        <FlightsForm onAdd={addToTrip} onOpened={setPending} prefill={prefill} />
+        <FlightsForm onAdd={addToTrip} onOpened={partnerOpened} prefill={prefill} />
       )}
       {pay === "cash" && kind === "hotels" && (
-        <HotelsForm onAdd={addToTrip} onOpened={setPending} prefill={prefill} liveEnabled={live.hotels} />
+        <HotelsForm onAdd={addToTrip} onOpened={partnerOpened} prefill={prefill} liveEnabled={live.hotels} />
       )}
-      {pay === "cash" && kind === "cars" && <CarsForm onAdd={addToTrip} onOpened={setPending} prefill={prefill} />}
+      {pay === "cash" && kind === "cars" && <CarsForm prefill={prefill} />}
 
       {pay === "miles" && kind === "flights" && <MilesFlightsForm onAdd={addToTrip} />}
       {pay === "miles" && kind === "hotels" && <MilesHotelsForm onAdd={addToTrip} />}
       {pay === "miles" && kind === "cars" && <MilesCarsForm onAdd={addToTrip} />}
 
       </div>
-
-      {pending && (
-        <BookedPrompt
-          booking={pending}
-          onDone={() => setPending(null)}
-          onDismiss={() => setPending(null)}
-        />
-      )}
 
       {/* Says what happens when you press the button on the tab you are
           actually looking at, rather than describing the page in general. */}
@@ -713,13 +711,7 @@ function FlightsForm({
         secondary={{ label: "Compare on Kayak", onClick: openKayak }}
       />
       <PartnerResultsPanel loading={loading} message={liveMessage} detail={liveDetail} rows={rows} />
-      <button
-        type="button"
-        onClick={() => onOpened({ kind: "flight", summary, save: (confirmation) => addToTrip(confirmation) })}
-        className="mt-4 min-h-11 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
-      >
-        I booked it — add it to my trip
-      </button>
+      <BookedPointer />
     </div>
   );
 }
@@ -942,7 +934,7 @@ function HotelsForm({
  * moment White Glove had prices of its own to show, because prices need a
  * place and two dates and there was nowhere to type them.
  */
-function CarsForm({ onAdd, onOpened, prefill }: { onAdd: AddFn; onOpened: (b: PendingBooking) => void; prefill?: Prefill }) {
+function CarsForm({ prefill }: { prefill?: Prefill }) {
   const [place, setPlace] = useState(prefill?.destination ?? "");
   const [pickup, setPickup] = useState(prefill?.depart ?? "");
   const [dropoff, setDropoff] = useState(prefill?.ret ?? "");
@@ -957,7 +949,6 @@ function CarsForm({ onAdd, onOpened, prefill }: { onAdd: AddFn; onOpened: (b: Pe
   const [error, setError] = useState("");
 
   const loc = place.trim();
-  const summary = loc ? `Rental car — ${loc}` : "Rental car";
 
   function search() {
     if (!loc) {
@@ -985,20 +976,6 @@ function CarsForm({ onAdd, onOpened, prefill }: { onAdd: AddFn; onOpened: (b: Pe
       url.searchParams.set("return", dropoff);
       window.history.replaceState(null, "", url);
     }
-  }
-
-  function addToTrip(confirmation?: string) {
-    onAdd({
-      activities: [
-        {
-          id: uid(),
-          name: summary,
-          date: "",
-          notes: confirmation ? `Reference ${confirmation}` : "",
-          bookedOnSite: false,
-        },
-      ],
-    });
   }
 
   return (
@@ -1036,81 +1013,36 @@ function CarsForm({ onAdd, onOpened, prefill }: { onAdd: AddFn; onOpened: (b: Pe
           cars, and White Glove's own list is now both wider and real — so the
           panel had become a second, worse answer under the first one. */}
       <CarPrices destination={asked?.place ?? ""} startDate={asked?.pickup ?? ""} endDate={asked?.dropoff ?? ""} />
-      <button
-        type="button"
-        onClick={() => onOpened({ kind: "car", summary, save: (confirmation) => addToTrip(confirmation) })}
-        className="mt-4 min-h-11 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
-      >
-        I booked it — add it to my trip
-      </button>
+      <BookedPointer />
     </div>
   );
 }
 
 /**
- * "Did you book it?"
+ * Where a booking really gets onto the trip.
  *
- * The booking happens on the partner's site, in another tab, where we cannot
- * see it. So the trip has no idea about the flight somebody just paid for
- * unless they come back and say — and nobody thinks to, because as far as they
- * are concerned the job is done.
- *
- * This asks while it is still fresh. It appears the moment the partner opens,
- * behind them, and is waiting when they come back. Not booked, or not yet, is
- * one click; there is nothing to dismiss twice.
+ * This replaced a "did you book it?" prompt that opened the moment a partner
+ * tab did, asked for a booking reference, and then added a flight built from
+ * the SEARCH — the route and the dates — not from what was booked. It could
+ * not know the airline, the departure time or the flight number, so the entry
+ * it made was a guess with a code stuck on it, and the owner asked for it to
+ * go. The planner's Smart Import reads the real confirmation (pasted, attached,
+ * or forwarded to the trip's inbound address) and adds the actual details, so
+ * that is the one thing pointed at — quietly, under the results, not as a
+ * dialog in the way.
  */
-function BookedPrompt({ booking, onDone, onDismiss }: { booking: PendingBooking; onDone: () => void; onDismiss: () => void }) {
-  const [confirmation, setConfirmation] = useState("");
-  const what = booking.kind === "flight" ? "flight" : booking.kind === "hotel" ? "hotel" : "car";
-  // The keyboard stays in here while it is open, and goes back to whatever
-  // opened it when it closes. Escape is "not yet", the same as the button.
-  const dialogRef = useFocusTrap<HTMLDivElement>(true, onDismiss);
-
+function BookedPointer() {
   return (
-    <div className="fixed inset-0 z-[var(--wg-z-modal)] flex items-end justify-center bg-[rgba(13,31,59,.45)] p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="booked-title">
-      <div ref={dialogRef} tabIndex={-1} className="w-full max-w-lg rounded-3xl border border-[var(--gold)] bg-[#FAF8F3] p-6 shadow-[0_24px_60px_rgba(16, 47, 53,.35)] outline-none sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gold-ink)]">Searching in the other tab</p>
-        <h2 id="booked-title" className="mt-3 font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)] sm:text-3xl">
-          When you have booked, come back and tell us.
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-stone-600">
-          Add the {what} here and it goes on your trip, reference included.
-        </p>
-        <p className="mt-3 border-l-4 border-[var(--gold-light)] bg-white px-3 py-2 text-sm font-semibold text-[var(--navy)]">
-          {booking.summary}
-        </p>
-
-        <label className="mt-5 block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">Booking reference (if you have it)</span>
-          <input
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-            placeholder="e.g. XR4K9T"
-            className="mt-1.5 w-full rounded-xl border border-[var(--gold-light)] bg-white px-4 py-3 text-sm text-[var(--navy)] outline-none focus:border-[var(--gold)] focus:ring-4 focus:ring-[rgba(170,139,82,.12)]"
-          />
-        </label>
-
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => {
-              booking.save(confirmation.trim());
-              onDone();
-            }}
-            className="min-h-[46px] flex-1 rounded-full border border-[var(--navy)] bg-[var(--navy)] px-5 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)]"
-          >
-            I booked it — add it to my trip
-          </button>
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="min-h-[46px] rounded-full border border-[var(--gold)] px-5 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]"
-          >
-            Not yet
-          </button>
-        </div>
-      </div>
-    </div>
+    <p className="mt-4 text-xs leading-5 text-stone-500">
+      Booked it?{" "}
+      <Link
+        href="/itinerary"
+        className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
+      >
+        Paste or forward the confirmation in the planner
+      </Link>{" "}
+      and the real flight, hotel or car details are added to your trip.
+    </p>
   );
 }
 

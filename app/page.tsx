@@ -17,7 +17,11 @@ import { DEFAULT_PHOTO } from "@/lib/default-photo";
 import ItinerariesHome from "@/components/ItinerariesHome";
 import StandaloneAppRedirect from "@/components/StandaloneAppRedirect";
 import { BRAND_ORIGIN, brandFromRequestHeaders, currentBrand } from "@/lib/site-brand";
-import { headers } from "next/headers";
+import { accountCookieName, getCurrentAccountSummary, readSessionEmail } from "@/lib/account-store";
+import { getPlan } from "@/lib/account-plan-store";
+import { mayServeCompanionClients } from "@/lib/account-limits";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 // Two front doors, one page. The kosher site keeps the metadata it always had;
@@ -101,6 +105,22 @@ export default async function Home() {
   // kosher site, unchanged. Read through the same helper generateMetadata uses,
   // so the proxy's brand header and the Host are honoured the one same way.
   if (brandFromRequestHeaders(requestHeaders) === "itineraries") {
+    // SIGNED IN, THE FRONT DOOR IS THE DASHBOARD, NOT THE PITCH. The page
+    // below sells the product to somebody who has not got it yet — "plan it,
+    // hand it over, planning your own trip?". A person who is already logged
+    // in has bought the argument; showing it to them again, every time they
+    // open the site, is the shop window standing between them and the shop.
+    // An adviser lands on the advisor dashboard (their cockpit); anyone else
+    // signed in lands on their own trips. Signed out, the front door is
+    // unchanged. Read the same way /app reads it, so the two agree on who is
+    // signed in and what plan they hold.
+    const cookie = (await cookies()).get(accountCookieName())?.value;
+    const account = await getCurrentAccountSummary(cookie);
+    const who = account?.email || readSessionEmail(cookie) || "";
+    if (who) {
+      const plan = await getPlan(who).catch(() => "free" as const);
+      redirect(mayServeCompanionClients(plan) ? "/advisor" : "/app");
+    }
     return (
       <>
         <StandaloneAppRedirect />
