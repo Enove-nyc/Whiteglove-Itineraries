@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import CopyLinkButton from "@/components/CopyLinkButton";
 import { Icon } from "@/components/icons/Icon";
+import { useFocusTrap } from "@/components/useFocusTrap";
 import {
   emptyProposal,
   emptyProposalOption,
@@ -54,88 +55,169 @@ async function uploadPhoto(file: File): Promise<string | null> {
   return res.ok ? (data?.mediaId ?? null) : null;
 }
 
+/** One piece of an option, opened over the list rather than expanded in it. */
+function ComponentModal({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
+  return (
+    <div
+      className="fixed inset-0 z-[var(--wg-z-modal,200)] flex items-end justify-center bg-[var(--navy)]/50 p-4 backdrop-blur-[2px] sm:items-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-7"
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** What the row says about a piece without being opened. */
+function componentLine(c: ProposalComponent): string {
+  if (c.kind === "flight") return [c.from, c.to].filter(Boolean).join(" → ") || c.description || "";
+  if (c.kind === "hotel") return [c.checkIn, c.checkOut].filter(Boolean).join(" – ") || c.description || "";
+  return c.address || c.description || "";
+}
+
+/**
+ * One piece of an option — a hotel, a flight, an activity.
+ *
+ * Every piece used to sit open as a full form: type, name, price, a line for
+ * the client, dates or an address, and a photo upload. An option with eight
+ * pieces was eight stacked forms, and a proposal has several options. Now each
+ * piece is a single row — what it is, its name, its price — and pressing it
+ * opens that one piece to edit. The fields themselves are unchanged.
+ */
 function ComponentRow({
   component,
+  autoOpen = false,
   onChange,
   onRemove,
 }: {
   component: ProposalComponent;
+  /** A piece just added by "+ Add a hotel, flight, activity…" — open it to be filled in. */
+  autoOpen?: boolean;
   onChange: (next: ProposalComponent) => void;
   onRemove: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
+  const line = componentLine(component);
+
   return (
-    <div className="rounded-lg border border-[var(--gold-light)] bg-white p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={component.kind}
-          onChange={(e) => onChange({ ...component, kind: e.target.value as ProposalComponentKind })}
-          className="rounded-md border border-[var(--gold-light)] px-2 py-1.5 text-xs"
-        >
-          {KIND_OPTIONS.map((k) => (
-            <option key={k} value={k}>{PROPOSAL_COMPONENT_LABEL[k]}</option>
-          ))}
-        </select>
-        <input
-          value={component.name}
-          onChange={(e) => onChange({ ...component, name: e.target.value })}
-          placeholder="Name — e.g. Hotel Rossi"
-          className={`${inputCls} flex-1`}
-        />
-        <input
-          type="number"
-          value={component.price ?? ""}
-          onChange={(e) => onChange({ ...component, price: e.target.value ? Number(e.target.value) : undefined })}
-          placeholder="Price"
-          className="w-24 rounded-lg border border-[var(--gold-light)] px-2 py-2 text-sm"
-        />
-        <button type="button" onClick={onRemove} className="flex-none text-stone-400 hover:text-red-700" aria-label="Remove">
+    <>
+      <div className="flex items-center gap-2 rounded-lg border border-[var(--gold-light)] bg-white">
+        <button type="button" onClick={() => setOpen(true)} className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--cream-deep)]">
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-[var(--navy)]">
+              {component.name || <span className="font-normal text-stone-400">Untitled — press to fill in</span>}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-stone-500">
+              {PROPOSAL_COMPONENT_LABEL[component.kind]}
+              {line ? ` · ${line}` : ""}
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-3">
+            {typeof component.price === "number" && <span className="text-sm font-semibold text-[var(--navy)]">{component.price}</span>}
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold-ink)]">Edit</span>
+          </span>
+        </button>
+        <button type="button" onClick={onRemove} className="flex-none px-3 text-stone-400 hover:text-red-700" aria-label={`Remove ${component.name || "this piece"}`}>
           <Icon name="trash" className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <input
-          value={component.description ?? ""}
-          onChange={(e) => onChange({ ...component, description: e.target.value })}
-          placeholder="A line the client reads"
-          className={inputCls}
-        />
-        {component.kind === "flight" ? (
-          <div className="flex gap-2">
-            <input value={component.from ?? ""} onChange={(e) => onChange({ ...component, from: e.target.value })} placeholder="From" className={inputCls} />
-            <input value={component.to ?? ""} onChange={(e) => onChange({ ...component, to: e.target.value })} placeholder="To" className={inputCls} />
-            <input type="date" value={component.date ?? ""} onChange={(e) => onChange({ ...component, date: e.target.value })} className={inputCls} />
+      {open && (
+        <ComponentModal label={component.name || "Edit this piece"} onClose={() => setOpen(false)}>
+          <div className="flex items-start justify-between gap-4">
+            <h3 className="font-[family-name:var(--font-display)] text-xl text-[var(--navy)]">
+              {component.name || PROPOSAL_COMPONENT_LABEL[component.kind]}
+            </h3>
+            <button type="button" onClick={() => setOpen(false)} className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500 transition hover:text-[var(--navy)]">
+              Close
+            </button>
           </div>
-        ) : component.kind === "hotel" ? (
-          <div className="flex gap-2">
-            <input type="date" value={component.checkIn ?? ""} onChange={(e) => onChange({ ...component, checkIn: e.target.value })} className={inputCls} />
-            <input type="date" value={component.checkOut ?? ""} onChange={(e) => onChange({ ...component, checkOut: e.target.value })} className={inputCls} />
-          </div>
-        ) : (
-          <input value={component.address ?? ""} onChange={(e) => onChange({ ...component, address: e.target.value })} placeholder="Address" className={inputCls} />
-        )}
-      </div>
 
-      <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs text-stone-500">
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="hidden"
-          disabled={uploading}
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (!file) return;
-            setUploading(true);
-            const mediaId = await uploadPhoto(file);
-            setUploading(false);
-            if (mediaId) onChange({ ...component, photoMediaId: mediaId });
-          }}
-        />
-        <Icon name="camera" className="h-4 w-4" /> {uploading ? "Uploading…" : component.photoMediaId ? "Change photo" : "Add a photo"}
-      </label>
-    </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <select
+              value={component.kind}
+              onChange={(e) => onChange({ ...component, kind: e.target.value as ProposalComponentKind })}
+              className="rounded-md border border-[var(--gold-light)] px-2 py-1.5 text-xs"
+            >
+              {KIND_OPTIONS.map((k) => (
+                <option key={k} value={k}>{PROPOSAL_COMPONENT_LABEL[k]}</option>
+              ))}
+            </select>
+            <input
+              value={component.name}
+              onChange={(e) => onChange({ ...component, name: e.target.value })}
+              placeholder="Name — e.g. Hotel Rossi"
+              className={`${inputCls} flex-1`}
+            />
+            <input
+              type="number"
+              value={component.price ?? ""}
+              onChange={(e) => onChange({ ...component, price: e.target.value ? Number(e.target.value) : undefined })}
+              placeholder="Price"
+              className="w-24 rounded-lg border border-[var(--gold-light)] px-2 py-2 text-sm"
+            />
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <input
+              value={component.description ?? ""}
+              onChange={(e) => onChange({ ...component, description: e.target.value })}
+              placeholder="A line the client reads"
+              className={inputCls}
+            />
+            {component.kind === "flight" ? (
+              <div className="flex gap-2">
+                <input value={component.from ?? ""} onChange={(e) => onChange({ ...component, from: e.target.value })} placeholder="From" className={inputCls} />
+                <input value={component.to ?? ""} onChange={(e) => onChange({ ...component, to: e.target.value })} placeholder="To" className={inputCls} />
+                <input type="date" value={component.date ?? ""} onChange={(e) => onChange({ ...component, date: e.target.value })} className={inputCls} />
+              </div>
+            ) : component.kind === "hotel" ? (
+              <div className="flex gap-2">
+                <input type="date" value={component.checkIn ?? ""} onChange={(e) => onChange({ ...component, checkIn: e.target.value })} className={inputCls} />
+                <input type="date" value={component.checkOut ?? ""} onChange={(e) => onChange({ ...component, checkOut: e.target.value })} className={inputCls} />
+              </div>
+            ) : (
+              <input value={component.address ?? ""} onChange={(e) => onChange({ ...component, address: e.target.value })} placeholder="Address" className={inputCls} />
+            )}
+          </div>
+
+          <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs text-stone-500">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              disabled={uploading}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                setUploading(true);
+                const mediaId = await uploadPhoto(file);
+                setUploading(false);
+                if (mediaId) onChange({ ...component, photoMediaId: mediaId });
+              }}
+            />
+            <Icon name="camera" className="h-4 w-4" /> {uploading ? "Uploading…" : component.photoMediaId ? "Change photo" : "Add a photo"}
+          </label>
+
+          {/* Edits are already on the proposal — this only puts the piece away. */}
+          <div className="mt-5 border-t border-[var(--gold-light)] pt-4">
+            <button type="button" onClick={() => setOpen(false)} className="inline-flex min-h-10 items-center rounded-full bg-[var(--navy)] px-5 text-xs font-bold uppercase tracking-[0.1em] text-white">
+              Done
+            </button>
+          </div>
+        </ComponentModal>
+      )}
+    </>
   );
 }
 
@@ -213,6 +295,9 @@ function OptionEditor({
 }) {
   const [uploading, setUploading] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  // The piece just added, so it opens ready to be filled in rather than
+  // landing in the list as an untitled row waiting to be found again.
+  const [addedId, setAddedId] = useState<string | null>(null);
   return (
     <div className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5">
       <div className="flex items-start justify-between gap-3">
@@ -269,6 +354,7 @@ function OptionEditor({
           <ComponentRow
             key={c.id}
             component={c}
+            autoOpen={c.id === addedId}
             onChange={(next) => onChange({ ...option, components: option.components.map((x) => (x.id === c.id ? next : x)) })}
             onRemove={() => onChange({ ...option, components: option.components.filter((x) => x.id !== c.id) })}
           />
@@ -278,12 +364,14 @@ function OptionEditor({
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() =>
+          onClick={() => {
+            const id = uid();
+            setAddedId(id);
             onChange({
               ...option,
-              components: [...option.components, { id: uid(), kind: "hotel", name: "" }],
-            })
-          }
+              components: [...option.components, { id, kind: "hotel", name: "" }],
+            });
+          }}
           className={smallButton}
         >
           + Add a hotel, flight, activity…
