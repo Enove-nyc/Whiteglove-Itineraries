@@ -207,7 +207,7 @@ describe("how the widgets are loaded", () => {
   it("hands cash flights off to Aviasales/Kayak from one White Glove form; cars show our own prices", () => {
     const panel = readFileSync("components/BookPartners.tsx", "utf8");
     const flights = panel.slice(panel.indexOf("function FlightsForm"), panel.indexOf("function HotelsForm"));
-    const cars = panel.slice(panel.indexOf("function CarsForm"), panel.indexOf("function BookedPrompt"));
+    const cars = panel.slice(panel.indexOf("function CarsForm"), panel.indexOf("function BookedPointer"));
     assert.doesNotMatch(flights, /PartnerSearchWidget/);
     assert.doesNotMatch(flights, /flightsEmbedPath/);
     assert.match(flights, /flightHandoff\("aviasales"\)/);
