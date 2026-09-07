@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useIsItineraries } from "@/components/useSiteBrand";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons/Icon";
-import { emptyLibraryItem, emptyLibraryPack, itemsInPack, type LibraryItem, type LibraryPack } from "@/data/library";
+import { useFocusTrap } from "@/components/useFocusTrap";
+import { applyLibraryPack, emptyLibraryItem, emptyLibraryPack, itemsInPack, type LibraryItem, type LibraryPack } from "@/data/library";
+import { emptyItinerary } from "@/data/itinerary";
 import { PROPOSAL_COMPONENT_LABEL, type ProposalComponentKind } from "@/data/proposal";
 import type { AttractionResult } from "@/lib/attraction-search";
 
@@ -207,6 +210,7 @@ function ItemEditor({ item, onSave, onCancel }: { item: LibraryItem; onSave: (it
 }
 
 export default function LibraryManager() {
+  const router = useRouter();
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [packs, setPacks] = useState<LibraryPack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,6 +218,8 @@ export default function LibraryManager() {
   const [newPackName, setNewPackName] = useState("");
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [startingPack, setStartingPack] = useState<string | null>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>(Boolean(editing), () => setEditing(null));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -231,11 +237,11 @@ export default function LibraryManager() {
     }
   }, []);
 
-  // Async wrapper rather than a bare call from the effect body: a bare call
-  // enters it synchronously, which the rule counts as a setState during the
-  // effect. Same shape the rest of this repo uses.
   useEffect(() => {
     let active = true;
+    // Async wrapper rather than a bare call from the effect body: a bare call
+    // enters it synchronously, which the rule counts as a setState during the
+    // effect. Same shape the rest of this repo uses.
     void (async () => {
       if (active) await load();
     })();
@@ -266,6 +272,35 @@ export default function LibraryManager() {
     if (await post({ action: "save-item", item: withId })) setEditing(null);
   }
 
+  /**
+   * "Duplicate → Customize → Send" — a saved pack, dropped onto a brand-new
+   * trip. Builds the itinerary here, client-side, from the pack's own items
+   * (data/library.ts's applyLibraryPack) and hands the whole thing to the
+   * same "import" action the trip switcher already uses to add a shared
+   * trip — a new trip is a new trip, whichever door it came in through.
+   */
+  async function startTripFromPack(pack: LibraryPack) {
+    setError("");
+    setStartingPack(pack.id);
+    try {
+      const packItems = itemsInPack(pack, items);
+      const itinerary = applyLibraryPack(emptyItinerary(), pack, packItems, uid);
+      const res = await fetch("/api/account/trips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "import", itinerary, name: pack.name }),
+      });
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !data?.ok) {
+        setError(data?.error ?? "Could not start a trip from that pack.");
+        return;
+      }
+      router.push("/itinerary");
+    } finally {
+      setStartingPack(null);
+    }
+  }
+
   const grouped = new Map<string, LibraryItem[]>();
   for (const item of items) {
     const key = item.destination?.trim() || "Not filed under a destination";
@@ -279,16 +314,12 @@ export default function LibraryManager() {
       <section>
         <div className="flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Saved content</h2>
-          {!editing && (
-            <button type="button" onClick={() => setEditing(emptyLibraryItem())} className={smallButton}>
-              + Add an item
-            </button>
-          )}
+          <button type="button" onClick={() => setEditing(emptyLibraryItem())} className={smallButton}>
+            + Add an item
+          </button>
         </div>
 
-        {editing && <div className="mt-4"><ItemEditor item={editing} onSave={(i) => void saveItem(i)} onCancel={() => setEditing(null)} /></div>}
-
-        {items.length === 0 && !editing && <p className="mt-4 text-sm text-stone-500">Nothing saved yet — hotels, activities and contacts you add here are ready to drop into any proposal.</p>}
+        {items.length === 0 && <p className="mt-4 text-sm text-stone-500">Nothing saved yet — hotels, activities and contacts you add here are ready to drop into any proposal.</p>}
 
         <div className="mt-4 space-y-6">
           {[...grouped.entries()].map(([destination, group]) => (
@@ -355,14 +386,24 @@ export default function LibraryManager() {
                     <p className="font-semibold text-[var(--navy)]">{pack.name}</p>
                     <p className="text-xs text-stone-500">{packItems.length} item{packItems.length === 1 ? "" : "s"}</p>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => window.confirm(`Delete the pack "${pack.name}"? The items in it stay in your library.`) && void post({ action: "delete-pack", id: pack.id })}
-                    className="flex-none text-stone-400 hover:text-red-700"
-                    aria-label="Delete pack"
-                  >
-                    <Icon name="trash" className="h-4 w-4" />
-                  </button>
+                  <div className="flex flex-none items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void startTripFromPack(pack)}
+                      disabled={packItems.length === 0 || startingPack === pack.id}
+                      className={smallButton}
+                    >
+                      {startingPack === pack.id ? "Starting…" : "Start a trip"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.confirm(`Delete the pack "${pack.name}"? The items in it stay in your library.`) && void post({ action: "delete-pack", id: pack.id })}
+                      className="text-stone-400 hover:text-red-700"
+                      aria-label="Delete pack"
+                    >
+                      <Icon name="trash" className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 {open && (
                   <div className="mt-3 space-y-1.5 border-t border-[var(--gold-light)] pt-3">
@@ -394,6 +435,17 @@ export default function LibraryManager() {
       </section>
 
       {error && <p className="text-xs font-semibold text-red-700">{error}</p>}
+
+      {editing && (
+        <div
+          className="fixed inset-0 z-[var(--wg-z-modal,200)] flex items-end justify-center bg-[var(--navy)]/50 p-4 backdrop-blur-[2px] sm:items-center"
+          onClick={(event) => { if (event.target === event.currentTarget) setEditing(null); }}
+        >
+          <div ref={dialogRef} role="dialog" aria-modal="true" className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto">
+            <ItemEditor item={editing} onSave={(i) => void saveItem(i)} onCancel={() => setEditing(null)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,7 +5,8 @@
 // same fields, same kinds — so inserting one into a proposal option is a
 // straight copy, never a second shape to keep in sync.
 
-import type { ProposalComponent, ProposalComponentKind } from "@/data/proposal";
+import type { Itinerary, ItinActivity } from "@/data/itinerary";
+import { PROPOSAL_COMPONENT_LABEL, type ProposalComponent, type ProposalComponentKind } from "@/data/proposal";
 
 export type LibraryItem = {
   id: string;
@@ -82,4 +83,46 @@ export function libraryItemToProposalComponent(item: LibraryItem, id: string): P
 export function itemsInPack(pack: LibraryPack, items: LibraryItem[]): LibraryItem[] {
   const byId = new Map(items.map((i) => [i.id, i]));
   return pack.itemIds.map((id) => byId.get(id)).filter((i): i is LibraryItem => Boolean(i));
+}
+
+/**
+ * A saved pack, dropped onto a trip — "Duplicate → Customize → Send".
+ *
+ * Every item lands as an UNSCHEDULED stop, the same convention
+ * lib/trip-setup.ts's applyTemplate already uses for a destination outline:
+ * a template is a starting point, never a plan for a day nobody chose. A
+ * LibraryItem has no dates of its own — nothing here invents a check-in or a
+ * flight time it does not have, which is also why a hotel or flight from the
+ * pack lands as a stop to remember to book, labelled with its kind, rather
+ * than a fabricated ItinLodging or ItinFlight neither of which this data
+ * actually has enough to fill in for real.
+ *
+ * Additive and idempotent, the same three rules applyTemplate keeps: the
+ * title is only set from the pack when the trip is still unnamed, nothing
+ * already on the trip is touched, and applying the same pack twice does not
+ * duplicate what it already added.
+ */
+export function applyLibraryPack(itin: Itinerary, pack: LibraryPack, items: LibraryItem[], uid: () => string): Itinerary {
+  const named = itin.title && itin.title !== "My trip";
+  const existing = new Set(itin.activities.map((activity) => activity.name.toLowerCase()));
+
+  const added: ItinActivity[] = items
+    .map((item) => ({ ...item, name: item.kind === "activity" ? item.name : `${PROPOSAL_COMPONENT_LABEL[item.kind]}: ${item.name}` }))
+    // Applying the same pack twice should not double the list.
+    .filter((item) => !existing.has(item.name.toLowerCase()))
+    .map((item) => ({
+      id: uid(),
+      name: item.name,
+      address: item.address,
+      phone: item.phone,
+      // Unscheduled on purpose — see the function note above.
+      date: "",
+      notes: [item.description, item.notes].filter(Boolean).join(" — ") || undefined,
+    }));
+
+  return {
+    ...itin,
+    title: named ? itin.title : pack.name,
+    activities: [...itin.activities, ...added],
+  };
 }
