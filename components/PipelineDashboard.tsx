@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { actionForReminder } from "@/lib/needs-attention";
+import { actionForReminder, GROUP_LABEL, GROUP_ORDER, groupForReminder, type AttentionGroup } from "@/lib/needs-attention";
 import type { TripReminder } from "@/data/trip-reminders";
 import { useRouter } from "next/navigation";
 import { pipelineStats, TRIP_STAGE_LABEL, TRIP_STAGE_ORDER, type TripStage } from "@/data/trip-pipeline";
@@ -39,31 +39,72 @@ type Row = {
   commissionCurrency?: string;
 };
 
-type View = "board" | "upcoming" | "traveling" | "awaiting_approval" | "attention" | "unread";
+type View = "needs_attention" | "board" | "upcoming" | "traveling";
 
+/**
+ * FOUR OF THE OLD SIX MEANT THE SAME THING.
+ *
+ * "Changes requiring attention" and "Unread messages" are two ways of asking
+ * what needs the advisor, the reminders on every card are a third, and money
+ * outstanding a fourth — and the screen led with none of them: it opened on
+ * Board, every trip they have. So the first question anybody opens this with
+ * was answered in four places, and being sure meant checking all four.
+ *
+ * One view answers it now, and it opens on it. The three that remain are for
+ * browsing rather than working: the whole board, what is coming, who is away
+ * right now. "Awaiting approval" went with the four — it is a stage, and the
+ * board already shows the stages in columns.
+ */
 const VIEWS: Array<{ id: View; label: string }> = [
+  { id: "needs_attention", label: "Needs attention" },
   { id: "board", label: "Board" },
   { id: "upcoming", label: "Upcoming" },
   { id: "traveling", label: "Currently traveling" },
-  { id: "awaiting_approval", label: "Awaiting approval" },
-  { id: "attention", label: "Changes requiring attention" },
-  { id: "unread", label: "Unread messages" },
 ];
+
+/**
+ * Everything about a row that is asking for something, as the three piles.
+ *
+ * The row-level signals are grouped by the same rule as the reminders
+ * (lib/needs-attention.ts): whose move is it. An unread message is the
+ * advisor's to read; money outstanding is the client's to pay.
+ */
+function rowGroups(row: Row, today: string): Set<AttentionGroup> {
+  const groups = new Set<AttentionGroup>();
+  for (const reminder of row.reminders) groups.add(groupForReminder(reminder.reason));
+  if (row.unread) groups.add("needs_you");
+  if (row.needsAttention) groups.add("needs_you");
+  if ((row.outstandingCents ?? 0) > 0) groups.add("waiting_on_client");
+  // Near enough to want an eye on, and not already asking for something.
+  if (row.stage === "traveling") groups.add("upcoming");
+  else if (row.startDate > today && withinDays(today, row.startDate, 14)) groups.add("upcoming");
+  return groups;
+}
+
+/** Whether `to` is within `days` of `from`, on YYYY-MM-DD strings. */
+function withinDays(from: string, to: string, days: number): boolean {
+  const a = new Date(`${from}T00:00:00Z`).getTime();
+  const b = new Date(`${to}T00:00:00Z`).getTime();
+  return Number.isFinite(a) && Number.isFinite(b) && Math.round((b - a) / 86_400_000) <= days;
+}
+
+/** The rows in each pile, in the order the piles are read. */
+function groupedRows(rows: Row[], today: string): Array<[AttentionGroup, Row[]]> {
+  return GROUP_ORDER.map((group) => [group, rows.filter((row) => rowGroups(row, today).has(group))] as [AttentionGroup, Row[]])
+    .filter(([, inGroup]) => inGroup.length > 0);
+}
 
 const cardBase = "rounded-xl border border-[var(--gold-light)] bg-white p-4 text-sm";
 
 function rowsFor(view: View, rows: Row[], today: string): Row[] {
   switch (view) {
+    case "needs_attention":
+      // The union of what the four old signals each showed a slice of.
+      return rows.filter((r) => rowGroups(r, today).size > 0);
     case "upcoming":
       return rows.filter((r) => r.stage === "confirmed" && r.startDate > today);
     case "traveling":
       return rows.filter((r) => r.stage === "traveling");
-    case "awaiting_approval":
-      return rows.filter((r) => r.stage === "awaiting_approval");
-    case "attention":
-      return rows.filter((r) => r.needsAttention);
-    case "unread":
-      return rows.filter((r) => r.unread);
     default:
       return rows;
   }
@@ -324,7 +365,7 @@ export default function PipelineDashboard() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [view, setView] = useState<View>("board");
+  const [view, setView] = useState<View>("needs_attention");
   const [switching, setSwitching] = useState<string | null>(null);
 
   useEffect(() => {
@@ -354,6 +395,7 @@ export default function PipelineDashboard() {
 
   const filtered = useMemo(() => rowsFor(view, rows, today), [view, rows, today]);
   const counts = useMemo(() => Object.fromEntries(VIEWS.map((v) => [v.id, rowsFor(v.id, rows, today).length])), [rows, today]);
+  const grouped = useMemo(() => groupedRows(rows, today), [rows, today]);
 
   // The business, at a glance — above the row-by-row board, not instead of
   // it. See pipelineStats in data/trip-pipeline.ts for the actual rules,
@@ -409,20 +451,28 @@ export default function PipelineDashboard() {
   return (
     <div>
       {showAnalytics && (
+        /* A NUMBER YOU CANNOT PRESS IS A NUMBER YOU HAVE TO GO AND LOOK UP.
+           These four were plain text. "Traveling now: 3" is only useful if the
+           next thing it does is show you the three, and every one of these
+           already had a list behind it — the advisor was reading the count
+           here and then finding the matching view along the top by hand.
+           Three of the four go somewhere. "Outstanding" is a sum of money
+           across trips rather than a count of them, and the trips owing it are
+           in Waiting on the client, so it leads there. */
         <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className={cardBase}>
+          <button type="button" onClick={() => setView("board")} className={`${cardBase} text-left transition hover:border-[var(--gold)]`}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Active client trips</p>
             <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{stats.activeCount}</p>
-          </div>
-          <div className={cardBase}>
+          </button>
+          <button type="button" onClick={() => setView("traveling")} className={`${cardBase} text-left transition hover:border-[var(--gold)]`}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Traveling now</p>
             <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{counts.traveling}</p>
-          </div>
-          <div className={cardBase}>
+          </button>
+          <button type="button" onClick={() => setView("upcoming")} className={`${cardBase} text-left transition hover:border-[var(--gold)]`}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Departing in 30 days</p>
             <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{stats.departingSoon}</p>
-          </div>
-          <div className={cardBase}>
+          </button>
+          <button type="button" onClick={() => setView("needs_attention")} className={`${cardBase} text-left transition hover:border-[var(--gold)]`}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Outstanding</p>
             {stats.outstandingByCurrency.length === 0 ? (
               <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{formatCents(0)}</p>
@@ -431,7 +481,10 @@ export default function PipelineDashboard() {
                 {stats.outstandingByCurrency.map(([currency, cents]) => formatCents(cents, currency)).join(" · ")}
               </p>
             )}
-          </div>
+          </button>
+          {/* Not a link: commission is a total the advisor recorded, and there
+              is no list of "the commission" to open. A card that looks
+              pressable and does nothing is worse than one that plainly is not. */}
           <div className={cardBase}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Commission earned</p>
             {stats.commissionByCurrency.length === 0 ? (
@@ -486,6 +539,35 @@ export default function PipelineDashboard() {
               </div>
             );
           })}
+        </div>
+      ) : view === "needs_attention" ? (
+        /* THREE PILES, IN THE ORDER THEY MATTER, and a trip can be in more
+           than one — a client who asked for changes and also owes money is
+           genuinely both, and showing it once under whichever came first
+           would hide half of why it is here. */
+        <div className="mt-6 flex flex-col gap-8">
+          {grouped.length === 0 ? (
+            <p className="text-sm text-stone-500">Nothing needs you right now.</p>
+          ) : (
+            grouped.map(([group, inGroup]) => (
+              <section key={group}>
+                <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+                  {GROUP_LABEL[group]} <span className="font-normal text-stone-400">({inGroup.length})</span>
+                </h2>
+                <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {inGroup.map((row) => (
+                    <RowCard
+                      key={row.id}
+                      row={row}
+                      onOpen={(path) => (switching ? undefined : openTrip(row.id, path))}
+                      showAnalytics={showAnalytics}
+                      onCommission={(cents) => saveCommission(row.id, cents)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
         </div>
       ) : (
         <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">

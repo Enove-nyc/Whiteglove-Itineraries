@@ -1,6 +1,7 @@
 "use client";
 
 import { BUILT_IN_WORDS } from "@/data/site-words";
+import { useIsItineraries } from "@/components/useSiteBrand";
 import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BilingualLabel from "@/components/BilingualLabel";
@@ -10,6 +11,7 @@ import {
   sectionHeading,
   SITE_SEARCH_LABEL,
   SITE_SEARCH_PLACEHOLDER,
+  siteSearchPlaceholder,
 } from "@/lib/site-search-labels";
 import type { SearchResponse, SiteHit, SiteHitKind } from "@/lib/site-search-types";
 import { SITE_HIT_SECTIONS } from "@/lib/site-search-types";
@@ -118,7 +120,7 @@ function groupSuggestions(matches: Suggestion[], emptyMode: boolean): DisplayGro
 
 export default function DestinationSearch({
   compact = false,
-  placeholder = SITE_SEARCH_PLACEHOLDER || BUILT_IN_WORDS.searchPlaceholder,
+  placeholder,
   ariaLabel = SITE_SEARCH_LABEL,
   /** When true, start collapsed on narrow screens behind a labeled Search button. */
   mobileCollapse = false,
@@ -142,6 +144,11 @@ export default function DestinationSearch({
   id?: string;
 }) {
   const router = useRouter();
+  // The default invitation names kosher food, which is the guide's language
+  // and not this one's — so it is chosen here, where the brand is known,
+  // rather than baked into the prop's default value.
+  const itineraries = useIsItineraries();
+  const boxPlaceholder = placeholder ?? siteSearchPlaceholder(itineraries) ?? BUILT_IN_WORDS.searchPlaceholder;
   const listId = `${useId()}-search-results`;
   const inputId = id ?? listId.replace("-search-results", "-input");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -345,7 +352,7 @@ export default function DestinationSearch({
             role="combobox"
             aria-controls={listId}
             aria-activedescendant={active >= 0 ? `${listId}-opt-${active}` : undefined}
-            placeholder={placeholder}
+            placeholder={boxPlaceholder}
             autoComplete="off"
           />
         </div>

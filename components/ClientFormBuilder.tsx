@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import CopyLinkButton from "@/components/CopyLinkButton";
 import { Icon } from "@/components/icons/Icon";
+import { useFocusTrap } from "@/components/useFocusTrap";
 import {
   emptyFormTemplate,
   fieldLabel,
@@ -30,6 +31,104 @@ const STANDARD_KEYS = Object.keys(STANDARD_FIELD_LABEL) as StandardFieldKey[];
 const smallButton =
   "inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[var(--gold-light)] px-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:border-[var(--gold)] disabled:opacity-50";
 
+/** "4 March 2026", or nothing when the stamp is unreadable. */
+function whenSent(iso: string): string {
+  const t = Date.parse(iso);
+  return Number.isNaN(t)
+    ? ""
+    : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+/**
+ * One client's answers, read on purpose rather than left lying open.
+ *
+ * Every response used to render in full, one under the next — so a passport
+ * number, a date of birth and a Known Traveler Number for every traveller sat
+ * open on the screen the whole time this page was. That is a lot of somebody
+ * else's documents to have showing while you share a screen, hand the laptop
+ * over, or simply walk away from it. A response is a row now; its answers open
+ * when you ask for them, and the fields the data file already marks sensitive
+ * stay covered until you press Show.
+ *
+ * This is a courtesy, not a wall — the real protection is architectural (see
+ * data/client-form.ts and this file's header). It just stops the screen
+ * volunteering a passport number nobody asked to see.
+ */
+function ResponseModal({
+  response,
+  fields,
+  onClose,
+}: {
+  response: ClientFormResponse;
+  fields: FormField[];
+  onClose: () => void;
+}) {
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
+  const [shown, setShown] = useState<Record<string, boolean>>({});
+  const answered = fields.filter((f) => response.answers[f.id]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[var(--wg-z-modal,200)] flex items-end justify-center bg-[var(--navy)]/50 p-4 backdrop-blur-[2px] sm:items-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Answers from ${response.respondentName}`}
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--gold-light)] bg-white p-6 shadow-[0_24px_60px_rgba(23,45,82,.20)] sm:p-7"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">
+              {response.respondentName}
+            </h3>
+            {whenSent(response.submittedAt) && (
+              <p className="mt-1 text-xs text-stone-500">Sent {whenSent(response.submittedAt)}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500 transition hover:text-[var(--navy)]"
+          >
+            Close
+          </button>
+        </div>
+
+        <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+          {answered.map((f) => {
+            const sensitive = fieldIsSensitive(f);
+            const reveal = shown[f.id];
+            return (
+              <div key={f.id}>
+                <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-stone-400">
+                  {fieldLabel(f)}
+                  {sensitive && <span className="ml-1.5 text-stone-400">· private</span>}
+                </dt>
+                <dd className="text-stone-700">
+                  {sensitive && !reveal ? (
+                    <button
+                      type="button"
+                      onClick={() => setShown((c) => ({ ...c, [f.id]: true }))}
+                      className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2"
+                    >
+                      Show
+                    </button>
+                  ) : (
+                    response.answers[f.id]
+                  )}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientFormBuilder() {
   const [tripId, setTripId] = useState<string | null>(null);
   const [tripName, setTripName] = useState("");
@@ -41,6 +140,8 @@ export default function ClientFormBuilder() {
   const [error, setError] = useState("");
   const [shareUrl, setShareUrl] = useState("");
   const [customLabel, setCustomLabel] = useState("");
+  // Whose answers are open, if anyone's. Nothing is read until it is asked for.
+  const [openResponse, setOpenResponse] = useState<string | null>(null);
   const origin = typeof window === "undefined" ? "" : window.location.origin;
 
   const load = useCallback(async () => {
@@ -68,11 +169,13 @@ export default function ClientFormBuilder() {
     }
   }, []);
 
-  // Async wrapper rather than a bare call from the effect body: a bare call
-  // enters it synchronously, which the rule counts as a setState during the
-  // effect. Same shape the rest of this repo uses.
+  // Async wrapper: a bare call enters load() synchronously, which the rule
+  // counts as a setState during the effect.
   useEffect(() => {
     let active = true;
+    // Async wrapper rather than a bare call from the effect body: a bare call
+    // enters it synchronously, which the rule counts as a setState during the
+    // effect. Same shape the rest of this repo uses.
     void (async () => {
       if (active) await load();
     })();
@@ -230,25 +333,43 @@ export default function ClientFormBuilder() {
         {responses.length === 0 ? (
           <p className="mt-2 text-sm text-stone-500">Nothing back yet.</p>
         ) : (
-          <div className="mt-3 space-y-4">
-            {responses.map((r) => (
-              <div key={r.id} className="rounded-xl border border-[var(--gold-light)] bg-white p-4">
-                <p className="font-semibold text-[var(--navy)]">{r.respondentName}</p>
-                <dl className="mt-2 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
-                  {template.fields
-                    .filter((f) => r.answers[f.id])
-                    .map((f) => (
-                      <div key={f.id}>
-                        <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-stone-400">{fieldLabel(f)}</dt>
-                        <dd className="text-stone-700">{r.answers[f.id]}</dd>
-                      </div>
-                    ))}
-                </dl>
-              </div>
-            ))}
-          </div>
+          <ul className="mt-3 divide-y divide-[var(--gold-light)] rounded-xl border border-[var(--gold-light)] bg-white">
+            {responses.map((r) => {
+              const answered = template.fields.filter((f) => r.answers[f.id]).length;
+              return (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenResponse(r.id)}
+                    className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[var(--cream-deep)]"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-[var(--navy)]">{r.respondentName}</span>
+                      <span className="mt-0.5 block truncate text-xs text-stone-500">
+                        {[
+                          `${answered} ${answered === 1 ? "answer" : "answers"}`,
+                          whenSent(r.submittedAt),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--gold-ink)]">Read</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
+
+      {openResponse && responses.some((r) => r.id === openResponse) && (
+        <ResponseModal
+          response={responses.find((r) => r.id === openResponse)!}
+          fields={template.fields}
+          onClose={() => setOpenResponse(null)}
+        />
+      )}
 
       {error && <p className="text-xs font-semibold text-red-700">{error}</p>}
     </div>

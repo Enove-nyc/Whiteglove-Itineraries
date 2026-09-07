@@ -14,6 +14,19 @@ export const SITE_SEARCH_NOTE = "Search information already published across Whi
 export const SITE_SEARCH_PLACEHOLDER =
   "Search destinations, places to stay, kosher food, and more…";
 
+/**
+ * The same invitation, in the words of whichever site is asking.
+ *
+ * The constant above names kosher food, which is right on the guide and wrong
+ * on the itineraries domain — that brand is general travel and does not serve
+ * the kosher food finder at all (/kosher is guide-only and answers 410 there).
+ * It was reaching that domain's search box unchanged, so the one page somebody
+ * uses to look something up told them this was a kosher product.
+ */
+export function siteSearchPlaceholder(itineraries: boolean): string {
+  return itineraries ? "Search destinations, places to stay, things to do, and more…" : SITE_SEARCH_PLACEHOLDER;
+}
+
 /** Section headings on the dropdown and /search page. */
 export function sectionHeading(section: SiteHitSection): string {
   switch (section) {
