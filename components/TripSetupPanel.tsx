@@ -7,6 +7,8 @@ import { vacationDestinations } from "@/data/vacation-destinations";
 import { answersAreFresh, describeAnswered, hasAnswers, plannerSeed, readAnswers, summarize, TRIP_PLAN_KEY, type TripPlanAnswers } from "@/lib/trip-plan";
 import { destinationForTrip, setupProgress, setupSteps, tripIsUntouched, type TripTemplate } from "@/lib/trip-setup";
 import { destinationHref } from "@/lib/vacation-ideas";
+import DateField from "@/components/DateField";
+import { correctedEnd, earliestEnd } from "@/lib/date-range";
 
 /**
  * The part in front of the planner.
@@ -57,6 +59,9 @@ function storedAnswers(): TripPlanAnswers | null {
   return cachedAnswers;
 }
 
+const startCaption = "mb-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]";
+const startInput = "w-full rounded-md border border-[var(--gold-light)] bg-white px-3 py-2.5 text-sm text-[var(--navy)]";
+
 export default function TripSetupPanel({
   itin,
   templates,
@@ -75,9 +80,21 @@ export default function TripSetupPanel({
 }) {
   const [open, setOpen] = useState(true);
   const answers = useSyncExternalStore(subscribe, storedAnswers, () => null);
+  /**
+   * THE START CARD. A trip begins with a name and two dates, and nothing else.
+   *
+   * The checklist below said "Next: set the trip dates" and then offered no
+   * date control — the fields lived in the collapsed Trip details disclosure
+   * further down the page, under a toolbar of seven buttons. On a phone that
+   * was eleven screens of planner with the one thing it needed nowhere in
+   * sight. So the dates are asked for HERE, first, as the only dominant thing
+   * on an empty trip; everything else appears once they exist.
+   */
+  const [draft, setDraft] = useState({ title: itin.title ?? "", startDate: itin.startDate ?? "", endDate: itin.endDate ?? "" });
 
   const steps = setupSteps(itin);
   const progress = setupProgress(steps);
+  const datesDone = steps.find((step) => step.id === "dates")?.done ?? false;
   const untouched = tripIsUntouched(itin);
   const suggested = destinationForTrip(itin, vacationDestinations);
   // A DAY, NOT FOREVER. These answers exist to carry somebody from /plan into
@@ -111,6 +128,38 @@ export default function TripSetupPanel({
           {open ? "Hide the setup help" : "Show the setup help"}
         </button>
       </div>
+
+      {!datesDone && (
+        <div className="mt-5 rounded-xl border-2 border-[var(--navy)] bg-white p-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Start here</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <label className="block">
+              <span className={startCaption}>Trip name</span>
+              <input className={startInput} value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="Rome, family trip" />
+            </label>
+            <label className="block">
+              <span className={startCaption}>First day</span>
+              <DateField ariaLabel="Trip start date" className={startInput} value={draft.startDate} onChange={(startDate) => setDraft((d) => ({ ...d, startDate, endDate: correctedEnd(startDate, d.endDate) }))} />
+            </label>
+            <label className="block">
+              <span className={startCaption}>Last day</span>
+              <DateField ariaLabel="Trip end date" className={startInput} min={earliestEnd(draft.startDate)} value={draft.endDate} onChange={(endDate) => setDraft((d) => ({ ...d, endDate: correctedEnd(d.startDate, endDate) }))} />
+            </label>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-stone-500">
+            That is all a trip needs to begin. Travellers, flights, hotels and the days themselves come afterwards, one at a
+            time, and none of them is required now.
+          </p>
+          <button
+            type="button"
+            disabled={!draft.startDate || !draft.endDate}
+            onClick={() => onApply({ title: draft.title.trim() || itin.title, startDate: draft.startDate, endDate: draft.endDate })}
+            className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--navy)] bg-[var(--navy)] px-6 text-xs font-bold uppercase tracking-[0.1em] text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Create trip
+          </button>
+        </div>
+      )}
 
       {open && (
         <div id="trip-setup-body" className="mt-5 space-y-5">
@@ -155,6 +204,10 @@ export default function TripSetupPanel({
           )}
 
           {/* ---- the five basics, with reasons ----------------------------- */}
+          {/* Not before the dates: until then the start card above IS the
+              checklist, and five more cards under it were most of the eleven
+              screens a first-time user scrolled through. */}
+          {datesDone && (
           <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {steps.map((step) => (
               <li
@@ -177,6 +230,7 @@ export default function TripSetupPanel({
               </li>
             ))}
           </ol>
+          )}
 
           {/* ---- somewhere to start from ----------------------------------- */}
           {untouched && templates.length > 0 && (
@@ -235,6 +289,11 @@ export default function TripSetupPanel({
           )}
 
           {/* ---- where this is being kept ----------------------------------- */}
+          {/* A card when there is something to do about it (sign in); one
+              quiet line when there is not. */}
+          {signedIn ? (
+            <p className="text-xs leading-5 text-stone-500">Saved securely to your account as you type.</p>
+          ) : (
           <div className="rounded-xl border border-[var(--gold-light)] bg-white p-5">
             <h3 className="font-[family-name:var(--font-display)] text-xl text-[var(--navy)]">Where this trip is saved</h3>
             {signedIn === false ? (
@@ -258,6 +317,7 @@ export default function TripSetupPanel({
               <p className="mt-1.5 text-sm leading-6 text-stone-500">Checking where this trip is being kept…</p>
             )}
           </div>
+          )}
 
           {/* "Would rather not do this part? … Have us plan it" sat here, in
               the middle of the planner. It read as the tool giving up on the
