@@ -34,7 +34,7 @@ import type { LodgingResult } from "@/lib/lodging-search";
 import type { PlaceLodgingResult } from "@/lib/hotel-places";
 import { directionsBetweenUrl, placeDirectionsUrl } from "@/data/route-utils";
 import { moveStop, planRoute } from "@/lib/route-plan";
-import { applyTemplate, type TripTemplate } from "@/lib/trip-setup";
+import { applyTemplate, setupProgress, setupSteps, type TripTemplate } from "@/lib/trip-setup";
 import { BUILT_IN_ASSUMPTIONS, type PlannerAssumptions } from "@/data/planner-assumptions";
 import { correctedEnd, earliestEnd, rangeIsBackwards } from "@/lib/date-range";
 import StopAttachments from "@/components/StopAttachments";
@@ -341,6 +341,14 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // looked up on Itineraries — that brand has no kever directory to look up.
   const burials = useKeverBurials(itineraries ? [] : itin.activities);
   const hasDates = Boolean(itin.startDate && itin.endDate);
+  // Which of the toolbar's buttons is the recommended next move — the same
+  // answer the setup checklist gives, so the two never disagree. "Plan my
+  // route" leads only while there is something unscheduled for it to place.
+  const nextSetup = setupProgress(setupSteps(itin)).next?.id;
+  const toolbarButton = (leads: boolean) =>
+    leads
+      ? "inline-flex min-h-11 items-center rounded-full border border-[var(--navy)] bg-[var(--navy)] px-4 text-xs font-bold text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)]"
+      : "inline-flex min-h-11 items-center rounded-full border border-[var(--gold-light)] bg-white px-3.5 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]";
 
   // Boarding passes need an account; without one there is nowhere to keep
   // them that survives closing the browser.
@@ -454,6 +462,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
       {/* How long until it, and once it starts, where in it you are. Above
           everything else, because on the third morning in Kraków it is the
           only part of this page anybody needs. */}
+      {hasDates && (
       <TripProgressStrip
         startDate={itin.startDate}
         endDate={itin.endDate}
@@ -463,6 +472,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
         tripId={itin.startDate && itin.endDate ? `trip-${itin.startDate}-${itin.endDate}` : undefined}
         tripTitle={itin.title?.trim() || "Your trip"}
       />
+      )}
 
       {/* What this trip still needs, why each one matters, and somewhere real
           to start from. In front of the editor rather than instead of it —
@@ -480,6 +490,11 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
       />
 
       {/* Trip header */}
+      {/* …and everything an advisor adds to a trip. Not before the dates
+          exist: with no days there is nowhere for a hotel or a stop to go, and
+          a toolbar of seven buttons above an empty planner was the complaint.
+          The start card in TripSetupPanel is the whole page until then. */}
+      {hasDates && (
       <section className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-4 shadow-[0_10px_30px_rgba(16, 47, 53,.06)] sm:p-6">
         {/* SET ONCE, THEN RE-READ ON EVERY VISIT FOR THE REST OF THE TRIP.
             The name, the dates, who is coming and what time a day starts are
@@ -537,16 +552,15 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
         </details>
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[var(--gold-light)] pt-4">
           <span className={`${caption} mr-1`}>Add to trip</span>
-          <button type="button" onClick={() => { setEditingFlightId(null); setTab(tab === "flight" ? null : "flight"); }} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Flight</button>
-          <button type="button" onClick={() => { setEditingLodgingId(null); setTab(tab === "hotel" ? null : "hotel"); }} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Hotel</button>
-          <button type="button" onClick={() => setTab(tab === "activity" ? null : "activity")} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Stop</button>
-          <button type="button" onClick={importSavedRoute} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Saved route</button>
-          <button type="button" onClick={() => setTab(tab === "import" ? null : "import")} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Smart Import</button>
-          <button type="button" onClick={planMyRoute} disabled={planning} className="ml-auto rounded-full border border-[var(--navy)] bg-[var(--navy)] px-5 py-2.5 text-xs font-bold text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)] disabled:opacity-60">{planning ? "Planning…" : "Plan my route"}</button>
+          <button type="button" onClick={() => { setEditingFlightId(null); setTab(tab === "flight" ? null : "flight"); }} className={toolbarButton(nextSetup === "flights")}>Flight</button>
+          <button type="button" onClick={() => { setEditingLodgingId(null); setTab(tab === "hotel" ? null : "hotel"); }} className={toolbarButton(nextSetup === "stay")}>Hotel</button>
+          <button type="button" onClick={() => setTab(tab === "activity" ? null : "activity")} className={toolbarButton(nextSetup === "stops")}>Stop</button>
+          <button type="button" onClick={importSavedRoute} className={toolbarButton(false)}>Saved route</button>
+          <button type="button" onClick={() => setTab(tab === "import" ? null : "import")} className={toolbarButton(false)}>Smart Import</button>
+          <button type="button" onClick={planMyRoute} disabled={planning} className={`ml-auto ${toolbarButton(unscheduled.length > 0)} disabled:opacity-60`}>{planning ? "Planning…" : "Plan my route"}</button>
           {savedNote && <span className="text-xs font-semibold text-emerald-700">{savedNote}</span>}
           {planNote && <span className="text-xs font-semibold text-[var(--navy)]">{planNote}</span>}
         </div>
-        {!hasDates && <p className="mt-3 text-xs font-semibold text-[var(--gold-ink)]">Choose start and end dates to begin.</p>}
 
         <div ref={editFormRef}>
         {tab === "flight" && (() => {
@@ -581,6 +595,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
         {tab === "import" && <SmartImportPanel onImport={importSmartImportItems} onCancel={() => setTab(null)} />}
         </div>
       </section>
+      )}
 
       {/* Analysis + day-by-day */}
       {loaded && days.length > 0 && (
@@ -706,6 +721,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
       )}
 
 
+      {hasDates && (
       <div className="grid gap-3 md:grid-cols-2">
         <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
@@ -744,8 +760,9 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           <div className="border-t border-[var(--gold-light)] p-3"><RoomGroupsPanel itin={itin} onChange={persist} /></div>
         </details>
       </div>
+      )}
 
-      <BookFlightsPanel itin={itin} />
+      {hasDates && <BookFlightsPanel itin={itin} />}
 
       {/* THE SAME THINGS AGAIN, AS LISTS. Every flight, hotel and stop below is
           already on its own day above — this is the second view of it, useful
@@ -781,13 +798,6 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
         </details>
       )}
 
-
-      {loaded && days.length === 0 && (
-        <div className="mt-8 border border-dashed border-[var(--gold-light)] p-10 text-center">
-          <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">Choose your dates to begin.</p>
-          <p className="mt-2 text-sm text-stone-600">Then add flights, hotels, and stops.</p>
-        </div>
-      )}
 
       {/* "You have added somewhere we do not have — would you send it in?"
           The trip is theirs; nothing leaves it without this being answered. */}
