@@ -6,6 +6,7 @@ import type { TripReminder } from "@/data/trip-reminders";
 import { useRouter } from "next/navigation";
 import { pipelineStats, TRIP_STAGE_LABEL, TRIP_STAGE_ORDER, type TripStage } from "@/data/trip-pipeline";
 import { ShareOpenStatus } from "@/components/ShareOpenStatus";
+import InquiriesPanel from "@/components/InquiriesPanel";
 import type { OpenStatus } from "@/lib/share-opens";
 import { formatCents } from "@/data/trip-payments";
 import { useDeviceClock } from "@/components/TripProgressStrip";
@@ -39,7 +40,7 @@ type Row = {
   commissionCurrency?: string;
 };
 
-type View = "needs_attention" | "board" | "upcoming" | "traveling";
+type View = "needs_attention" | "inquiries" | "board" | "upcoming" | "traveling";
 
 /**
  * FOUR OF THE OLD SIX MEANT THE SAME THING.
@@ -57,6 +58,10 @@ type View = "needs_attention" | "board" | "upcoming" | "traveling";
  */
 const VIEWS: Array<{ id: View; label: string }> = [
   { id: "needs_attention", label: "Needs attention" },
+  // The calls that are not trips yet — see components/InquiriesPanel.tsx.
+  // A view here rather than a page of its own, so the pipeline stays the one
+  // place an advisor checks.
+  { id: "inquiries", label: "Enquiries" },
   { id: "board", label: "Board" },
   { id: "upcoming", label: "Upcoming" },
   { id: "traveling", label: "Currently traveling" },
@@ -101,6 +106,10 @@ function rowsFor(view: View, rows: Row[], today: string): Row[] {
     case "needs_attention":
       // The union of what the four old signals each showed a slice of.
       return rows.filter((r) => rowGroups(r, today).size > 0);
+    case "inquiries":
+      // Not trips at all — the panel loads its own list, and a count of trips
+      // on this tab would be a number about the wrong thing.
+      return [];
     case "upcoming":
       return rows.filter((r) => r.stage === "confirmed" && r.startDate > today);
     case "traveling":
@@ -540,6 +549,8 @@ export default function PipelineDashboard() {
             );
           })}
         </div>
+      ) : view === "inquiries" ? (
+        <InquiriesPanel />
       ) : view === "needs_attention" ? (
         /* THREE PILES, IN THE ORDER THEY MATTER, and a trip can be in more
            than one — a client who asked for changes and also owes money is

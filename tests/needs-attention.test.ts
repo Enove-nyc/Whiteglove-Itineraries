@@ -237,13 +237,17 @@ describe("the dashboard opens on the answer, not the board", () => {
     assert.match(DASH, /\{ id: "needs_attention", label: "Needs attention" \}/);
   });
 
-  it("has four views where it had eight", () => {
+  it("has five views where it had eight, and none of them the same question twice", () => {
     // The four that meant the same thing became one. "Awaiting approval" went
     // with them: it is a stage, and the board already shows stages in columns.
+    // Enquiries was ADDED afterwards, and is a different thing altogether —
+    // the calls that are not trips yet (components/InquiriesPanel.tsx) — so
+    // it does not bring any of the four back.
     const list = DASH.slice(DASH.indexOf("const VIEWS"), DASH.indexOf("];", DASH.indexOf("const VIEWS")));
     // `{ id: "` and not `{ id:`, or the Array<{ id: View }> annotation counts
-    // as a fifth view.
-    assert.equal((list.match(/\{ id: "/g) ?? []).length, 4);
+    // as an extra view.
+    assert.equal((list.match(/\{ id: "/g) ?? []).length, 5);
+    assert.ok(list.includes('{ id: "inquiries"'));
     for (const gone of ["awaiting_approval", '"unread"', '"payment_due"', '"nudge"', '"attention"']) {
       assert.ok(!list.includes(gone), `${gone} is back as its own view`);
     }
