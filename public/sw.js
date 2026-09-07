@@ -8,7 +8,7 @@
 // styles are therefore network-first: the newest version always wins when
 // online, and the cache is only a fallback when offline. Only truly static
 // media (images, fonts) is cache-first.
-const CACHE = "wg-cache-v7";
+const CACHE = "wg-cache-v8";
 
 /**
  * The day's documents, kept on purpose.
@@ -104,23 +104,40 @@ self.addEventListener("activate", (event) => {
 // — rides in next.config alongside this; this is the belt to that suspenders,
 // and the only half that can un-freeze a copy already cached as immutable.)
 function networkFirst(req) {
-  // A navigation Request cannot be rebuilt through `new Request(req, init)`
-  // (the constructor rejects a navigate-mode request with a non-empty init),
-  // so those reload by URL; everything else keeps the original request but
-  // with the cache mode overridden.
-  const fresh =
-    req.mode === "navigate"
-      ? fetch(req.url, { cache: "reload", credentials: "same-origin" })
-      : fetch(new Request(req, { cache: "reload" }));
+  const isNav = req.mode === "navigate";
+  const store = (res) => {
+    if (res && res.ok) {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+    }
+    return res;
+  };
+  // NAVIGATIONS FETCH NORMALLY — no `cache: "reload"`.
+  //
+  // A page's HTML is served `no-store` (see the response headers), so it is
+  // never frozen in the HTTP cache and needs none of the reload bypass that the
+  // app CODE below does. Worse, `cache: "reload"` on the navigation path is what
+  // some mobile networks, carrier proxies and Android WebViews reset outright —
+  // and a reset is a rejected fetch, which drops a perfectly online page to the
+  // offline shell. That is the "You're offline while online" report. A plain
+  // credentialed fetch always hits the network for the no-store HTML and does
+  // not trip those intermediaries.
+  //
+  // App CODE keeps `cache: "reload"`: those /_next/static files ARE served
+  // immutable, so without the bypass an already-installed app would keep running
+  // a year-old copy of its own code. A navigation Request also cannot be rebuilt
+  // through `new Request(req, init)` (the constructor rejects a navigate-mode
+  // request with a non-empty init), which is the other reason the two split.
+  const fresh = isNav
+    ? fetch(req.url, { credentials: "same-origin" })
+    : fetch(new Request(req, { cache: "reload" }));
   return fresh
-    .then((res) => {
-      if (res && res.ok) {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-      }
-      return res;
-    })
-    .catch(() => caches.match(req).then((r) => r || (req.mode === "navigate" ? caches.match("/offline") : undefined)));
+    .then(store)
+    // A genuine network failure: prefer a cached copy of this very page, and
+    // only fall back to the offline shell when there is nothing and this was a
+    // navigation. Non-navigation misses resolve undefined and let the browser
+    // handle it, exactly as before.
+    .catch(() => caches.match(req).then((r) => r || (isNav ? caches.match("/offline") : undefined)));
 }
 
 /**
