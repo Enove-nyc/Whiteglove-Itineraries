@@ -47,6 +47,8 @@ export type ItinLodging = {
   checkOut: string; // YYYY-MM-DD (for overnight-transit, the morning after)
   notes?: string;
   bookedOnSite?: boolean;
+  /** Whose stay this is on a group trip. See ItinFlight.unitKey. */
+  unitKey?: string;
   /**
    * The booking reference the hotel or airline gave them.
    *
@@ -107,6 +109,15 @@ export type ItinFlight = {
   stops?: FlightStop[];
   notes?: string;
   bookedOnSite?: boolean;
+  /**
+   * Whose flight this is, on a trip with more than one unit — matches
+   * travelerUnitKey() below. Absent means it's on the whole trip's shared
+   * schedule, same as every trip before this existed; set only on a group
+   * trip where one family flies separately from another. See
+   * redactForTraveler, which is what actually keeps a unit from seeing a
+   * flight that isn't theirs.
+   */
+  unitKey?: string;
   /** The airline's booking reference. See ItinLodging.confirmation. */
   confirmation?: string;
   /**
@@ -161,6 +172,8 @@ export type ItinActivity = {
   country?: string;
   notes?: string;
   bookedOnSite?: boolean;
+  /** Whose stop this is on a group trip. See ItinFlight.unitKey. */
+  unitKey?: string;
   /**
    * Boarding passes, tickets, booking confirmations.
    *
@@ -374,22 +387,45 @@ export function unitMates(itin: Itinerary, travelerId: string): ItinTraveler[] {
 }
 
 /**
- * This itinerary, as one traveler's own unit may see it: the shared trip
- * itself (flights, lodging, activities — one party, one schedule) stays
- * whole, but every OTHER unit's private notes, email and phone are stripped.
- * The roster still shows who else is on the trip — name and kind are not
- * secret — only what the planner wrote about them is.
+ * This itinerary, as one traveler's own unit may see it.
  *
- * This is the one place "do not expose one traveler's private information to
- * another unless explicitly intended" is enforced: intent is reading as
- * whichever travelers the planner put in the same family/unit together.
+ * TWO SEPARATE THINGS A GROUP TRIP KEEPS PRIVATE. Every OTHER unit's notes,
+ * email and phone are stripped from the roster — name and kind are not
+ * secret, only what the planner wrote about them is. And a flight, stay or
+ * stop assigned to a DIFFERENT unit (unitKey) is left off entirely — the
+ * Cohens do not see the Levys' hotel just because they are on the same trip.
+ * Anything with no unitKey at all is the whole trip's shared plan (every trip
+ * before per-traveler assignment existed, and every item on an ordinary solo
+ * or single-family trip today) and stays visible to everyone.
+ *
+ * The second half of that was missing here for as long as this file has
+ * existed on this side: unitKey was never on the item types, so a group trip
+ * run by an adviser — which is this product's job, not the kosher site's —
+ * showed every family every other family's flights and hotel. The rule lived
+ * only in the repository that does not sell group trips.
+ *
+ * This is the one place "do not expose one traveler's information to another
+ * unless explicitly intended" is enforced for a group trip: intent is reading
+ * as whichever travelers the planner put in the same family/unit together,
+ * and whichever items the planner assigned to that unit.
  */
 export function redactForTraveler(itin: Itinerary, viewerTravelerId: string): Itinerary {
+  const viewer = (itin.travelers ?? []).find((t) => t.id === viewerTravelerId);
   const mine = new Set(unitMates(itin, viewerTravelerId).map((t) => t.id));
   const travelers = (itin.travelers ?? []).map((t) =>
     mine.has(t.id) ? t : { id: t.id, name: t.name, kind: t.kind, family: t.family },
   );
-  return { ...itin, travelers };
+  // No matching traveler (a bad/old link) means nothing unit-assigned is
+  // this viewer's — safer to show only the shared plan than to guess.
+  const viewerUnitKey = viewer ? travelerUnitKey(viewer) : null;
+  const visible = <T extends { unitKey?: string }>(items: T[]): T[] => items.filter((i) => !i.unitKey || i.unitKey === viewerUnitKey);
+  return {
+    ...itin,
+    travelers,
+    flights: visible(itin.flights),
+    lodging: visible(itin.lodging),
+    activities: visible(itin.activities),
+  };
 }
 
 // ---- Date helpers (UTC-noon to dodge DST/timezone drift) --------------

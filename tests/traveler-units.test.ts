@@ -85,7 +85,7 @@ describe("what one traveler's own link may see of everyone else", () => {
     assert.equal(other?.phone, undefined);
   });
 
-  it("leaves the shared trip itself — flights, lodging, activities — untouched", () => {
+  it("leaves the shared trip itself — flights, lodging, activities — untouched when nothing is assigned to a unit", () => {
     const withStops: Itinerary = {
       ...itin,
       flights: [{ id: "f1", from: "JFK", to: "FCO", date: "2026-06-01" }],
@@ -94,6 +94,69 @@ describe("what one traveler's own link may see of everyone else", () => {
     const redacted = redactForTraveler(withStops, "smith-1");
     assert.deepEqual(redacted.flights, withStops.flights);
     assert.deepEqual(redacted.lodging, withStops.lodging);
+  });
+});
+
+describe("a group trip where each unit has its own flights, stay and stops", () => {
+  const itin: Itinerary = {
+    ...emptyItinerary(),
+    travelers: [
+      traveler("smith-1", { name: "Mr. Smith", family: "Smith family" }),
+      traveler("smith-2", { name: "Mrs. Smith", family: "Smith family" }),
+      traveler("green-1", { name: "Mr. Green", family: "Green family" }),
+    ],
+    flights: [
+      { id: "f-smith", from: "JFK", to: "FCO", date: "2026-06-01", unitKey: "family:smith family" },
+      { id: "f-green", from: "LAX", to: "FCO", date: "2026-06-01", unitKey: "family:green family" },
+      { id: "f-shared", from: "FCO", to: "CDG", date: "2026-06-10" },
+    ],
+    lodging: [
+      { id: "l-smith", type: "hotel", name: "Hotel Rossi", checkIn: "2026-06-01", checkOut: "2026-06-05", unitKey: "family:smith family" },
+      { id: "l-green", type: "hotel", name: "Hotel Verdi", checkIn: "2026-06-01", checkOut: "2026-06-05", unitKey: "family:green family" },
+    ],
+    activities: [
+      { id: "a-smith", name: "Private tour", date: "2026-06-02", unitKey: "family:smith family" },
+      { id: "a-shared", name: "Group dinner", date: "2026-06-03" },
+    ],
+  };
+
+  it("a unit sees its own flight, stay and stop, and every shared one", () => {
+    const redacted = redactForTraveler(itin, "smith-1");
+    assert.deepEqual(redacted.flights.map((f) => f.id), ["f-smith", "f-shared"]);
+    assert.deepEqual(redacted.lodging.map((l) => l.id), ["l-smith"]);
+    assert.deepEqual(redacted.activities.map((a) => a.id), ["a-smith", "a-shared"]);
+  });
+
+  it("never sees another unit's flight, stay or stop", () => {
+    const redacted = redactForTraveler(itin, "smith-1");
+    assert.ok(!redacted.flights.some((f) => f.id === "f-green"));
+    assert.ok(!redacted.lodging.some((l) => l.id === "l-green"));
+  });
+
+  it("the other family sees the mirror image", () => {
+    const redacted = redactForTraveler(itin, "green-1");
+    assert.deepEqual(redacted.flights.map((f) => f.id), ["f-green", "f-shared"]);
+    assert.deepEqual(redacted.lodging.map((l) => l.id), ["l-green"]);
+  });
+
+  it("a viewer id that matches no traveler on the trip sees only the shared plan, never a guess", () => {
+    const redacted = redactForTraveler(itin, "nobody");
+    assert.deepEqual(redacted.flights.map((f) => f.id), ["f-shared"]);
+    assert.deepEqual(redacted.lodging, []);
+    assert.deepEqual(redacted.activities.map((a) => a.id), ["a-shared"]);
+  });
+
+  it("the builder is where a unit is chosen — every form that makes one of these offers it", () => {
+    const BUILDER = readFileSync("components/ItineraryBuilder.tsx", "utf8");
+    assert.equal((BUILDER.match(/Who is this for/g) ?? []).length, 3, "flights, stays and stops each need the selector");
+    assert.match(BUILDER, /unitsOf\(itin\)/);
+    // A selector that is never read back on save is decorative — which is
+    // exactly what it was here until the three submit handlers carried it.
+    assert.equal(
+      (BUILDER.match(/unitKey: [fla]\.unitKey \|\| undefined/g) ?? []).length,
+      3,
+      "each form must save the unit it was given, not just show the box",
+    );
   });
 });
 
