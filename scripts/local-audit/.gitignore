@@ -1,0 +1,7 @@
+auth-state.json
+*.json
+!package.json
+ws.key
+ws.crt
+*.log
+*.png
