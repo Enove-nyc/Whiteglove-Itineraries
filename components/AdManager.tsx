@@ -73,8 +73,14 @@ export default function AdManager({ initial, configured, today }: { initial: Pro
         setMessage({ ok: false, text: explainFailure(res.status, body?.error) });
         return;
       }
-      const data = (await res.json()) as { promotions?: Promotion[] };
-      if (data.promotions) setAds(data.promotions);
+      // THE LIST IS INSIDE THE BUNDLE. This read `data.promotions`, which the
+      // route has never sent — it answers with getAdminContent(), so the
+      // advertisements are at `bundle.promotions`. The write always worked and
+      // the screen never showed it: publishing said "it is live now" directly
+      // above "No advertisements yet", and Delete said "Deleted." with the row
+      // still sitting there until the page was reloaded by hand.
+      const data = (await res.json()) as { bundle?: { promotions?: Promotion[] } };
+      if (data.bundle?.promotions) setAds(data.bundle.promotions);
       setMessage({ ok: true, text: remove ? "Deleted." : ad.enabled ? "Published — it is live now." : "Saved as a draft." });
       setEditing(null);
     } catch {

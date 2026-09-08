@@ -259,7 +259,11 @@ function DeleteForm({
     <form
       action={formAction}
       onSubmit={(event) => {
-        if (!window.confirm(`Remove ${name || "this"} permanently? This can't be undone.`)) event.preventDefault();
+        // NOT "this can't be undone" — it can. Everything removed here goes to
+        // Deleted for thirty days and comes back exactly as it was. Telling
+        // the owner otherwise makes him hesitate over a safe action and hides
+        // the screen that would have rescued him.
+        if (!window.confirm(`Remove ${name || "this"}? It goes to Deleted for 30 days and can be put back.`)) event.preventDefault();
       }}
     >
       <Hidden values={hidden} />
