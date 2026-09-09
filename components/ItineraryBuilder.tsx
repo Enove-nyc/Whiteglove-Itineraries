@@ -1600,6 +1600,17 @@ function FlightForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
   const [legNo, setLegNo] = useState("");
   const [legBusy, setLegBusy] = useState(false);
   const [legStatus, setLegStatus] = useState("");
+  /**
+   * OPENS ASKING AIRLINE, NUMBER, DATE — NOT TWENTY BLANKS.
+   *
+   * Editing an existing flight starts expanded: there is nothing to
+   * progressively disclose about a flight that is already filled in, and
+   * hiding its own connections behind a fold would make "Edit" look like it
+   * had lost them. Adding a new one starts closed, and opens itself the
+   * moment there is something worth looking at — a successful lookup filled
+   * in real values, or a failed submit needs From/To pointed at.
+   */
+  const [expanded, setExpanded] = useState(Boolean(initial));
 
   // The trip's start date, filled in when the form has no date of its own.
   // The initial state above already covers the mount; this covers the case the
@@ -1626,6 +1637,9 @@ function FlightForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
     ].filter(Boolean);
     if (missing.length) {
       setError(`Please add the ${missing.join(", ")}.`);
+      // Whatever is missing is behind the fold if it was still closed — open
+      // it, or the error just names fields nobody can see.
+      setExpanded(true);
       return;
     }
     onAdd({
@@ -1687,6 +1701,9 @@ function FlightForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
       if (data?.available && data.flight) {
         setF((prev) => ({ ...prev, ...data.flight }));
         setError("");
+        // A lookup just filled in real values — worth looking at, so the fold
+        // that was hiding them opens on its own.
+        setExpanded(true);
         setStatus(
           `Found: ${data.flight.airline || data.flight.flightNo} ${data.flight.from} → ${data.flight.to}` +
             (data.moreResults ? ` (+${data.moreResults} more — edit if needed)` : ""),
@@ -1774,41 +1791,55 @@ function FlightForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
       onSubmit={submitFlight}
     >
       <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
-        <span className={caption}>Auto-fill from a flight number</span>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <input className={`${inputClass} mt-0 w-32`} value={lookupNo} onChange={(e) => setLookupNo(e.target.value)} placeholder="e.g. LY1" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void runLookup(); } }} />
+        <span className={caption}>Airline, number, date — auto-fills the rest</span>
+        <div className="mt-1 flex flex-wrap items-end gap-2">
+          <label className="block">
+            <span className="text-[11px] text-stone-500">Airline</span>
+            <input className={`${inputClass} mt-0.5 w-28`} value={f.airline ?? ""} onChange={(e) => setF({ ...f, airline: e.target.value })} placeholder="e.g. El Al" />
+          </label>
+          <label className="block">
+            <span className="text-[11px] text-stone-500">Flight #</span>
+            <input className={`${inputClass} mt-0.5 w-24`} value={lookupNo} onChange={(e) => setLookupNo(e.target.value)} placeholder="e.g. LY1" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void runLookup(); } }} />
+          </label>
+          <label className="block">
+            <span className="text-[11px] text-stone-500">Date</span>
+            <DateField ariaLabel="Flight date" className={`${inputClass} mt-0.5`} value={f.date ?? ""} onChange={(date) => updateFlight({ date })} />
+          </label>
           <button type="button" onClick={() => void runLookup()} disabled={busy} className="border border-[var(--navy)] bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white disabled:opacity-50">{busy ? "…" : "Look up"}</button>
-          <span className="text-xs text-stone-600">Uses the date below.</span>
         </div>
         {status && <p className="mt-2 text-xs text-[var(--navy)]">{status}</p>}
+        {!expanded && (
+          <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-xs font-semibold text-stone-500 underline">
+            or enter the details by hand
+          </button>
+        )}
       </div>
-      {/* allowGroups={false} — a booked flight lands at one specific airport,
-          never "all airports in the city", which is a search-time idea. */}
-      <Field label="From *"><AirportAutocomplete required allowGroups={false} value={f.from ?? ""} onChange={(v) => updateFlight({ from: v })} className={inputClass} placeholder="City or airport — e.g. New York, JFK" /></Field>
-      <Field label="To *"><AirportAutocomplete required allowGroups={false} value={f.to ?? ""} onChange={(v) => updateFlight({ to: v })} className={inputClass} placeholder="City or airport — e.g. Kyiv, KBP" /></Field>
-      <Field label="Airline"><input className={inputClass} value={f.airline ?? ""} onChange={(e) => setF({ ...f, airline: e.target.value })} /></Field>
-      <Field label="Flight #"><input className={inputClass} value={f.flightNo ?? ""} onChange={(e) => setF({ ...f, flightNo: e.target.value })} placeholder="e.g. LY1" /></Field>
-      <Field label="Date *"><DateField ariaLabel="Flight date" required className={inputClass} value={f.date ?? ""} onChange={(date) => updateFlight({ date })} /></Field>
-      <Field label="Departs"><input type="time" className={inputClass} value={f.departTime ?? ""} onChange={(e) => setF({ ...f, departTime: e.target.value })} /></Field>
-      <Field label="Arrives"><input type="time" className={inputClass} value={f.arriveTime ?? ""} onChange={(e) => setF({ ...f, arriveTime: e.target.value })} /></Field>
-      <Field label="Landing date"><DateField ariaLabel="Landing date" className={inputClass} min={f.date} value={f.arriveDate ?? ""} onChange={(arriveDate) => setF({ ...f, arriveDate })} /></Field>
-      <Field label="Booking reference"><input className={inputClass} value={f.confirmation ?? ""} onChange={(e) => setF({ ...f, confirmation: e.target.value })} placeholder="e.g. XR4K9T" /></Field>
-      {units && units.length > 1 && (
-        <Field label="Who is this for">
-          <select className={inputClass} value={f.unitKey ?? ""} onChange={(e) => setF({ ...f, unitKey: e.target.value || undefined })}>
-            <option value="">Everyone on the trip</option>
-            {units.map((u) => <option key={u.unitKey} value={u.unitKey}>{u.label}</option>)}
-          </select>
-        </Field>
-      )}
+      {expanded && (
+        <>
+          {/* allowGroups={false} — a booked flight lands at one specific airport,
+              never "all airports in the city", which is a search-time idea. */}
+          <Field label="From *"><AirportAutocomplete required allowGroups={false} value={f.from ?? ""} onChange={(v) => updateFlight({ from: v })} className={inputClass} placeholder="City or airport — e.g. New York, JFK" /></Field>
+          <Field label="To *"><AirportAutocomplete required allowGroups={false} value={f.to ?? ""} onChange={(v) => updateFlight({ to: v })} className={inputClass} placeholder="City or airport — e.g. Kyiv, KBP" /></Field>
+          <Field label="Date *"><DateField ariaLabel="Flight date" required className={inputClass} value={f.date ?? ""} onChange={(date) => updateFlight({ date })} /></Field>
+          <Field label="Departs"><input type="time" className={inputClass} value={f.departTime ?? ""} onChange={(e) => setF({ ...f, departTime: e.target.value })} /></Field>
+          <Field label="Arrives"><input type="time" className={inputClass} value={f.arriveTime ?? ""} onChange={(e) => setF({ ...f, arriveTime: e.target.value })} /></Field>
+          <Field label="Landing date"><DateField ariaLabel="Landing date" className={inputClass} min={f.date} value={f.arriveDate ?? ""} onChange={(arriveDate) => setF({ ...f, arriveDate })} /></Field>
+          <Field label="Booking reference"><input className={inputClass} value={f.confirmation ?? ""} onChange={(e) => setF({ ...f, confirmation: e.target.value })} placeholder="e.g. XR4K9T" /></Field>
+          {units && units.length > 1 && (
+            <Field label="Who is this for">
+              <select className={inputClass} value={f.unitKey ?? ""} onChange={(e) => setF({ ...f, unitKey: e.target.value || undefined })}>
+                <option value="">Everyone on the trip</option>
+                {units.map((u) => <option key={u.unitKey} value={u.unitKey}>{u.label}</option>)}
+              </select>
+            </Field>
+          )}
 
-      {overnight?.note && (
-        <p className={`sm:col-span-2 lg:col-span-3 border-l-4 px-3 py-2 text-xs leading-5 ${overnight.detected ? "border-[var(--gold)] bg-[var(--cream)] text-[var(--navy)]" : "border-stone-300 bg-stone-50 text-stone-600"}`}>
-          <strong>{overnight.detected ? "Overnight flight" : "Landing date"}</strong> — {overnight.note}
-          {overnight.detected && " Leave the landing date empty and this is what will be used; fill it in only to correct it."}
-        </p>
-      )}
-
+          {overnight?.note && (
+            <p className={`sm:col-span-2 lg:col-span-3 border-l-4 px-3 py-2 text-xs leading-5 ${overnight.detected ? "border-[var(--gold)] bg-[var(--cream)] text-[var(--navy)]" : "border-stone-300 bg-stone-50 text-stone-600"}`}>
+              <strong>{overnight.detected ? "Overnight flight" : "Landing date"}</strong> — {overnight.note}
+              {overnight.detected && " Leave the landing date empty and this is what will be used; fill it in only to correct it."}
+            </p>
+          )}
       {/* Connections belong to this one journey. Entering them as separate
           flights made the planner think the traveler had arrived, needed a bed
           in the connecting city, and had a free day there. */}
@@ -1909,6 +1940,8 @@ function FlightForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
           </div>
         )}
       </div>
+        </>
+      )}
     </FormShell>
   );
 }
@@ -1925,9 +1958,15 @@ function LodgingForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
 }) {
   const [l, setL] = useState<Partial<ItinLodging>>(initial ?? { type: "hotel", checkIn: startDate });
   const overnight = l.type === "overnight-transit";
+  // OPENS ASKING WHERE AND WHEN — NOT TWENTY BLANKS. Editing starts expanded,
+  // same reasoning as FlightForm just above: nothing to fold about a stay
+  // already filled in. Adding a new one opens itself once a pick fills in an
+  // address and a phone number worth reviewing.
+  const [expanded, setExpanded] = useState(Boolean(initial));
 
   function pickLodging(g: LodgingResult) {
     setL((prev) => ({ ...prev, name: g.name, address: g.address ?? prev.address, phone: g.phone ?? prev.phone, notes: prev.notes || g.notes }));
+    setExpanded(true);
   }
 
   // From the general hotel lookup (any hotel, anywhere) — unlike the
@@ -1935,6 +1974,7 @@ function LodgingForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
   // picking it also fills the map pin and the drive times.
   function pickPlace(p: PlaceLodgingResult) {
     setL((prev) => ({ ...prev, name: p.name, address: p.address ?? prev.address, coordinates: p.coordinates ?? prev.coordinates, phone: p.phone ?? prev.phone }));
+    setExpanded(true);
   }
 
   // A stay is a number of nights, so check-out is the next day at the
@@ -1984,22 +2024,33 @@ function LodgingForm({ startDate, initial, units, onAdd, onRemove, onCancel }: {
       <Field label="Type"><select className={inputClass} value={l.type ?? "hotel"} onChange={(e) => setL({ ...l, type: e.target.value as LodgingType })}><option value="hotel">Hotel / guesthouse</option><option value="overnight-transit">Overnight bus / flight (sleep in transit)</option><option value="other">Other (family, apartment…)</option></select></Field>
       {!overnight && <Field label="Name *"><input required className={inputClass} value={l.name ?? ""} onChange={(e) => setL({ ...l, name: e.target.value })} /></Field>}
       {overnight && <Field label="Bus or flight"><input className={inputClass} value={l.name ?? ""} placeholder="e.g. overnight bus to Uman" onChange={(e) => setL({ ...l, name: e.target.value })} /></Field>}
-      {!overnight && <Field label="Address"><AddressAutocomplete value={l.address ?? ""} onChange={(address, coords) => setL({ ...l, address, coordinates: coords || l.coordinates })} className={inputClass} placeholder="Start typing the hotel address…" /></Field>}
-      {!overnight && <Field label="Phone"><input type="tel" className={inputClass} value={l.phone ?? ""} onChange={(e) => setL({ ...l, phone: e.target.value })} placeholder="Front desk / host" /></Field>}
       <Field label={overnight ? "Night of *" : "Check-in *"}><DateField ariaLabel="Check-in date" required className={inputClass} value={checkIn} onChange={(nextIn) => {
         // Pushing check-in past check-out carries check-out with it.
         setL({ ...l, checkIn: nextIn, checkOut: correctedEnd(nextIn, l.checkOut ?? "", "exclusive") });
       }} /></Field>
       {!overnight && <Field label="Check-out *"><DateField ariaLabel="Check-out date" required className={inputClass} min={minCheckOut} value={l.checkOut ?? ""} onChange={(checkOut) => setL({ ...l, checkOut: correctedEnd(checkIn, checkOut, "exclusive") })} /></Field>}
-      {!overnight && <Field label="Booking reference"><input className={inputClass} value={l.confirmation ?? ""} onChange={(e) => setL({ ...l, confirmation: e.target.value })} placeholder="What the hotel gave you" /></Field>}
-      <Field label="Notes"><input className={inputClass} value={l.notes ?? ""} onChange={(e) => setL({ ...l, notes: e.target.value })} placeholder="Late check-in, kitchen, minyan times…" /></Field>
-      {units && units.length > 1 && (
-        <Field label="Who is this for">
-          <select className={inputClass} value={l.unitKey ?? ""} onChange={(e) => setL({ ...l, unitKey: e.target.value || undefined })}>
-            <option value="">Everyone on the trip</option>
-            {units.map((u) => <option key={u.unitKey} value={u.unitKey}>{u.label}</option>)}
-          </select>
-        </Field>
+      {!expanded && (
+        <div className="sm:col-span-2 lg:col-span-3">
+          <button type="button" onClick={() => setExpanded(true)} className="text-xs font-semibold text-stone-500 underline">
+            + Address, phone, booking reference…
+          </button>
+        </div>
+      )}
+      {expanded && (
+        <>
+          {!overnight && <Field label="Address"><AddressAutocomplete value={l.address ?? ""} onChange={(address, coords) => setL({ ...l, address, coordinates: coords || l.coordinates })} className={inputClass} placeholder="Start typing the hotel address…" /></Field>}
+          {!overnight && <Field label="Phone"><input type="tel" className={inputClass} value={l.phone ?? ""} onChange={(e) => setL({ ...l, phone: e.target.value })} placeholder="Front desk / host" /></Field>}
+          {!overnight && <Field label="Booking reference"><input className={inputClass} value={l.confirmation ?? ""} onChange={(e) => setL({ ...l, confirmation: e.target.value })} placeholder="What the hotel gave you" /></Field>}
+          <Field label="Notes"><input className={inputClass} value={l.notes ?? ""} onChange={(e) => setL({ ...l, notes: e.target.value })} placeholder="Late check-in, kitchen, minyan times…" /></Field>
+          {units && units.length > 1 && (
+            <Field label="Who is this for">
+              <select className={inputClass} value={l.unitKey ?? ""} onChange={(e) => setL({ ...l, unitKey: e.target.value || undefined })}>
+                <option value="">Everyone on the trip</option>
+                {units.map((u) => <option key={u.unitKey} value={u.unitKey}>{u.label}</option>)}
+              </select>
+            </Field>
+          )}
+        </>
       )}
     </FormShell>
   );
@@ -2163,6 +2214,11 @@ function HotelPlacePicker({ onPick }: { onPick: (p: PlaceLodgingResult) => void 
 
 function ActivityForm({ startDate, units, onAdd, itineraries = false }: { startDate: string; units?: Array<{ unitKey: string; label: string }>; onAdd: (a: ItinActivity) => void; itineraries?: boolean }) {
   const [a, setA] = useState<Partial<ItinActivity>>({ date: startDate });
+  // OPENS ASKING WHAT AND WHEN — NOT TWENTY BLANKS. There is no `initial` on
+  // this form at all (an existing stop is changed through EditStopForm on the
+  // day card, not here), so this always starts closed and opens itself once a
+  // pick fills in an address worth reviewing.
+  const [expanded, setExpanded] = useState(false);
 
   function pickKever(k: KeverResult) {
     setA((prev) => ({
@@ -2177,6 +2233,7 @@ function ActivityForm({ startDate, units, onAdd, itineraries = false }: { startD
       country: k.country,
       notes: prev.notes || k.notes,
     }));
+    setExpanded(true);
   }
 
   // The other half of a day. Deliberately does NOT set keverSlug — that field
@@ -2196,6 +2253,7 @@ function ActivityForm({ startDate, units, onAdd, itineraries = false }: { startD
       // works at all — then whatever practical note came with the entry.
       notes: prev.notes || x.notes || undefined,
     }));
+    setExpanded(true);
   }
 
   return (
@@ -2214,21 +2272,32 @@ function ActivityForm({ startDate, units, onAdd, itineraries = false }: { startD
         {a.keverSlug && <p className="mt-2 text-xs font-semibold text-emerald-700">Filled from our directory: {a.name}.</p>}
       </div>
       <Field label="Name *"><input required className={inputClass} value={a.name ?? ""} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder={itineraries ? "Museum, meal, activity…" : "Kever, museum, meal…"} /></Field>
-      <Field label="Address"><AddressAutocomplete value={a.address ?? ""} onChange={(address, coords) => setA({ ...a, address, coordinates: coords || a.coordinates })} className={inputClass} placeholder="Start typing the address…" /></Field>
-      <Field label="Coordinates"><input className={inputClass} value={a.coordinates ?? ""} placeholder="Auto-filled from the address" onChange={(e) => setA({ ...a, coordinates: e.target.value })} /></Field>
-      <Field label="Phone"><input type="tel" className={inputClass} value={a.phone ?? ""} onChange={(e) => setA({ ...a, phone: e.target.value })} placeholder="Contact number for this stop" /></Field>
-      <Field label="Link"><input type="url" className={inputClass} value={a.href ?? ""} onChange={(e) => setA({ ...a, href: e.target.value })} placeholder={itineraries ? "https://… (map, booking, website)" : "https://… (map, booking, our kever page)"} /></Field>
       <Field label="Date (leave empty to let the planner place it)"><DateField ariaLabel="Stop date" className={inputClass} value={a.date ?? ""} onChange={(date) => setA({ ...a, date })} /></Field>
       <Field label="Time"><input type="time" className={inputClass} value={a.startTime ?? ""} onChange={(e) => setA({ ...a, startTime: e.target.value })} /></Field>
-      <Field label="Duration (min)"><input type="number" min={0} className={inputClass} value={a.durationMins ?? ""} onChange={(e) => setA({ ...a, durationMins: Number(e.target.value) || undefined })} /></Field>
-      <Field label="Notes"><input className={inputClass} value={a.notes ?? ""} onChange={(e) => setA({ ...a, notes: e.target.value })} /></Field>
-      {units && units.length > 1 && (
-        <Field label="Who is this for">
-          <select className={inputClass} value={a.unitKey ?? ""} onChange={(e) => setA({ ...a, unitKey: e.target.value || undefined })}>
-            <option value="">Everyone on the trip</option>
-            {units.map((u) => <option key={u.unitKey} value={u.unitKey}>{u.label}</option>)}
-          </select>
-        </Field>
+      {!expanded && (
+        <div className="sm:col-span-2 lg:col-span-3">
+          <button type="button" onClick={() => setExpanded(true)} className="text-xs font-semibold text-stone-500 underline">
+            + Address, phone, link, duration, notes…
+          </button>
+        </div>
+      )}
+      {expanded && (
+        <>
+          <Field label="Address"><AddressAutocomplete value={a.address ?? ""} onChange={(address, coords) => setA({ ...a, address, coordinates: coords || a.coordinates })} className={inputClass} placeholder="Start typing the address…" /></Field>
+          <Field label="Coordinates"><input className={inputClass} value={a.coordinates ?? ""} placeholder="Auto-filled from the address" onChange={(e) => setA({ ...a, coordinates: e.target.value })} /></Field>
+          <Field label="Phone"><input type="tel" className={inputClass} value={a.phone ?? ""} onChange={(e) => setA({ ...a, phone: e.target.value })} placeholder="Contact number for this stop" /></Field>
+          <Field label="Link"><input type="url" className={inputClass} value={a.href ?? ""} onChange={(e) => setA({ ...a, href: e.target.value })} placeholder={itineraries ? "https://… (map, booking, website)" : "https://… (map, booking, our kever page)"} /></Field>
+          <Field label="Duration (min)"><input type="number" min={0} className={inputClass} value={a.durationMins ?? ""} onChange={(e) => setA({ ...a, durationMins: Number(e.target.value) || undefined })} /></Field>
+          <Field label="Notes"><input className={inputClass} value={a.notes ?? ""} onChange={(e) => setA({ ...a, notes: e.target.value })} /></Field>
+          {units && units.length > 1 && (
+            <Field label="Who is this for">
+              <select className={inputClass} value={a.unitKey ?? ""} onChange={(e) => setA({ ...a, unitKey: e.target.value || undefined })}>
+                <option value="">Everyone on the trip</option>
+                {units.map((u) => <option key={u.unitKey} value={u.unitKey}>{u.label}</option>)}
+              </select>
+            </Field>
+          )}
+        </>
       )}
     </FormShell>
   );

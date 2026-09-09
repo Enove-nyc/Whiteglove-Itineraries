@@ -135,3 +135,61 @@ describe("a day card is laid out the way the finished itinerary is", () => {
     assert.match(src, /actions=\{/);
   });
 });
+
+/**
+ * THE ITEM FORMS OPEN ASKING WHAT THEY NEED — NOT TWENTY BLANKS.
+ *
+ * The owner's example was a flight: airline, number, date. Everything else —
+ * From/To, times, booking reference, connections for a flight; address,
+ * phone, booking reference for a stay; address, coordinates, phone, link,
+ * duration for a stop — is folded behind a disclosure that opens itself the
+ * moment there is something worth looking at: a successful lookup or pick, a
+ * failed submit pointing at what is missing, or the traveller asking for it.
+ * Editing something already on the trip starts open; there is nothing to
+ * progressively disclose about a flight or a stay already filled in.
+ */
+describe("the item forms open minimal and expand, rather than showing everything at once", () => {
+  const src = code("components/ItineraryBuilder.tsx");
+
+  it("FlightForm starts closed for a new flight, open for editing one", () => {
+    assert.match(src, /const \[expanded, setExpanded\] = useState\(Boolean\(initial\)\);/);
+  });
+
+  it("a failed submit opens whatever it is complaining about", () => {
+    const at = src.indexOf('setError(`Please add the ${missing.join(", ")}.`);');
+    assert.ok(at > -1);
+    assert.match(src.slice(at, at + 200), /setExpanded\(true\)/);
+  });
+
+  it("a successful flight lookup opens the fold, since there is now something to check", () => {
+    const at = src.indexOf("Found: ${data.flight.airline");
+    assert.ok(at > -1);
+    assert.match(src.slice(at - 300, at), /setExpanded\(true\)/);
+  });
+
+  it("there is a way in besides a successful lookup or a rejected submit", () => {
+    assert.match(src, /or enter the details by hand/);
+  });
+
+  it("LodgingForm and ActivityForm fold the same way, and every pick opens them", () => {
+    assert.match(src, /\+ Address, phone, booking reference…/);
+    assert.match(src, /\+ Address, phone, link, duration, notes…/);
+    // pickLodging, pickPlace, pickKever, pickAttraction — four pickers across
+    // the two forms, each ending its own function with the same call.
+    const setExpandedTrue = (src.match(/setExpanded\(true\);/g) ?? []).length;
+    assert.ok(setExpandedTrue >= 6, `expected at least 6 setExpanded(true) call sites (flight error + flight lookup + 4 pickers), found ${setExpandedTrue}`);
+  });
+
+  it("required fields stay outside the fold — Name, and the dates a stay or a flight cannot exist without", () => {
+    // If a required field were hidden by default, pressing Add on the closed
+    // form would look like it did nothing, with no error to explain why.
+    const lodging = src.slice(src.indexOf("function LodgingForm"), src.indexOf("function LodgingPicker"));
+    const lodgingFold = lodging.indexOf("{expanded && (");
+    assert.ok(lodging.indexOf('Field label="Name') < lodgingFold, "Name must render before the fold in LodgingForm");
+    assert.ok(lodging.indexOf("Check-in") < lodgingFold, "Check-in must render before the fold in LodgingForm");
+
+    const activity = src.slice(src.indexOf("function ActivityForm"), src.indexOf("function KeverPicker"));
+    const activityFold = activity.indexOf("{expanded && (");
+    assert.ok(activity.indexOf('Field label="Name') < activityFold, "Name must render before the fold in ActivityForm");
+  });
+});
