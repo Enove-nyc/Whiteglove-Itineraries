@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   describeLinks,
@@ -316,5 +317,24 @@ describe("a Stay22 link is a second way for a search to earn", () => {
     const said = describeSlot("flights", SHORT, KAYAK);
     assert.match(said, /Stay22/, said);
     assert.doesNotMatch(said, /Travelpayouts/, `named the wrong network: ${said}`);
+  });
+});
+
+describe("the Emerald verification snippet stays off the admin dashboard", () => {
+  // It loaded on every page, /admin included, from the root layout — a
+  // private dashboard handed a look to a third-party affiliate script that
+  // has nothing to verify there. The affiliate programme only needs it on
+  // the public pages it is confirming ownership of.
+  const src = readFileSync("components/TravelpayoutsScript.tsx", "utf8");
+
+  it("checks the path before rendering the script", () => {
+    assert.match(src, /usePathname/);
+    assert.match(src, /pathname\?\.startsWith\("\/admin"\)/);
+  });
+
+  it("bails out before the script tag it would otherwise render", () => {
+    const guard = src.indexOf('startsWith("/admin")');
+    const script = src.indexOf("emrldco.com");
+    assert.ok(guard > -1 && script > -1 && guard < script);
   });
 });
