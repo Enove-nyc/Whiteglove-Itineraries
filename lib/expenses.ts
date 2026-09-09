@@ -53,10 +53,24 @@ export async function listExpenses(): Promise<Expense[]> {
   }
 }
 
+// Up to 10,000 entries, the same reason receipts below are POSTed rather than
+// put in the URL: a list that long can grow past what a URL is allowed to
+// carry, and the failure is invisible from here — the caller just never finds
+// out the newest expense was never saved.
 async function writeExpenses(items: Expense[]) {
-  const payload = encodeURIComponent(JSON.stringify(items.slice(0, 10000)));
-  const res = await redis(`set/${encodeURIComponent(KEY)}/${payload}`);
-  return Boolean(res);
+  const config = redisConfig();
+  if (!config) return false;
+  try {
+    const res = await fetch(`${config.url}/set/${encodeURIComponent(KEY)}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.token}` },
+      body: JSON.stringify(items.slice(0, 10000)),
+      cache: "no-store",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function addExpense(input: Omit<Expense, "id" | "createdAt">): Promise<Expense | null> {

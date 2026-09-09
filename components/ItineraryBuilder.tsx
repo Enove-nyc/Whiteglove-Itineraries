@@ -1489,7 +1489,11 @@ function EditStopForm({ activity, allDates, onSave, onRemove, onCancel }: {
         <Field label="Start time"><input type="time" className={inputClass} value={f.startTime ?? ""} onChange={(e) => setF({ ...f, startTime: e.target.value })} /></Field>
         <Field label="How long (minutes)"><input type="number" min={0} step={15} className={inputClass} value={f.durationMins ?? ""} onChange={(e) => setF({ ...f, durationMins: Number(e.target.value) || undefined })} placeholder="90" /></Field>
         <Field label="Phone"><input type="tel" className={inputClass} value={f.phone ?? ""} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
-        <Field label="Link"><input type="url" className={inputClass} value={f.href ?? ""} onChange={(e) => setF({ ...f, href: e.target.value })} /></Field>
+        {/* Not type="url": a stop picked from our own directory (a shul, a
+            mikvah) is filled in with a same-site relative link when it has no
+            outside website, and the browser's own URL validation refused
+            that silently — "Save changes" looked like it did nothing. */}
+        <Field label="Link"><input type="text" className={inputClass} value={f.href ?? ""} onChange={(e) => setF({ ...f, href: e.target.value })} /></Field>
         <Field label="Notes"><input className={inputClass} value={f.notes ?? ""} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -2286,7 +2290,12 @@ function ActivityForm({ startDate, units, onAdd, itineraries = false }: { startD
           <Field label="Address"><AddressAutocomplete value={a.address ?? ""} onChange={(address, coords) => setA({ ...a, address, coordinates: coords || a.coordinates })} className={inputClass} placeholder="Start typing the address…" /></Field>
           <Field label="Coordinates"><input className={inputClass} value={a.coordinates ?? ""} placeholder="Auto-filled from the address" onChange={(e) => setA({ ...a, coordinates: e.target.value })} /></Field>
           <Field label="Phone"><input type="tel" className={inputClass} value={a.phone ?? ""} onChange={(e) => setA({ ...a, phone: e.target.value })} placeholder="Contact number for this stop" /></Field>
-          <Field label="Link"><input type="url" className={inputClass} value={a.href ?? ""} onChange={(e) => setA({ ...a, href: e.target.value })} placeholder={itineraries ? "https://… (map, booking, website)" : "https://… (map, booking, our kever page)"} /></Field>
+          {/* Not type="url": picking a kever or an attraction with no outside
+              website (pickKever, pickAttraction below) fills this from our
+              own site — a same-site relative link — and the browser's own
+              URL validation refused that silently, so "Add" looked like it
+              did nothing. */}
+          <Field label="Link"><input type="text" className={inputClass} value={a.href ?? ""} onChange={(e) => setA({ ...a, href: e.target.value })} placeholder={itineraries ? "https://… (map, booking, website)" : "https://… (map, booking, our kever page)"} /></Field>
           <Field label="Duration (min)"><input type="number" min={0} className={inputClass} value={a.durationMins ?? ""} onChange={(e) => setA({ ...a, durationMins: Number(e.target.value) || undefined })} /></Field>
           <Field label="Notes"><input className={inputClass} value={a.notes ?? ""} onChange={(e) => setA({ ...a, notes: e.target.value })} /></Field>
           {units && units.length > 1 && (

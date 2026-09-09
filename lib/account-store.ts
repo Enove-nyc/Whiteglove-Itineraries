@@ -343,12 +343,24 @@ function redisConfig() {
   return url && token ? { url: url.replace(/\/$/, ""), token } : null;
 }
 
-async function redis<T>(command: string) {
+/**
+ * `body`, when given, is sent as the raw POST body instead of being folded
+ * into the URL. Upstash's REST API takes a command's last argument either
+ * way; the body form exists because a long enough value in the URL itself
+ * gets refused — by a proxy in front of Upstash, or by Upstash itself — and
+ * that refusal has no symptom a caller here would ever see (see writeJson).
+ */
+async function redis<T>(command: string, body?: string) {
   const config = redisConfig();
   if (!config) return undefined;
   try {
     const response = await fetch(`${config.url}/${command}`, {
-      headers: { Authorization: `Bearer ${config.token}` },
+      method: body === undefined ? "GET" : "POST",
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        ...(body === undefined ? {} : { "Content-Type": "text/plain" }),
+      },
+      ...(body === undefined ? {} : { body }),
       cache: "no-store",
     });
     if (!response.ok) return undefined;
@@ -419,9 +431,19 @@ async function readJson<T>(key: string) {
   }
 }
 
+/**
+ * THE VALUE GOES IN THE BODY, NOT THE URL.
+ *
+ * It used to be `set/<key>/<url-encoded-json>`, and an account's stored data
+ * — a trip's itinerary above all, the one thing here with no natural size
+ * cap — grew into a URL long enough to be refused outright. The refusal is
+ * invisible from here (redis() returns undefined the same way it does for any
+ * other failure), so the caller believed the write happened and told the
+ * traveller "Saved", while whatever did not fit — a hotel, an activity, an
+ * entire third leg of a trip — was silently never written.
+ */
 async function writeJson(key: string, value: unknown) {
-  const payload = encodeURIComponent(JSON.stringify(value));
-  const response = await redis(`set/${encodeURIComponent(key)}/${payload}`);
+  const response = await redis(`set/${encodeURIComponent(key)}`, JSON.stringify(value));
   return Boolean(response);
 }
 
