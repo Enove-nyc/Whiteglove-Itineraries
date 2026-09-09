@@ -1,14 +1,17 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { inboundAddress, pendingToShow } from "@/data/inbound-import";
+import { inboundAddress, MAX_TRUSTED_SENDERS, pendingToShow, sharedInboundAddress } from "@/data/inbound-import";
 import { accountCookieName, getCurrentAccountData } from "@/lib/account-store";
 import {
+  addTrustedSender,
   clearPending,
   ensureInboundToken,
   inboundDomain,
   inboundMailReady,
   inboundStoreAvailable,
+  listTrustedSenders,
   readPending,
+  removeTrustedSender,
   rotateInboundToken,
 } from "@/lib/inbound-import-store";
 import { sameOrigin } from "@/lib/secure-access";
@@ -49,9 +52,22 @@ export async function GET() {
     const waiting = await readPending(email).catch(() => []);
     return NextResponse.json({ address: "", pending: pendingToShow(waiting, new Date().toISOString()) });
   }
-  const [token, pending] = await Promise.all([ensureInboundToken(email), readPending(email)]);
+  const domain = inboundDomain(BRAND_DOMAIN[await currentBrand()]);
+  const [token, pending, trustedSenders] = await Promise.all([
+    ensureInboundToken(email),
+    readPending(email),
+    listTrustedSenders(email),
+  ]);
   return NextResponse.json({
-    address: inboundAddress(token, inboundDomain(BRAND_DOMAIN[await currentBrand()])),
+    // THE ONE ADDRESS SHOWN FIRST NOW: shared, matched by sender rather than
+    // by a private token. The private address still exists underneath — see
+    // privateAddress — and still resolves; showing it second is the whole of
+    // what changed.
+    address: sharedInboundAddress(domain),
+    privateAddress: inboundAddress(token, domain),
+    accountEmail: email,
+    trustedSenders,
+    maxTrustedSenders: MAX_TRUSTED_SENDERS,
     pending: pendingToShow(pending, new Date().toISOString()),
   });
 }
@@ -63,7 +79,7 @@ export async function POST(request: NextRequest) {
   const email = await who();
   if (!email) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
 
-  const body = (await request.json().catch(() => null)) as { action?: unknown; id?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { action?: unknown; id?: unknown; sender?: unknown } | null;
 
   if (body?.action === "rotate") {
     const token = await rotateInboundToken(email);
@@ -72,6 +88,15 @@ export async function POST(request: NextRequest) {
   if (body?.action === "clear" && typeof body.id === "string") {
     const ok = await clearPending(email, body.id);
     return NextResponse.json({ ok }, { status: ok ? 200 : 400 });
+  }
+  if (body?.action === "addSender" && typeof body.sender === "string") {
+    const result = await addTrustedSender(email, body.sender);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json({ ok: true, trustedSenders: await listTrustedSenders(email) });
+  }
+  if (body?.action === "removeSender" && typeof body.sender === "string") {
+    const ok = await removeTrustedSender(email, body.sender);
+    return NextResponse.json({ ok, trustedSenders: await listTrustedSenders(email) }, { status: ok ? 200 : 400 });
   }
   return NextResponse.json({ error: "Say what to do." }, { status: 400 });
 }

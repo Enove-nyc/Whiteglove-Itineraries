@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { addressedToMailbox, senderAddress, tokenFromRecipients, type MatchedBy, type PendingImport } from "@/data/inbound-import";
 import { readImportDataUrl } from "@/data/smart-import-files";
 import { isAccountVerified } from "@/lib/account-store";
-import { accountForToken, addPending, inboundStoreAvailable } from "@/lib/inbound-import-store";
+import { accountForToken, accountForTrustedSender, addPending, inboundStoreAvailable } from "@/lib/inbound-import-store";
 import { extractSmartImport } from "@/lib/smart-import";
 
 export const dynamic = "force-dynamic";
@@ -172,14 +172,26 @@ export async function POST(request: NextRequest) {
 
   if (!account && !token && addressedToMailbox(recipients)) {
     const sender = senderAddress(from);
-    // A verified account only. Somebody who registered an address and never
-    // confirmed it does not get a queue, and so cannot be used to open one.
-    if (sender && (await isAccountVerified(sender).catch(() => false))) {
-      // Resolved the same way the account screen resolves it — see who() in
-      // app/api/account/inbound/route.ts. No staff logins on this deployment,
-      // so an account is its own queue.
-      account = sender;
-      matchedBy = "sender";
+    if (sender) {
+      // A verified account only. Somebody who registered an address and never
+      // confirmed it does not get a queue, and so cannot be used to open one.
+      if (await isAccountVerified(sender).catch(() => false)) {
+        // Resolved the same way the account screen resolves it — see who() in
+        // app/api/account/inbound/route.ts. No staff logins on this
+        // deployment, so an account is its own queue.
+        account = sender;
+        matchedBy = "sender";
+      } else {
+        // Not the account's own login address — maybe a spouse or a travel
+        // agent, forwarding on somebody's behalf, from THEIR address rather
+        // than the traveller's. Only reaches an account that put this
+        // address on its own list; see addTrustedSender.
+        const trusted = await accountForTrustedSender(sender).catch(() => "");
+        if (trusted) {
+          account = trusted;
+          matchedBy = "sender";
+        }
+      }
     }
   }
 

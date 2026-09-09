@@ -14,11 +14,15 @@
 import { randomInt } from "crypto";
 import { identityKey } from "@/lib/identity";
 import { INBOUND_WORDS } from "@/data/inbound-words";
-import { TOKEN_WORDS, pendingToShow, type PendingImport } from "@/data/inbound-import";
+import { MAX_TRUSTED_SENDERS, TOKEN_WORDS, pendingToShow, senderAddress, trustedSenderProblem, type PendingImport } from "@/data/inbound-import";
 
 const TOKEN_PREFIX = "white-glove:inbound-token:";
 const QUEUE_PREFIX = "white-glove:inbound-pending:";
 const ADDRESS_PREFIX = "white-glove:inbound-address:";
+/** sender email -> owning account. The reverse of TOKEN_PREFIX, for the shared address. */
+const TRUSTED_SENDER_PREFIX = "white-glove:trusted-sender:";
+/** account -> the list it sees on its own settings screen. */
+const TRUSTED_SENDERS_LIST_PREFIX = "white-glove:trusted-senders:";
 
 export function inboundStoreAvailable() {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
@@ -134,6 +138,68 @@ export async function rotateInboundToken(account: string): Promise<string> {
   if (old) await redis(`del/${key(TOKEN_PREFIX, old)}`);
   await redis(`del/${key(ADDRESS_PREFIX, id)}`);
   return ensureInboundToken(account);
+}
+
+/**
+ * Somebody else this account's mail may arrive from — a spouse, a travel
+ * agent — at the same "held for review, labelled unconfirmed" trust level as
+ * the account's own address. See trustedSenderProblem in
+ * data/inbound-import.ts for the one rule governing what may be added.
+ *
+ * TWO KEYS AGAIN, for the same reason the token has two: the inbound route
+ * needs sender → account to route a message, and the settings screen needs
+ * account → its own list to show and let go of one. Written together,
+ * removed together — see removeTrustedSender.
+ */
+export async function addTrustedSender(account: string, candidate: string): Promise<{ ok: boolean; error?: string }> {
+  if (!account || !inboundStoreAvailable()) return { ok: false, error: "Not available right now." };
+  const clean = senderAddress(candidate);
+  const current = await listTrustedSenders(account);
+  const problem = trustedSenderProblem(current, candidate);
+  if (problem) return { ok: false, error: problem };
+  // The account's own address needs no entry — it is already checked first,
+  // ahead of this list, in the inbound route. Saying yes without writing
+  // anything keeps the settings screen from showing a pointless duplicate.
+  if (clean === account.toLowerCase()) return { ok: true };
+  const wrote = await redis(`set/${key(TRUSTED_SENDER_PREFIX, clean)}`, JSON.stringify({ account, at: new Date().toISOString() }));
+  if (wrote === null) return { ok: false, error: "Could not save that just now." };
+  await redis(`set/${key(TRUSTED_SENDERS_LIST_PREFIX, identityKey(account))}`, JSON.stringify([...current, clean]));
+  return { ok: true };
+}
+
+export async function removeTrustedSender(account: string, candidate: string): Promise<boolean> {
+  if (!account || !inboundStoreAvailable()) return false;
+  const clean = senderAddress(candidate);
+  if (!clean) return false;
+  await redis(`del/${key(TRUSTED_SENDER_PREFIX, clean)}`);
+  const current = await listTrustedSenders(account);
+  const wrote = await redis(`set/${key(TRUSTED_SENDERS_LIST_PREFIX, identityKey(account))}`, JSON.stringify(current.filter((s) => s !== clean)));
+  return wrote !== null;
+}
+
+export async function listTrustedSenders(account: string): Promise<string[]> {
+  if (!account || !inboundStoreAvailable()) return [];
+  const raw = await redis<string>(`get/${key(TRUSTED_SENDERS_LIST_PREFIX, identityKey(account))}`);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string").slice(0, MAX_TRUSTED_SENDERS) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Whose account does this sender forward into? Empty when nobody has claimed it. */
+export async function accountForTrustedSender(sender: string): Promise<string> {
+  if (!sender || !inboundStoreAvailable()) return "";
+  const raw = await redis<string>(`get/${key(TRUSTED_SENDER_PREFIX, sender)}`);
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as { account?: unknown };
+    return typeof parsed.account === "string" ? parsed.account : "";
+  } catch {
+    return "";
+  }
 }
 
 export async function readPending(account: string): Promise<PendingImport[]> {

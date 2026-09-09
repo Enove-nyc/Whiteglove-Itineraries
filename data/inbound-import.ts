@@ -49,6 +49,47 @@ export function inboundAddress(token: string, domain: string): string {
 }
 
 /**
+ * THE ADDRESS EVERYBODY IS SHOWN NOW: one to remember, matched by sender.
+ *
+ * The owner's word was that this should work "like all other sites" — one
+ * address, not a private token to go find. The private address above still
+ * exists and still resolves; it is what a trusted-sender match falls back to
+ * being labelled as unconfirmed instead of confirmed. What changed is which
+ * address the app hands somebody first.
+ */
+export function sharedInboundAddress(domain: string): string {
+  return domain ? `${INBOUND_MAILBOX}@${domain}` : "";
+}
+
+/**
+ * How many other addresses one account may forward from and still be found.
+ *
+ * Small on purpose. This is a traveller's own household and the people who
+ * book on their behalf — a spouse, a travel agent — not a mailing list. Each
+ * one added is a fully separate way in, at the same "unconfirmed, held for
+ * review" trust level as the account's own login address, so the number that
+ * can be added stays a number the owner would recognise as reasonable.
+ */
+export const MAX_TRUSTED_SENDERS = 6;
+
+/**
+ * Whether ADDING `candidate` to `current` is something to let happen.
+ *
+ * Pure, so the API route and its tests share one answer for "no" rather than
+ * two rules that can disagree. Three refusals: not a real address, already on
+ * the list, or the list is full. A sender that IS the account's own address is
+ * allowed through here — the route treats that as a no-op — because refusing
+ * it as a special case would be one more thing to explain for no benefit.
+ */
+export function trustedSenderProblem(current: readonly string[], candidate: string): string {
+  const clean = senderAddress(candidate);
+  if (!clean) return "That doesn't look like an email address.";
+  if (current.some((s) => s.toLowerCase() === clean)) return "That address is already on the list.";
+  if (current.length >= MAX_TRUSTED_SENDERS) return `Up to ${MAX_TRUSTED_SENDERS} addresses. Remove one to add another.`;
+  return "";
+}
+
+/**
  * The token out of whatever the provider says the message was sent to.
  *
  * Deliberately forgiving about the shape of the header — "To" can arrive as

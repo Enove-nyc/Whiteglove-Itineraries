@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { INBOUND_WORDS } from "@/data/inbound-words";
 import {
   MAX_PENDING,
+  MAX_TRUSTED_SENDERS,
   MAX_UNCONFIRMED_PENDING,
   TOKEN_WORDS,
   addressedToMailbox,
@@ -11,7 +12,9 @@ import {
   isUnconfirmed,
   pendingToShow,
   senderAddress,
+  sharedInboundAddress,
   tokenFromRecipients,
+  trustedSenderProblem,
   type PendingImport,
 } from "@/data/inbound-import";
 
@@ -179,4 +182,47 @@ test("only the address SHOWN depends on the domain — routing never does", () =
   // The account route builds the address with it; the inbound route never reads it.
   assert.ok(!route.includes("INBOUND_EMAIL_DOMAIN"), "the inbound route must not care which domain mail arrived on");
   assert.match(store, /export function inboundDomain/);
+});
+
+/* ------------------------------------------------------- the shared address */
+
+test("the shared address is the mailbox with no token, on whatever domain is given", () => {
+  assert.equal(sharedInboundAddress("whitegloveitineraries.com"), "trips@whitegloveitineraries.com");
+  assert.equal(sharedInboundAddress(""), "");
+});
+
+/* -------------------------------------------------------- trusted senders */
+
+test("a trusted sender must be a real address", () => {
+  for (const bad of ["not an address", "sarah@", "@example.com", "two@a.com, three@b.com", ""]) {
+    assert.notEqual(trustedSenderProblem([], bad), "", `"${bad}" should have been refused`);
+  }
+  assert.equal(trustedSenderProblem([], "sarah@example.com"), "");
+});
+
+test("refuses a sender already on the list, case-insensitively", () => {
+  assert.notEqual(trustedSenderProblem(["sarah@example.com"], "Sarah@Example.com"), "");
+  assert.equal(trustedSenderProblem(["sarah@example.com"], "someoneelse@example.com"), "");
+});
+
+test("refuses past MAX_TRUSTED_SENDERS, and the cap is the one figure everything else reads", () => {
+  const full = Array.from({ length: MAX_TRUSTED_SENDERS }, (_, i) => `sender${i}@example.com`);
+  assert.notEqual(trustedSenderProblem(full, "onemore@example.com"), "");
+  assert.equal(trustedSenderProblem(full.slice(1), "onemore@example.com"), "");
+});
+
+test("the inbound route checks a trusted sender AFTER a verified account, never before", () => {
+  const route = readFileSync(new URL("../app/api/inbound/confirmation/route.ts", import.meta.url), "utf8");
+  const verifiedIdx = route.indexOf("isAccountVerified(sender)");
+  const trustedIdx = route.indexOf("accountForTrustedSender(sender)");
+  assert.ok(verifiedIdx > -1 && trustedIdx > -1, "both checks should still be there");
+  assert.ok(verifiedIdx < trustedIdx, "a message from the account's OWN address must never fall through to the weaker check");
+});
+
+test("the account screen shows the shared address first and the private one second", () => {
+  const route = readFileSync(new URL("../app/api/account/inbound/route.ts", import.meta.url), "utf8");
+  const addressIdx = route.indexOf("address: sharedInboundAddress(domain)");
+  const privateIdx = route.indexOf("privateAddress: inboundAddress(token, domain)");
+  assert.ok(addressIdx > -1 && privateIdx > -1);
+  assert.ok(addressIdx < privateIdx, "the field named plainly `address` is the one meant to be shown first");
 });

@@ -29,7 +29,7 @@ test("the account route hands back no address until mail can arrive", () => {
 });
 
 test("the account panel draws nothing without an address", () => {
-  assert.match(panel, /if \(!address\) return null;/);
+  assert.match(panel, /if \(!state\.address\) return null;/);
 });
 
 test("the panel does not review anything itself — the planner does", () => {
@@ -58,8 +58,36 @@ test("the forwarding panel sits with the trips, not buried under Details", () =>
 test("the address can be changed, and never without being asked first", () => {
   assert.match(panel, /action: "rotate"/);
   // The confirm step gates the call — the button that rotates is only rendered
-  // once `confirming` is true, and the visible one only sets it.
-  assert.match(panel, /onClick=\{\(\) => setConfirming\(true\)\}/);
-  assert.match(panel, /\{confirming \? \(/);
+  // once `confirmingRotate` is true, and the visible one only sets it. Renamed
+  // from `confirming` when a second, unrelated "busy" state (adding a trusted
+  // sender) arrived and needed a name that would not collide with it.
+  assert.match(panel, /onClick=\{\(\) => setConfirmingRotate\(true\)\}/);
+  assert.match(panel, /\{confirmingRotate \? \(/);
   assert.match(panel, /stops working straight away/);
+});
+
+test("the shared address is what draws the panel, and it is labelled first", () => {
+  assert.match(panel, /setState\(\{ \.\.\.EMPTY, \.\.\.data \}\)/);
+  // `state.address` — the field the GET route names plainly `address` — is
+  // the shared one; see inbound-sender-fallback.test.ts for that ordering.
+  assert.match(panel, /state\.address/);
+});
+
+test("the private address is folded away, not gone", () => {
+  assert.match(panel, /Prefer a private address instead\?/);
+  assert.match(panel, /state\.privateAddress/);
+  assert.match(panel, /showPrivate/);
+});
+
+test("adding and removing a trusted sender both round-trip through the same endpoint the address does", () => {
+  assert.match(panel, /action: "addSender"/);
+  assert.match(panel, /action: "removeSender"/);
+  // Every write here is a POST to /api/account/inbound, same as rotate and
+  // clear — one endpoint, so sameOrigin() and the login check guard all of it.
+  assert.equal((panel.match(/fetch\("\/api\/account\/inbound"/g) ?? []).length, 5);
+});
+
+test("the trusted-sender list is capped, and the panel says so instead of just hiding the form", () => {
+  assert.match(panel, /state\.trustedSenders\.length < state\.maxTrustedSenders/);
+  assert.match(panel, /remove one above to add another/);
 });
