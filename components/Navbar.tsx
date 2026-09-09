@@ -267,6 +267,18 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
 
   return (
     <>
+      {/* HIDDEN INSIDE THE INSTALLED APP, ON EVERY PAGE — baked in here rather
+          than left for each page to wrap in .wg-web-chrome itself. That was
+          the rule from 7 September (app/page.tsx, app/advisor/page.tsx) and it
+          only covered those two: every other page that renders this Navbar —
+          the account pages, the agency screen, payments, the pipeline, forms,
+          the plain website's own /itinerary and /login — still showed the
+          website's own header inside the app, because hiding it was an
+          opt-in a page had to remember. It is not optional any more: nobody
+          running the installed app should ever see this site's own header,
+          on any page, so the component hides itself rather than asking to be
+          asked. See the in-app rules in globals.css (.wg-web-chrome). */}
+      <div className="wg-web-chrome">
       <nav
         ref={navRef}
         aria-label="Main"
@@ -532,6 +544,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
         )}
       </nav>
       <SitePromotions />
+      </div>
       {bottomBar && <MobileBottomBar signedIn={signedIn} brand={brand} />}
     </>
   );
