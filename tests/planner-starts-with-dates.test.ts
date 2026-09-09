@@ -91,3 +91,47 @@ describe("the builder waits for the dates before showing the rest", () => {
     assert.match(src, /aria-label=\{`Move \$\{a\.name\} earlier`\}/);
   });
 });
+
+/**
+ * THE EDITOR READS LIKE THE FINISHED ITINERARY.
+ *
+ * The owner's point was that the public sample is easier to read than the
+ * editor that produces it. It was: the sample lays every entry out as a time
+ * column, a kind, a title and a detail line, and the editor wrote the same
+ * facts as a sentence behind an emoji, with the time buried mid-sentence on a
+ * 24-hour clock the printed document never uses.
+ *
+ * These hold the shape, not the wording — the same grid as SiteView in
+ * components/SampleItineraryViews.tsx, and the same clock() the printed
+ * document formats with.
+ */
+describe("a day card is laid out the way the finished itinerary is", () => {
+  // `code()` strips comments, so these match the markup and not the notes above it.
+  const src = code("components/ItineraryBuilder.tsx");
+  const sample = code("components/SampleItineraryViews.tsx");
+
+  it("uses the very grid the finished itinerary uses", () => {
+    // Read from the sample rather than written out twice: if that layout
+    // changes, this fails instead of quietly letting the two drift.
+    const grid = /sm:grid-cols-\[5\.5rem_1fr\]/;
+    assert.match(sample, grid, "the finished itinerary should still use this grid");
+    assert.match(src, grid, "the editor should lay a day out the same way");
+  });
+
+  it("has one row component, shared by every kind of entry", () => {
+    assert.match(src, /function DayRow\(/);
+  });
+
+  it("formats every time with the printed document's clock, not a raw 24-hour string", () => {
+    assert.match(src, /import \{ clock \} from "@\/data\/itinerary-print"/);
+    // The three places a time is shown on a day card: the row itself, a stop's
+    // leaving time, and the day header's span.
+    assert.ok((src.match(/clock\(/g) ?? []).length >= 4, "every time on the card goes through clock()");
+    assert.doesNotMatch(src, /\{day\.startTime\}\n/, "the day header must not print a raw 24-hour time");
+  });
+
+  it("still gives every row its editing controls", () => {
+    // A row that reads beautifully and cannot be changed is not an editor.
+    assert.match(src, /actions=\{/);
+  });
+});

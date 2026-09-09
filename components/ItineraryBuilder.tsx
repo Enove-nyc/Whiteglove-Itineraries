@@ -69,6 +69,7 @@ import {
   type TravelLeg,
   type DayAdjustment as ItinAdjustment,
 } from "@/data/itinerary";
+import { clock } from "@/data/itinerary-print";
 import type { SavedPlace } from "@/data/route-utils";
 import { addImportedItemsToItinerary, type ImportedItem } from "@/data/smart-import";
 import SmartImportPanel from "@/components/SmartImportPanel";
@@ -1074,21 +1075,26 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
             </a>
           </p>
         )}
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-          <p className="min-w-0 font-[family-name:var(--font-display)] text-lg leading-snug text-[var(--navy)] sm:text-xl">
-            <span className="mr-2 text-sm font-bold text-[var(--gold-ink)]">{i + 1}.</span>
-            {a.arrivalTime ? (
-              <span className={`mr-2 text-sm font-semibold ${a.arrivesLate ? "text-red-700" : "text-[var(--gold-ink)]"}`} title={a.arrivesLate ? `Scheduled for ${a.startTime}, but the driving does not allow it` : "Worked out from your start time and the driving"}>
-                {a.arrivalTime}
-                {a.departureTime ? <span className="font-normal text-stone-400">–{a.departureTime}</span> : null}
-              </span>
-            ) : a.startTime ? (
-              <span className="mr-2 text-sm font-semibold text-[var(--gold-ink)]">{a.startTime}</span>
-            ) : null}
-            <span lang={a.yiddishName ? "yi" : undefined} dir={a.yiddishName ? "rtl" : undefined}>{a.yiddishName || a.name}</span>
-            {a.yiddishName ? <span className="ml-2 font-sans text-xs font-medium text-stone-500" lang="en" dir="ltr">{a.name}</span> : null}
-          </p>
-          <span className="flex flex-wrap items-center gap-1 sm:justify-end">
+        {/* The same time column, kind and title the finished itinerary uses —
+            see DayRow. The worked-out arrival keeps its own colour and tooltip
+            here, because that is a thing only the editor knows and the printed
+            document has no way to show. */}
+        <DayRow
+          time={a.arrivalTime || a.startTime}
+          kind={`Stop ${i + 1}`}
+          title={
+            <>
+              <span lang={a.yiddishName ? "yi" : undefined} dir={a.yiddishName ? "rtl" : undefined}>{a.yiddishName || a.name}</span>
+              {a.yiddishName ? <span className="ml-2 font-sans text-xs font-medium text-stone-500" lang="en" dir="ltr">{a.name}</span> : null}
+              {a.departureTime ? <span className="ml-2 text-xs font-normal text-stone-400">until {clock(a.departureTime)}</span> : null}
+              {a.arrivalTime && a.arrivesLate ? (
+                <span className="ml-2 text-xs font-semibold text-red-700" title={`Scheduled for ${a.startTime}, but the driving does not allow it`}>
+                  later than planned
+                </span>
+              ) : null}
+            </>
+          }
+          actions={<>
             {day.activities.length > 1 && (
               <>
                 <button type="button" onClick={() => onMove(a.id, -1)} disabled={i === 0} aria-label={`Move ${a.name} earlier`} className="border border-[var(--gold-light)] px-2 py-0.5 text-xs text-[var(--navy)] transition hover:bg-[var(--cream-deep)] disabled:opacity-30">↑</button>
@@ -1098,8 +1104,8 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
             <button type="button" onClick={() => setEditingId(editingId === a.id ? null : a.id)} className="border border-[var(--gold)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white">
               {editingId === a.id ? "Close" : "Edit"}
             </button>
-          </span>
-        </div>
+          </>}
+        />
         {editingId === a.id && (
           <EditStopForm
             activity={a}
@@ -1200,8 +1206,11 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
           <span>{day.activities.length} {day.activities.length === 1 ? "stop" : "stops"}</span>
           {day.startTime && day.activities.length > 0 ? (
             <span>
-              {day.startsFrom ? `From ${day.startsFrom}, ` : ""}{day.startTime}
-              {day.endTime ? ` → ${day.endTime}` : ""}
+              {/* The same clock the rows below and the printed document use.
+                  This line was the last 24-hour time left on the card, so a
+                  day read "08:00 → 15:30" above rows saying 9:30 AM. */}
+              {day.startsFrom ? `From ${day.startsFrom}, ` : ""}{clock(day.startTime)}
+              {day.endTime ? ` → ${clock(day.endTime)}` : ""}
             </span>
           ) : null}
           {day.travelHours > 0 ? (
@@ -2697,6 +2706,47 @@ function BookFlightsPanel({ itin }: { itin: Itinerary }) {
  * two separate flights used to make the planner believe the traveler had
  * arrived, spent a day in the connecting city, and needed a hotel there.
  */
+/**
+ * One line of a day, laid out the way the finished itinerary lays it out.
+ *
+ * The owner's complaint was that the public sample is easier to read than the
+ * editor that produces it. It was: the sample gives every entry a time column,
+ * a kind above the title and a plain detail line, while the editor wrote the
+ * same facts as a sentence behind an emoji — "✈️ Depart JFK at 18:40 — JFK →
+ * FCO" — with the time buried mid-sentence and on a 24-hour clock the printed
+ * document never uses.
+ *
+ * Same grid as SiteView in components/SampleItineraryViews.tsx, and the same
+ * `clock()` the printed document formats with, so a day reads the same in the
+ * three places it is looked at. The editing controls are passed in as
+ * `actions` and sit with the title, because they are the one thing the
+ * finished itinerary does not have and the editor is nothing without.
+ */
+function DayRow({ time, kind, title, detail, actions, children }: {
+  /** 24-hour "18:40" as stored; rendered in the printed document's own form. */
+  time?: string;
+  kind: string;
+  title: React.ReactNode;
+  detail?: React.ReactNode;
+  actions?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-x-4 gap-y-1 sm:grid-cols-[5.5rem_1fr]">
+      <p className="text-sm font-bold text-[var(--navy)]">{clock(time) || "—"}</p>
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{kind}</p>
+        <div className="mt-0.5 flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 font-semibold leading-6 text-[var(--navy)]">{title}</div>
+          {actions && <span className="flex shrink-0 flex-wrap items-center gap-1">{actions}</span>}
+        </div>
+        {detail && <div className="mt-0.5 text-sm leading-6 text-stone-600">{detail}</div>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function FlightLine({ flight, direction, landsSameDay, onEdit, onEditLeg }: {
   flight: ItinFlight & { legs?: ItinFlight[] };
   direction: "arrive" | "depart";
@@ -2712,42 +2762,55 @@ function FlightLine({ flight, direction, landsSameDay, onEdit, onEditLeg }: {
   // traveler who typed two lines and sees one needs to know nothing was lost —
   // and because the way to undo it is to book a room in the connecting city.
   const joinedFrom = flight.legs && flight.legs.length > 1 ? flight.legs.length : 0;
+  // The one the row is timed by, and the sentence under the title. The printed
+  // document says "Depart New York (JFK) for Rome (FCO)" rather than repeating
+  // the route it has just written, so this does the same.
+  const time = direction === "depart" ? flight.departTime : flight.arriveTime;
+  const detail =
+    direction === "depart"
+      ? `Depart ${flight.from} for ${stops[0]?.airport ?? flight.to}` +
+        (landsSameDay && flight.arriveTime ? `, landing ${clock(flight.arriveTime)}` : "")
+      : `Arrive ${flight.to}`;
+
   return (
-    <div className="text-sm text-[var(--navy)]">
-      <p>
-        ✈️{" "}
-        {direction === "depart"
-          ? <>Depart {flight.from}{flight.departTime ? ` at ${flight.departTime}` : ""}{landsSameDay && flight.arriveTime ? `, land ${flight.to} at ${flight.arriveTime}` : ""}</>
-          : <>Arrive {flight.to}{flight.arriveTime ? ` at ${flight.arriveTime}` : ""}</>}
-        {" — "}
-        <span className="font-semibold">{flightRouteLabel(flight)}</span>
-        {airline ? ` (${airline})` : ""}
-        {stops.length > 0 && (
-          <span className="ml-2 text-xs font-semibold text-[var(--gold-ink)]">
-            {stops.length === 1 ? "1 stop" : `${stops.length} stops`}
-          </span>
-        )}
-        {flight.confirmation && (
-          <span className="ml-2 text-xs font-semibold text-stone-500">ref {flight.confirmation}</span>
-        )}
-        {onEdit && (
+    <DayRow
+      time={time}
+      kind={direction === "depart" ? "Flight" : "Arrival"}
+      title={
+        <>
+          {flightRouteLabel(flight)}
+          {airline ? <span className="ml-2 font-normal text-stone-600">{airline}</span> : null}
+          {stops.length > 0 && (
+            <span className="ml-2 text-xs font-semibold text-[var(--gold-ink)]">
+              {stops.length === 1 ? "1 stop" : `${stops.length} stops`}
+            </span>
+          )}
+          {flight.confirmation && (
+            <span className="ml-2 text-xs font-semibold text-stone-500">ref {flight.confirmation}</span>
+          )}
+        </>
+      }
+      detail={detail}
+      actions={
+        onEdit && (
           <button
             type="button"
             onClick={onEdit}
-            className="ml-2 border border-[var(--gold)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white"
+            className="border border-[var(--gold)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white"
           >
             Edit
           </button>
-        )}
-      </p>
+        )
+      }
+    >
       {stops.map((stop, i) => <LayoverLine key={`${stop.airport}-${i}`} stop={stop} onEditLeg={onEditLeg} />)}
       {joinedFrom > 0 && (
-        <p className="ml-5 mt-1 text-xs leading-5 text-stone-500">
+        <p className="mt-1 text-xs leading-5 text-stone-500">
           {joinedFrom} flights you entered, read as one journey. Booking a hotel or planning a stop in the
           connecting city separates them again.
         </p>
       )}
-    </div>
+    </DayRow>
   );
 }
 
