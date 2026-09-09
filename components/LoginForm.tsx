@@ -248,7 +248,12 @@ export default function LoginForm({
   async function signInWithBiometric() {
     setMessage("");
     const creds = await unlockCredential(BIO_SERVER, "Unlock your White Glove account");
-    if (!creds) return;
+    if (!creds) {
+      // Cancelled, not recognised, or nothing readable — say so, rather than
+      // going quiet and leaving the button looking broken.
+      setMessage("Not unlocked. Try the fingerprint again, or sign in with your password below.");
+      return;
+    }
     setSaving(true);
     try {
       const response = await fetch("/api/account/login", {
