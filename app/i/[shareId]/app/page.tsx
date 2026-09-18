@@ -7,6 +7,7 @@ import { mayOpenTripInApp } from "@/lib/companion-access";
 import { checkTripFlightStatus, getShareKind, getSharedItineraryByShareId, getTripAlerts } from "@/lib/account-store";
 import { noteShareOpened } from "@/lib/share-open-recorder";
 import { emptyItinerary, unitsOf } from "@/data/itinerary";
+import { SAMPLE_ITINERARY, SAMPLE_TRIP_CODE } from "@/data/sample-itinerary";
 import { buildCompanionFromItinerary } from "@/lib/companion-build";
 import { readBrand } from "@/lib/business-brand-store";
 import { getAppPrefs } from "@/lib/app-prefs-store";
@@ -62,6 +63,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function SharedAppPage({ params }: { params: Promise<{ shareId: string }> }) {
   const { shareId } = await params;
+  if (shareId === SAMPLE_TRIP_CODE) return sampleApp();
   const shared = await getSharedItineraryByShareId(shareId);
   if (!shared) redirect(`/i/${shareId}`); // the shared view shows the "not available" notice
 
@@ -134,6 +136,52 @@ export default async function SharedAppPage({ params }: { params: Promise<{ shar
     <main>
       <ClientCodeMemory path={`/i/${shareId}/app`} />
       <CompanionApp trip={trip} chat={chat} />
+    </main>
+  );
+}
+
+/**
+ * The app on the test code — the sample week, opened the way a client opens
+ * theirs.
+ *
+ * SAME TRIP AS /sample-itinerary, and deliberately so. That page already
+ * renders this itinerary as the printed document; this renders the identical
+ * object as the app, so the two views of one trip can be put side by side. It
+ * is built through buildCompanionFromItinerary like everybody else's, with
+ * `today` pinned to the first day so the app opens ON the trip rather than
+ * weeks before or after it.
+ *
+ * NO CHAT, because nobody is on the other end. That is the rule for every code
+ * without a second person behind it (see the two kinds above), and it is more
+ * plainly true here than anywhere: there is no adviser to write to.
+ *
+ * AND IT IS NOT REMEMBERED. A real code is written to a cookie so the app
+ * reopens to that trip instead of asking again — right for a client, wrong for
+ * a code somebody typed once to look at the app, which would then be what the
+ * app opened for the next six months.
+ */
+async function sampleApp() {
+  const brand = await currentBrand();
+  const trip = await buildCompanionFromItinerary(SAMPLE_ITINERARY, {
+    today: SAMPLE_ITINERARY.startDate,
+    tripName: SAMPLE_ITINERARY.title,
+    kosher: brand !== "itineraries",
+  }).catch(() => null);
+  if (!trip) redirect("/sample-itinerary");
+
+  return (
+    <main>
+      {/* Above the app rather than over it: the app below owns every pixel of
+          the screen, so a floating notice would sit on a control. Every one of
+          these screens is a picture of somebody's private trip, and a sample
+          that does not say so invites exactly the wrong reading. */}
+      <div className="border-b border-[var(--gold)]/30 bg-[var(--cream)] px-5 py-2.5 sm:px-8">
+        <p className="mx-auto max-w-5xl text-xs leading-5 text-stone-700">
+          <span className="font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Sample</span> — a made-up
+          trip, for seeing how the app works. Nothing here is booked.
+        </p>
+      </div>
+      <CompanionApp trip={trip} />
     </main>
   );
 }
