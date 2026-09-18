@@ -776,3 +776,37 @@ p {
     padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
   }
 }
+
+/* THE HEADER STOPS BELOW THE CLOCK, INSIDE THE APP.
+ *
+ * Android 15 forces an app edge to edge, so the web view draws behind the
+ * status bar and the header sat under the time and the battery. The inset that
+ * answers this is `env(safe-area-inset-top)`, which reads zero until the
+ * viewport is declared `viewport-fit=cover` — set by AppShellFlag inside the
+ * app only, never on the open website, where `cover` would put a page under an
+ * iPhone's notch in landscape for no gain.
+ *
+ * The strip the header is pushed down by is painted NAVY rather than left as
+ * the header's own colour, because it is the status bar's background now: navy
+ * is the site's declared theme-color, which is the colour the phone picks its
+ * white clock against.
+ *
+ * The inset is named --wg-safe-top rather than written twice, because an env()
+ * with a fallback still reads zero when the browser HAS the inset and it IS
+ * zero — so a machine with no cutout cannot exercise these rules at all unless
+ * the number has a name something can set. */
+html[data-app-shell] {
+  --wg-safe-top: env(safe-area-inset-top);
+}
+
+html[data-app-shell] nav[aria-label="Main"] {
+  padding-top: var(--wg-safe-top);
+}
+
+html[data-app-shell] nav[aria-label="Main"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--wg-safe-top);
+  background: var(--navy);
+}
