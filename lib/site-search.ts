@@ -17,6 +17,8 @@
  */
 
 import { vacationDestinations } from "@/data/vacation-destinations";
+import { isGuidePath } from "@/lib/guide-paths";
+import { configuredBrand } from "@/lib/site-brand-core";
 import { getSearchIndex } from "@/lib/site-search-index";
 import { compact, damerauLevenshtein, maxEditsFor, normalize, queryTokens } from "@/lib/site-search-match";
 import {
@@ -37,18 +39,29 @@ export type { SiteHit, SiteHitKind, SiteHitSection, SearchResponse };
 export { groupHits, hasHeritageIntent, isUnambiguousExact, sectionForKind };
 export { invalidateSiteSearchIndex } from "@/lib/site-search-index";
 
-/** Vacation destinations for the empty-focus dropdown, editorial order. */
+/**
+ * Vacation destinations for the empty-focus dropdown, editorial order.
+ *
+ * Same href problem as the main index (see forBrand in site-search-index.ts):
+ * vacationHref points at /destinations/<slug>, which is guide-only and 410s
+ * on the itineraries brand. This list bypasses the index entirely, so it
+ * needs the same rewrite done here rather than inherited.
+ */
 export function vacationEmptySuggestions(): SiteHit[] {
-  return vacationDestinations.map((d) => ({
-    id: `vacation-${d.slug}`,
-    kind: "Vacation destination" as const,
-    section: "Vacation" as const,
-    title: d.name,
-    subtitle: d.region ? `${d.region} · ${d.country}` : d.country,
-    href: vacationHref(d),
-    matchRank: 0,
-    fuzzy: false,
-  }));
+  const onItineraries = configuredBrand() === "itineraries";
+  return vacationDestinations.map((d) => {
+    const href = vacationHref(d);
+    return {
+      id: `vacation-${d.slug}`,
+      kind: "Vacation destination" as const,
+      section: "Vacation" as const,
+      title: d.name,
+      subtitle: d.region ? `${d.region} · ${d.country}` : d.country,
+      href: onItineraries && isGuidePath(href) ? "/itinerary" : href,
+      matchRank: 0,
+      fuzzy: false,
+    };
+  });
 }
 
 /**

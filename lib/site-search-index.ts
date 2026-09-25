@@ -19,9 +19,11 @@ import { getVacationDestinations } from "@/lib/vacation-destinations-view";
 import { getAreaList, getAttractionList, getStayList } from "@/lib/attractions-view";
 import { isDisallowedImportSource } from "@/lib/bulk-content";
 import { bustTag, cachedRead } from "@/lib/cache-tags";
+import { isGuidePath } from "@/lib/guide-paths";
 import { staticMikvahListings } from "@/lib/mikvaos";
 import { heritageTownHref } from "@/lib/route-migration";
 import { extraSpellings, normalize } from "@/lib/place-search";
+import { configuredBrand } from "@/lib/site-brand-core";
 import { compact } from "@/lib/site-search-match";
 import { sectionForKind, type SearchDocument } from "@/lib/site-search-types";
 import { allTzaddikim } from "@/lib/tzaddikim";
@@ -78,7 +80,11 @@ export async function invalidateSiteSearchIndex(): Promise<void> {
  * building does not trigger a second build.
  */
 export async function getSearchIndex(): Promise<SearchDocument[]> {
-  return cachedRead(buildSearchIndex, ["site-search-index"], [SEARCH_INDEX_TAG]);
+  // Brand in the cache key, not just in buildSearchIndex's own filtering: a
+  // deployment only ever runs one brand, so this never matters in production,
+  // but a wrong cache key is the kind of bug that only shows up the day that
+  // stops being true.
+  return cachedRead(buildSearchIndex, ["site-search-index", configuredBrand() ?? "unset"], [SEARCH_INDEX_TAG]);
 }
 
 type DraftDoc = Omit<SearchDocument, "normTokens" | "normCompact">;
@@ -117,7 +123,39 @@ export async function buildSearchIndex(): Promise<SearchDocument[]> {
   pushSitePages(docs);
   await pushPublishedInfoPages(docs);
 
-  return docs.map(finalize);
+  return forBrand(docs.map(finalize));
+}
+
+/**
+ * ONE DATABASE, TWO RESULT SETS. Nothing above this point is brand-aware, and
+ * it stays that way on purpose — the size of the index costs nobody anything,
+ * because nobody sees the index, only the results a search returns. What
+ * changes per brand is what those results are allowed to be.
+ *
+ * On itineraries, "Kosher travel" (kosher food, kashrus/practical listings)
+ * and "Heritage" (kevarim, batei hachaim, tzaddikim) never surface: that
+ * content, and the pages behind it, belong to the guide alone — see
+ * AGENTS.md, "kosher" is reserved for food/kashrus features and this product
+ * is not a kosher travel product. Everything else stays, INCLUDING
+ * destinations, hotels and things to do that happen to be kosher-relevant
+ * (a seasonal programme, a walkable-to-shul neighbourhood): the owner was
+ * explicit that dropping those too was not what he asked for — "food and
+ * culture destinations are not dropped entirely."
+ *
+ * The href rewrite is the other half of the same fix. Every one of the kept
+ * kinds still points at a guide page this domain does not have — a vacation
+ * destination at /destinations/<slug>, a hotel at /hotels#<slug> — and those
+ * already answer 410 here (lib/guide-paths.ts, tested in
+ * tests/itineraries-obsolete-routes.test.ts). A search result is not really
+ * "kept" if clicking it goes nowhere, so on this brand it opens the planner
+ * instead: not a deep link into that destination yet, but a real page rather
+ * than a dead one, and the one page this product actually has to offer.
+ */
+function forBrand(docs: SearchDocument[]): SearchDocument[] {
+  if (configuredBrand() !== "itineraries") return docs;
+  return docs
+    .filter((doc) => doc.section !== "Kosher travel" && doc.section !== "Heritage")
+    .map((doc) => (isGuidePath(doc.href) ? { ...doc, href: "/itinerary" } : doc));
 }
 
 function pushVacationDestinations(docs: DraftDoc[], destinations: readonly VacationDestination[]) {
