@@ -170,7 +170,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         if (networkCallback != null) {
             ConnectivityManager connectivityManager =
                 (ConnectivityManager) getApplicationContext().getSystemService(CONNECTIVITY_SERVICE);
