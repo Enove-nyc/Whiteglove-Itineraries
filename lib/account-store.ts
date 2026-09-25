@@ -1910,14 +1910,26 @@ export async function ensureProposalShare(email: string, tripId: string): Promis
 }
 
 /** A proposal by its public token — marks it "viewed" the first time a client opens a "sent" one. */
-export async function getSharedProposal(shareId: string) {
+/**
+ * A proposal by its client link.
+ *
+ * `viewer` is the email of whoever is signed in, when anybody is. It exists
+ * for one reason: THE ADVISOR'S OWN PREVIEW IS NOT THE CLIENT READING IT.
+ * "Preview as client" opens this very page, and opening it flipped a sent
+ * proposal to "viewed" and stamped viewedAt — so the pipeline told the
+ * advisor their client had read it the moment the advisor looked at their own
+ * work. Checked against the owner rather than a flag in the address, because a
+ * flag is something the client's browser can carry too.
+ */
+export async function getSharedProposal(shareId: string, viewer?: string | null) {
   const rec = await readJson<{ ownerEmail: string; tripId: string }>(proposalShareKey(shareId));
   if (!rec) return null;
   const data = await getAccountData(rec.ownerEmail);
   const trip = withTrips(data).trips.find((t) => t.id === rec.tripId);
   if (!trip?.proposal) return null;
   let proposal = trip.proposal;
-  if (proposal.status === "sent") {
+  const isOwner = Boolean(viewer) && normalizeId(viewer!) === normalizeId(rec.ownerEmail);
+  if (proposal.status === "sent" && !isOwner) {
     proposal = { ...proposal, status: "viewed", viewedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     await saveProposal(rec.ownerEmail, rec.tripId, proposal);
   }

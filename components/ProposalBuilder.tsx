@@ -403,6 +403,27 @@ export default function ProposalBuilder() {
   const [library, setLibrary] = useState<{ items: LibraryItem[]; packs: LibraryPack[] }>({ items: [], packs: [] });
   const origin = typeof window === "undefined" ? "" : window.location.origin;
 
+  /**
+   * A FULLY BUILT PROPOSAL WAS LOST ON NAVIGATION, and it could be lost again
+   * on a closed tab, a phone call, a battery. Everything typed here lived in
+   * React state until somebody pressed Save, and nothing said so.
+   *
+   * WHAT THE SERVER HOLDS, as JSON, is the thing to compare against — a
+   * `dirty` boolean drifts out of step the moment a save fails or a load
+   * arrives, and then it either warns about nothing or fails to warn. This is
+   * set in exactly two places: when a proposal is loaded, and when one is
+   * saved. Anything else that differs from it is unsaved work.
+   *
+   * State rather than a ref, because the line under the buttons reads it while
+   * rendering — a ref written by a quiet autosave would leave that line saying
+   * "Unsaved changes" until something else happened to re-render.
+   */
+  const [baseline, setBaseline] = useState<string | null>(null);
+  /** Whether the server holds a proposal at all — an untouched new one does not. */
+  const [onServer, setOnServer] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const unsaved = Boolean(proposal) && baseline !== null && JSON.stringify(proposal) !== baseline;
+
   useEffect(() => {
     fetch("/api/account/library", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
@@ -427,7 +448,14 @@ export default function ProposalBuilder() {
       }
       setTripId(data.tripId);
       setTripName(data.tripName);
-      setProposal(data.proposal ?? emptyProposal());
+      const loaded = data.proposal ?? emptyProposal();
+      // The baseline is what is on screen the moment it opens, saved or not.
+      // Baselining only the SERVER's copy made an untouched new proposal read
+      // as unsaved work: it warned on the way out and autosaved an empty
+      // proposal onto the trip before anybody had typed anything.
+      setBaseline(JSON.stringify(loaded));
+      setOnServer(Boolean(data.proposal));
+      setProposal(loaded);
     } catch {
       setError("Could not reach the server.");
     } finally {
@@ -472,15 +500,59 @@ export default function ProposalBuilder() {
     }
   }
 
-  async function save() {
-    if (!proposal) return;
-    const data = await post({ action: "save", proposal });
-    if (data?.proposal) {
-      setProposal(data.proposal);
-      setNote("Saved.");
-      window.setTimeout(() => setNote(""), 2000);
-    }
-  }
+  const save = useCallback(
+    async (quiet = false) => {
+      if (!proposal) return;
+      // The autosave must not fight the person typing: it sends what is on
+      // screen and records THAT as the baseline, rather than replacing the
+      // editor's state with the server's echo mid-keystroke. A save they
+      // pressed themselves still takes the server's copy, which is what
+      // carries any id or timestamp the server filled in.
+      const sending = JSON.stringify(proposal);
+      const data = await post({ action: "save", proposal });
+      if (!data?.proposal) return;
+      setBaseline(quiet ? sending : JSON.stringify(data.proposal));
+      setOnServer(true);
+      if (!quiet) {
+        setProposal(data.proposal);
+        setNote("Saved.");
+        window.setTimeout(() => setNote(""), 2000);
+      }
+    },
+    // `post` is declared in this component body and closes over tripId; it is
+    // stable enough for this and the editor re-renders on every edit anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [proposal, tripId],
+  );
+
+  /**
+   * AUTOSAVE, a second and a half after the typing stops.
+   *
+   * Long enough that it is not a request per keystroke, short enough that
+   * nothing is lost to a closed tab. It only ever fires while there is
+   * something unsaved, and never while another write is already going out.
+   */
+  useEffect(() => {
+    if (!unsaved || busy || !tripId) return;
+    const timer = window.setTimeout(() => {
+      setSaving(true);
+      void save(true).finally(() => setSaving(false));
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [unsaved, busy, tripId, save]);
+
+  /**
+   * And the browser's own guard, for the second and a half in between — and
+   * for a save that failed. This is the one warning a page can raise on the
+   * way out; it costs nothing while everything is saved, because `unsaved` is
+   * false and the handler is not attached.
+   */
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
 
   async function send() {
     if (!proposal) return;
@@ -492,7 +564,19 @@ export default function ProposalBuilder() {
     }
   }
 
+  /**
+   * PREVIEW SAVES FIRST, because the preview is the client's page and the
+   * client's page reads the server.
+   *
+   * It used to mint a share link and open it against whatever the server
+   * happened to hold — which, on a proposal nobody had pressed Save on yet,
+   * was nothing at all: getSharedProposal returns null with no stored
+   * proposal, and the advisor was shown "This proposal isn't available" about
+   * the proposal they were looking at. On a saved one it was worse in a
+   * quieter way: the preview showed the last saved version, not the screen.
+   */
   async function preview() {
+    await save();
     const data = await post({ action: "share" });
     if (data?.shareId) window.open(`${origin}/p/${data.shareId}`, "_blank");
   }
@@ -573,6 +657,13 @@ export default function ProposalBuilder() {
             Convert to itinerary
           </button>
         )}
+
+        {/* Said out loud, because a thing that saves itself has to. Silence
+            here is what made the last version feel like it had lost the work
+            — and a person who cannot see that it saved presses Save anyway. */}
+        <span aria-live="polite" className="text-xs font-semibold text-stone-500">
+          {saving ? "Saving…" : unsaved ? "Unsaved changes" : onServer ? "All changes saved" : ""}
+        </span>
       </div>
 
       {shareUrl && (
