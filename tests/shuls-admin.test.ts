@@ -36,19 +36,22 @@ describe("adding a shul from the admin", () => {
     assert.equal(shulProblem({ ...good, coordinates: null }), null);
   });
 
-  it("turns input into a listing, flagged added, linking out to the shul's site", () => {
+  it("turns input into a listing, flagged added, linking to its own row here rather than out", () => {
     const listing = shulFromInput({ ...good, name: "  Bevis Marks Synagogue  " });
     assert.equal(listing.name, "Bevis Marks Synagogue");
     assert.equal(listing.added, true);
     assert.equal(listing.fromDatabase, false);
-    assert.equal(listing.href, good.website); // website preferred over source
+    assert.equal(listing.href, `/shuls#${listing.id}`);
+    // The website is still a field on the listing — just not what href opens.
+    assert.equal(listing.website, good.website);
     assert.equal(listing.coordinates, "51.5144, -0.0792");
     assert.equal(listing.id, shulId(good));
   });
 
-  it("falls back to the source link when there is no website", () => {
+  it("still links to its own row when there is no website either", () => {
     const listing = shulFromInput({ ...good, website: null });
-    assert.equal(listing.href, good.sourceUrl);
+    assert.equal(listing.href, `/shuls#${listing.id}`);
+    assert.equal(listing.sourceUrl, good.sourceUrl);
   });
 
   it("gives the same city and name the same id, so re-adding replaces", () => {

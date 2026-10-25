@@ -46,4 +46,20 @@ describe("the notable shuls reach the directory", () => {
       );
     }
   });
+
+  /**
+   * THE CARD'S OWN LINK — and so the map marker's "Open page" — STAYS ON
+   * THIS SITE, never the shul's outside site or the source it was listed
+   * from. data/notable-shuls.ts still carries its own `href` (the outside
+   * site, for checking current hours), but a card's primary link opening a
+   * different company's page — the owner's words — is exactly what this
+   * guards against. The website, where one exists, is still reachable as its
+   * own separate link.
+   */
+  it("links each listing to its own row on /shuls, never out to its data href", () => {
+    for (const listing of notableShulListings()) {
+      assert.equal(listing.href, `/shuls#${listing.id}`);
+      assert.ok(!listing.href.startsWith("http"), `${listing.id} still links out: ${listing.href}`);
+    }
+  });
 });

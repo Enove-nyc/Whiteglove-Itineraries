@@ -66,7 +66,7 @@ export default async function ShulsPage() {
                 <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">{country}</h2>
                 <ul className="mt-5 grid gap-4 md:grid-cols-2">
                   {list.map((listing) => (
-                    <li key={listing.id} className="rounded-xl border border-[var(--gold-light)] bg-[var(--surface)] p-5">
+                    <li id={listing.id} key={listing.id} className="rounded-xl border border-[var(--gold-light)] bg-[var(--surface)] p-5">
                       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500">{listing.city}</p>
                       <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">{listing.name}</h3>
                       {listing.address && <p className="mt-2 text-sm leading-6 text-stone-600">{listing.address}</p>}
@@ -76,13 +76,19 @@ export default async function ShulsPage() {
                         {listing.phone && <IconLink icon="phone" label="Call" href={`tel:${listing.phone.replace(/[^+\d]/g, "")}`} />}
                         {listing.website && <IconLink icon="website" label="Website" href={listing.website} />}
                         {listing.address && <IconLink icon="map-pin" label="Directions" href={placeMapUrl(listing.address, listing.coordinates)} />}
-                        <a
-                          href={listing.href}
-                          {...(listing.href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}
-                          className="ml-2 text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
-                        >
-                          {listing.href.startsWith("http") ? "Visit" : "Destination"}
-                        </a>
+                        {/* Only shown when the link actually goes somewhere else —
+                            a real destination page. A listing with no destination
+                            of its own now links to its own row here, and a
+                            "Destination" button that only scrolled to the card it
+                            is already on would be pointless. */}
+                        {listing.href !== `/shuls#${listing.id}` && (
+                          <a
+                            href={listing.href}
+                            className="ml-2 text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
+                          >
+                            Destination
+                          </a>
+                        )}
                       </div>
                     </li>
                   ))}

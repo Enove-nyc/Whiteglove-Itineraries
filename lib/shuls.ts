@@ -81,8 +81,9 @@ export function shulId(input: ShulInput): string {
 export function shulFromInput(input: ShulInput): ShulListing {
   const website = input.website?.trim() || null;
   const sourceUrl = input.sourceUrl.trim();
+  const id = shulId(input);
   return {
-    id: shulId(input),
+    id,
     name: input.name.trim(),
     address: input.address?.trim() || null,
     phone: input.phone?.trim() || null,
@@ -94,9 +95,12 @@ export function shulFromInput(input: ShulInput): ShulListing {
     city: input.city.trim(),
     country: input.country.trim(),
     destinationSlug: "",
-    // No White Glove town for a hand-added shul, so the card links out to the
-    // shul's own site, or to the source it was listed from.
-    href: website || sourceUrl,
+    // No White Glove town for a hand-added shul, so the card's own link stays
+    // on this site — its row on the shuls directory — rather than opening the
+    // source or the shul's outside site. A source beside a listing reads as
+    // an endorsement of whatever it points at (AGENTS.md); the website, when
+    // there is one, is still reachable as its own clearly-labelled link.
+    href: `/shuls#${id}`,
     fromDatabase: false,
     added: true,
   };
@@ -207,16 +211,20 @@ export function staticShulListings(known: readonly VacationDestination[] = vacat
  * The landmark working shuls of the world, as directory listings.
  *
  * A flat, source-backed list (data/notable-shuls.ts), the parallel to the
- * worldwide attractions. These carry their own link — the shul's own site or
- * the write-up it already has here — rather than a destination slug, because
- * most sit in cities that are not kever-town destinations.
+ * worldwide attractions. Most sit in cities that are not kever-town
+ * destinations, so each links to its own row on the shuls directory rather
+ * than a destination page. data/notable-shuls.ts still carries its own
+ * `href` (the shul's outside site, for checking current hours) — not used
+ * here, since a card's main link stays on this site; it is still reachable
+ * through the listing's separate "Website" link where one exists.
  */
 export function notableShulListings(): ShulListing[] {
   const out: ShulListing[] = [];
   for (const shul of notableShuls) {
     if (!isAllowedSource(shul.sourceUrl)) continue;
+    const id = `notable-${shul.slug}`;
     out.push({
-      id: `notable-${shul.slug}`,
+      id,
       name: shul.name,
       address: shul.address ?? null,
       phone: null,
@@ -228,7 +236,7 @@ export function notableShulListings(): ShulListing[] {
       city: shul.city,
       country: shul.country,
       destinationSlug: shul.slug,
-      href: shul.href,
+      href: `/shuls#${id}`,
       fromDatabase: false,
     });
   }
