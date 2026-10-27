@@ -232,42 +232,83 @@ function mergeContacts(builtIn: ViewContact[], stored: StoredContact[]): ViewCon
 /** One cemetery for its detail page. For a built-in cemetery, returns the rich
  *  static record with any owner-added tzaddikim appended; for an owner-added
  *  cemetery, builds the record from the database. */
+/**
+ * Every stored beis hachaim with its burials, contacts and pictures, read in one
+ * go and cached until the database is next written to (lib/prisma.ts clears
+ * DB_CONTENT_TAG on any write).
+ *
+ * Each cemetery page used to read its own row on an hourly timer. With search
+ * engines walking every page, that was a query every few minutes, and the
+ * free-plan database — which only stops counting after five idle minutes —
+ * never slept. One shared read lets it.
+ *
+ * Only text fields are used from these rows, so the cache's JSON round trip
+ * (which turns dates into strings) loses nothing that is read.
+ */
+async function readCemeteryRows() {
+  const { prisma } = await import("@/lib/prisma");
+  return prisma.cemetery.findMany({
+    include: {
+      burials: { orderBy: { name: "asc" } },
+      contacts: { orderBy: { label: "asc" } },
+    },
+  });
+}
+
+type CemeteryRow = Awaited<ReturnType<typeof readCemeteryRows>>[number];
+type CemeteryBundle = { rows: Record<string, CemeteryRow>; photos: Record<string, GalleryPhoto[]> };
+
+/** Read fine except the pictures. Thrown so it is not cached for a day. */
+class PartialCemeteries extends Error {
+  constructor(readonly bundle: CemeteryBundle) {
+    super("the beis hachaim pictures could not be read");
+  }
+}
+
+async function loadCemeteryBundle(): Promise<CemeteryBundle> {
+  const { prisma } = await import("@/lib/prisma");
+  const rows = await readCemeteryRows();
+  const pictures = await optionalRead(
+    "pictures for the batei hachaim",
+    async () =>
+      prisma.photo.findMany({
+        where: { cemeteryId: { not: null }, status: "PUBLISHED" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true, url: true, caption: true, credit: true, sourceUrl: true, cemeteryId: true },
+      }),
+    null,
+  );
+  const photos: Record<string, GalleryPhoto[]> = {};
+  for (const { cemeteryId, ...photo } of pictures ?? []) {
+    if (!cemeteryId) continue;
+    (photos[cemeteryId] ??= []).push(photo);
+  }
+  const bundle: CemeteryBundle = { rows: Object.fromEntries(rows.map((row) => [row.slug, row])), photos };
+  if (pictures === null) throw new PartialCemeteries(bundle);
+  return bundle;
+}
+
+async function cemeteryBundle(): Promise<CemeteryBundle> {
+  try {
+    return await cachedRead(loadCemeteryBundle, ["cemetery-view-bundle"], [CEMETERIES_PUBLIC_TAG]);
+  } catch (error) {
+    if (error instanceof PartialCemeteries) return error.bundle;
+    throw error;
+  }
+}
+
 export async function getCemeteryView(slug: string): Promise<CemeteryView | null> {
   const staticRecord = getStaticCemetery(slug);
 
   if (!DB_ENABLED) return staticRecord ? { ...staticRecord, photos: [] } : null;
 
   try {
-    const { prisma } = await import("@/lib/prisma");
-
-    // The people and the phone numbers, on their own. Pictures used to be
-    // joined on here, and on a database where the Photo table did not exist
-    // yet this whole read threw — so the catch below returned the built-in
-    // record and every kever the owner had added disappeared from the page.
-    // He had saved them; the admin had said so; they were in the database. The
-    // page just would not read them, and nothing anywhere said why.
-    const row = await prisma.cemetery.findUnique({
-      where: { slug },
-      include: {
-        burials: { orderBy: { name: "asc" } },
-        contacts: { orderBy: { label: "asc" } },
-      },
-    });
-
-    // Pictures, separately, and allowed to fail. Published only: a draft is
-    // one nobody has credited yet, and drafting it was the whole point.
-    const photos = row
-      ? await optionalRead(
-          `pictures for the beis hachaim ${slug}`,
-          async () =>
-            prisma.photo.findMany({
-              where: { cemeteryId: row.id, status: "PUBLISHED" },
-              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-              select: { id: true, url: true, caption: true, credit: true, sourceUrl: true },
-            }),
-          [] as GalleryPhoto[],
-        )
-      : [];
+    // One shared, cached read for every beis hachaim (see cemeteryBundle).
+    // Pictures are read separately inside it and allowed to fail, so a missing
+    // Photo table can never hide the kevarim the owner added.
+    const bundle = await cemeteryBundle();
+    const row = bundle.rows[slug] ?? null;
+    const photos = row ? (bundle.photos[row.id] ?? []) : [];
 
     if (staticRecord) {
       if (!row) return { ...staticRecord, photos: [] };
