@@ -10,6 +10,40 @@ import { parseBlocks, type PageBlock } from "@/data/page-blocks";
 
 const DB_ENABLED = Boolean(process.env.DATABASE_URL);
 
+type PublishedPageRow = {
+  slug: string;
+  title: string;
+  body: string;
+  blocks: unknown;
+  seoTitle: string;
+  seoDescription: string;
+};
+
+/**
+ * Every published page, read in one query and cached until a page is saved.
+ *
+ * The legal pages, Contact and About are rendered on every visit, and each
+ * used to ask the database for its own row each time — enough on its own to
+ * keep a free-plan database from ever sleeping. One cached read serves them
+ * all; saving any page clears it (lib/prisma.ts busts DB_CONTENT_TAG on writes).
+ * Throws on failure so an outage is not remembered: the callers fall back.
+ */
+async function publishedPages(): Promise<Map<string, PublishedPageRow>> {
+  const { cachedRead } = await import("@/lib/cache-tags");
+  const rows = await cachedRead(
+    async () => {
+      const { prisma } = await import("@/lib/prisma");
+      return prisma.page.findMany({
+        where: { status: "PUBLISHED" },
+        select: { slug: true, title: true, body: true, blocks: true, seoTitle: true, seoDescription: true },
+      });
+    },
+    ["published-pages"],
+    ["published-pages"],
+  );
+  return new Map(rows.map((row) => [row.slug, row as PublishedPageRow]));
+}
+
 const PREDEFINED_SLUGS = new Set(editablePages.map((p) => p.slug));
 
 export type ResolvedPage = {
@@ -41,9 +75,8 @@ export async function resolvePage(slug: string): Promise<ResolvedPage | null> {
   if (!def) return null;
   if (!DB_ENABLED) return fromDef(def);
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const row = await prisma.page.findUnique({ where: { slug } });
-    if (!row || row.status !== "PUBLISHED") return fromDef(def);
+    const row = (await publishedPages()).get(slug);
+    if (!row) return fromDef(def);
     const blocks = parseBlocks(row.blocks);
     return {
       slug,
@@ -144,9 +177,8 @@ export async function getPageForAdmin(
 export async function getInfoPage(slug: string): Promise<{ slug: string; title: string; body: string } | null> {
   if (!DB_ENABLED || PREDEFINED_SLUGS.has(slug)) return null;
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const row = await prisma.page.findUnique({ where: { slug } });
-    if (!row || row.status !== "PUBLISHED") return null;
+    const row = (await publishedPages()).get(slug);
+    if (!row) return null;
     return { slug: row.slug, title: row.title, body: row.body };
   } catch {
     return null;

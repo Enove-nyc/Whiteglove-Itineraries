@@ -61,13 +61,27 @@ export function reviewsStoreAvailable(): boolean {
 export async function listPlaceReviews(placeKind: ReviewPlaceKind, placeRef: string): Promise<PlaceReview[]> {
   if (!reviewsStoreAvailable()) return [];
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const rows = await prisma.placeReview.findMany({
-      where: { placeKind, placeRef, status: "PUBLISHED" },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
-    return rows.map(toReview);
+    // Every published review, read once and cached until the next write
+    // (lib/prisma.ts clears DB_CONTENT_TAG whenever a review is saved, edited,
+    // reported or removed). Each place card used to ask the database on every
+    // view — crawlers included, since they run the page's script — which was
+    // enough to keep the free-plan database awake. Already plain strings, so
+    // the cache's JSON round trip is lossless.
+    const { cachedRead } = await import("@/lib/cache-tags");
+    const all = await cachedRead(
+      async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const rows = await prisma.placeReview.findMany({
+          where: { status: "PUBLISHED" },
+          orderBy: { createdAt: "desc" },
+          take: 20_000,
+        });
+        return rows.map(toReview);
+      },
+      ["published-place-reviews"],
+      ["published-place-reviews"],
+    );
+    return all.filter((review) => review.placeKind === placeKind && review.placeRef === placeRef).slice(0, 200);
   } catch (error) {
     console.error("[reviews] could not read reviews", error);
     return [];
