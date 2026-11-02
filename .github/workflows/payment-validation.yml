@@ -1,0 +1,35 @@
+name: Payment fulfillment validation
+on:
+  pull_request:
+  push:
+    branches: [main, codex/launch-audit-session-hardening]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      PAYMENT_TEST_REDIS_PORT: '6379'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install local Redis test client
+        run: sudo apt-get update -qq && sudo apt-get install -y redis-tools
+      - name: Exercise signed webhooks and real Redis transactions
+        run: node --import ./tests/helpers/native-types.mjs --test tests/trip-pass-fulfillment.test.ts tests/stripe-webhook.test.ts tests/trip-pass.test.ts tests/account-session-hardening.test.ts
+      - name: Install application dependencies
+        run: npm ci
+      - name: Typecheck application
+        run: npx tsc --noEmit
+      - name: Lint changed payment code
+        run: npx eslint lib/paid-redis.ts lib/trip-pass-purchase.ts lib/trip-pass-store.ts app/api/billing/webhook/route.ts tests/trip-pass-fulfillment.test.ts tests/helpers/payment-redis.mjs tests/helpers/billing-route.mjs tests/helpers/native-types.mjs
+      - name: Build application without production credentials
+        run: npm run build

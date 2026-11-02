@@ -15,6 +15,7 @@
 
 import { identityKey } from "@/lib/identity";
 import { randomBytes } from "crypto";
+import { paidRedisCommand } from "@/lib/paid-redis";
 import { releaseOrphaned, spendPassOn, tripHasPass, unspentPasses, type TripPass } from "@/lib/trip-pass";
 
 const PASS_PREFIX = "white-glove:trip-passes:";
@@ -70,9 +71,41 @@ export async function readTripPasses(account: string): Promise<TripPass[]> {
   }
 }
 
-async function writeTripPasses(account: string, passes: TripPass[]): Promise<boolean> {
-  if (!account || !tripPassStoreAvailable()) return false;
-  return (await redis(`set/${key(account)}`, JSON.stringify(passes))) !== null;
+/** Compare-and-set prevents a stale spend/release from erasing a paid grant. */
+const SAVE_PASSES = `
+local current = redis.call("GET", KEYS[1])
+if ARGV[1] == "missing" then
+  if current then return 0 end
+elseif current ~= ARGV[2] then
+  return 0
+end
+redis.call("SET", KEYS[1], ARGV[3])
+return 1
+`;
+
+async function mutatePasses<T>(
+  account: string,
+  change: (passes: TripPass[]) => { passes: TripPass[]; value: T },
+): Promise<{ value: T } | null> {
+  if (!account || !tripPassStoreAvailable()) return null;
+  const rawKey = `${PASS_PREFIX}${identityKey(account)}`;
+  try {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const raw = await paidRedisCommand<string | null>(["GET", rawKey]);
+      const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+      if (!Array.isArray(parsed) || !parsed.every(isPass)) return null;
+      const next = change(parsed);
+      const encoded = JSON.stringify(next.passes);
+      if (raw === encoded) return { value: next.value };
+      const saved = await paidRedisCommand<number>([
+        "EVAL", SAVE_PASSES, 1, rawKey, raw === null ? "missing" : "present", raw ?? "", encoded,
+      ]);
+      if (saved === 1) return { value: next.value };
+    }
+  } catch {
+    // A failed read must never be interpreted as an empty pass ledger.
+  }
+  return null;
 }
 
 /**
@@ -84,26 +117,26 @@ async function writeTripPasses(account: string, passes: TripPass[]): Promise<boo
  * from the pricing page instead, there is no trip yet and the pass is spare.
  */
 export async function grantTripPass(account: string, tripId?: string): Promise<TripPass | null> {
-  if (!account || !tripPassStoreAvailable()) return null;
   const now = new Date().toISOString();
-  const passes = await readTripPasses(account);
-  const pass: TripPass = {
-    id: randomBytes(9).toString("base64url"),
-    boughtAt: now,
-    tripId: tripId && !tripHasPass(passes, tripId) ? tripId : null,
-    spentAt: tripId && !tripHasPass(passes, tripId) ? now : null,
-  };
-  return (await writeTripPasses(account, [...passes, pass])) ? pass : null;
+  const id = randomBytes(9).toString("base64url");
+  const result = await mutatePasses(account, (passes) => {
+    const attach = Boolean(tripId && !tripHasPass(passes, tripId));
+    const pass: TripPass = { id, boughtAt: now, tripId: attach ? tripId! : null, spentAt: attach ? now : null };
+    return { passes: [...passes, pass], value: pass };
+  });
+  return result?.value ?? null;
 }
 
 export type SpendOutcome = { ok: true } | { ok: false; reason: "none_left" | "already" | "storage" };
 
 /** Put one of this account's spare passes on this trip, for good. */
 export async function spendTripPass(account: string, tripId: string): Promise<SpendOutcome> {
-  if (!account || !tripId || !tripPassStoreAvailable()) return { ok: false, reason: "storage" };
-  const result = spendPassOn(await readTripPasses(account), tripId, new Date().toISOString());
-  if (!result.ok) return { ok: false, reason: result.reason };
-  return (await writeTripPasses(account, result.passes)) ? { ok: true } : { ok: false, reason: "storage" };
+  if (!tripId) return { ok: false, reason: "storage" };
+  const result = await mutatePasses<SpendOutcome>(account, (passes) => {
+    const next = spendPassOn(passes, tripId, new Date().toISOString());
+    return { passes: next.passes, value: next.ok ? { ok: true } : { ok: false, reason: next.reason } };
+  });
+  return result?.value ?? { ok: false, reason: "storage" };
 }
 
 /** Does THIS trip open in the app on a pass? The question every gate asks. */
@@ -125,8 +158,5 @@ export async function spareTripPasses(account: string): Promise<number> {
  * lib/trip-pass.ts for why this is not a way to move a pass.
  */
 export async function releaseDeletedTripPasses(account: string, liveTripIds: readonly string[]): Promise<void> {
-  if (!account || !tripPassStoreAvailable()) return;
-  const passes = await readTripPasses(account);
-  const next = releaseOrphaned(passes, liveTripIds);
-  if (next.some((pass, i) => pass.tripId !== passes[i].tripId)) await writeTripPasses(account, next);
+  await mutatePasses(account, (passes) => ({ passes: releaseOrphaned(passes, liveTripIds), value: true }));
 }
