@@ -1,78 +1,111 @@
-# White Glove Itineraries — what is left
+# White Glove launch checklist — 2 November 2026
 
-Checked against the live site and the current main branch.
+This is the current launch plan for **White Glove Kosher Travel** (discover and plan) and **White Glove Itineraries** (build, organise and manage trips). The products remain separate, with their existing shared stores. Vercel is outside this investigation.
 
-## Only you can answer these
+The owner requested this checklist and authorized work on it. It replaces the old list of personal planning prices, personal About information and previously settled design choices. No personal planning service is being restored. The existing site notice and under-production banner stay until the owner requests their removal.
 
-Nothing here is a code change. Each is a sentence the site is waiting for, and until it arrives the page says so or says nothing.
+## Scope and evidence limits
 
-- [ ] **Pricing: a starting price or a typical range**  
-  `/admin/settings/words`  
-  The first thing anyone deciding whether to write in wants. Currently unanswered.
-- [ ] **Pricing: how long until someone hears back**  
-  `/admin/settings/words`  
-  A turnaround you can keep. "Within two working days" beats silence.
-- [ ] **Pricing: does the planning fee come off a booking**  
-  `/admin/settings/words`  
-  Yes, no, or partly — any of the three is better than the gap.
-- [ ] **Pricing: how long the planning itself takes**  
-  `/admin/settings/words`  
-  Not the same as the reply time. From go-ahead to itinerary.
-- [ ] **Pricing: cancellation and refund terms**  
-  `/admin/settings/words`  
-  What happens if the trip is called off after work has started.
-- [ ] **Pricing: support after the itinerary is sent**  
-  `/admin/settings/words`  
-  Whether anyone is there while they travel, and for how long. This is the one that decides whether the service reads as a service or as a PDF.
-- [ ] **About: your name, background, and where the business is based**  
-  `/admin/settings/about`  
-  The page is live and deliberately says nothing invented about who runs it.
-- [ ] **One real case study, with permission recorded**  
-  `/admin/settings/proof`  
-  The section is built and hides itself until then — /case-studies currently 404s, correctly. One real trip beats any amount of generic praise.
-- [ ] **Last-checked dates on time-sensitive records**  
-  `admin content screens`  
-  Kosher places, seasonal programmes, minyanim, access contacts, borders. The display is ready; no record carries a date yet.
+Inspected all projects returned by the connected Railway workspace (two production projects), every organization and project returned by the connected Neon identity (one free organization and one project), the two public application repositories and their open PRs, the private backup repository's metadata and backup code, GitHub Actions history, Resend domain verification and inbound webhook configuration, selected auth/payment/health/scheduler source, Railway runtime logs, resource metrics and domain certificates.
 
-## Decisions, not tasks
+This is an account and source audit, not a claim that every screen or transaction has been exercised. The execution environment's configured HTTP proxy is unreachable, preventing live browser/curl flows and dependency installation. Only selected source files were downloaded locally. The complete existing test suite and production build were not run locally. Stripe account discovery returned repeated authentication handshakes; live Stripe configuration remains unverified. No charge, email, account deletion or webhook replay was triggered.
 
-Each of these is a live choice someone already made deliberately. They are here because they carry a cost worth knowing about.
+Statuses distinguish confirmed findings from tests still needed. A variable name being present is not proof that its value works. A successful deployment is not proof that dependencies or payment fulfillment work.
 
-- [ ] **Keep the site notice as a full-screen modal, or go back to a strip**  
-  `components/NewSiteNotice.tsx`  
-  It covers every page and traps focus until dismissed. Measured: it blocked all 23 functional checks until the audit learned to dismiss it, and it is the whole of the 26 tab-order findings.
-- [ ] **Put one line of commission disclosure back under the /book panel**  
-  `app/book/page.tsx`  
-  It now lives in Terms and on each partner action. /book's three searches only show one because the Travel Essentials block happens to be filled. Empty that and three earning searches carry no disclosure.
-- [ ] **Confirm the flights and cars partner configuration**  
-  `/admin/settings/earnings`  
-  Unconfigured, both fall back to Kayak, which this account was not approved for. Production resolves to Aviasales and EconomyBookings, so this only bites if the config is lost.
-- [ ] **Confirm the Stay22 aid is live in the Stay22 dashboard**  
-  `/admin/settings/earnings`  
-  Hotels is the tab /book opens on. If the id is blank the search still works and earns nothing.
-- [ ] **Merge the branch with the typecheck and audit fixes**  
-  `claude/white-glove-launch-checklist-ewkr21`  
-  npm run check was red: a regex flag tsc rejects. Fixed, plus the flow audit updated for the modal, the /go redirect and the moved disclosure. 50/50 passing.
+## P0 — required before a public paid launch
 
-## Money left on the table
+- [ ] **L01 — Identify and administer the actual Neon project. BLOCKED.** Railway DNS resolves `ep-misty-wildflower-aybq0gyx-pooler.c-5.us-east-2.aws.neon.tech`. The connected Neon identity exposes only `autumn-mouse-45013470` / `ep-purple-bar-axj5321f`, a free project last active September 16 with zero current-period usage. This is an access/resource mismatch; it does not establish that the owner uses another email. Completion: the active endpoint appears in an authorized Neon project, with usage, quota, compute settings and ownership inspectable. Do not repoint production at the unused project.
 
-The slots are already built in lib/travel-essentials.ts. These need approving and a tracked link pasted, not coding.
+- [ ] **L02 — Prevent another database quota cutoff. CONFIRMED.** Runtime and failed snapshot logs show PostgreSQL error 53000, “Your account or project has exceeded the quota,” on October 31. The November 1 health job reported that the content database was working again. A billing-period reset is consistent with that timing, but the precise exhausted quota has not been inspected. Completion: verify the actual quota and usage, configure appropriate scale-to-zero and conservative compute settings, remove unnecessary queries, then measure normal traffic for at least 24 hours and forecast the month. Do not promise free operation from cache timers alone.
 
-- [ ] **Kiwitaxi — airport transfers**  
-  `Travelpayouts, then /admin/settings/travel-essentials`  
-  The best fit on this list. 50% revenue share, ~$8 an order, 102 countries. Someone shomer Shabbos cannot pay a driver on Shabbos or Yom Tov, so a pre-booked transfer is a real need rather than an upsell.
-- [ ] **GetYourGuide — tours and attractions**  
-  `Stay22 (/allez/getyourguide) or Travelpayouts`  
-  /book still says we do not sell tickets yet. May cost nothing to switch on: it is a supported path under the Stay22 id you already have.
-- [ ] **Airalo — eSIM**  
-  `Travelpayouts, then /admin/settings/travel-essentials`  
-  Landing on a Friday afternoon needing to find the shul is exactly when a working phone matters.
-- [ ] **DiscoverCars — test against EconomyBookings**  
-  `Travelpayouts`  
-  Usually pays better. Worth running against the current car partner.
-- [ ] **Amazon Associates — the kosher travel kit**  
-  `amazon associates, then /travel-guide and /kosher-travel`  
-  Travel blech, hotplate, candles and holders, travel Havdalah set. Low rate, enormous intent, and nobody else is monetising that shelf.
-- [ ] **Direct sponsorship — probably the biggest earner**  
-  `/admin (ad manager), /contact?reason=advertise`  
-  Pesach programme operators, kosher hotels and heritage drivers will pay far more than a 4% affiliate rate to reach this audience. The ad manager and the directory already exist.
+- [ ] **L03 — Review the existing database-cost PRs together. CONFIRMED UNMERGED WORK.** [Travel #465](https://github.com/Enove-nyc/Whiteglove/pull/465) and [Itineraries #82](https://github.com/Enove-nyc/Whiteglove-Itineraries/pull/82) add longer tagged caches and shared content reads. Travel #465 also returns success after exhausted migration retries when the database is unreachable. Review migration safety, cache size, published/draft filtering, failure behavior, Date serialization, write invalidation and transactional behavior. Invalidation in one deployment must also make edits visible in the other deployment's independent Next cache; a shared Postgres database alone does not share those caches. Completion: relevant tests, typecheck/build and edit-on-one/read-on-both checks pass before merging and deploying either PR.
+
+- [ ] **L04 — Make payment fulfillment recoverable and idempotent. CONFIRMED SOURCE ISSUE, BOTH APPS.** In `app/api/billing/webhook/route.ts`, `grantAlreadyHandled` writes a three-day NX marker before fulfillment. `grantOneTimePurchase` logs failed pass/plan writes but does not fail the response. A transient store failure can therefore acknowledge a paid purchase without access, and the marker can suppress redelivery. Completion: record success only when the purchase is durably granted, distinguish in-progress from completed processing, return a retryable failure when necessary, and prove exactly one entitlement after retries, concurrent/duplicate deliveries, process interruption and store recovery. Avoid duplicate customer notifications while retrying.
+
+- [ ] **L05 — Deploy session hardening on both apps. FIX PREPARED AND TARGETED TESTS PASS.** Itineraries still allowed a source-visible fallback signing key in production when configured secrets were missing; Travel already failed closed. Both parsers could throw on malformed percent encoding or Unicode signatures. The prepared fix aligns Itineraries with Travel, rejects malformed cookies safely and preserves the existing cookie format and configured-key behavior. Seven behavioral tests pass in each app (14 total); four reproduced failures in Itineraries before the fix. Completion: full repository validation, review, deployment and successful configured-secret sign-in on both domains. Both Railway services list signing variables, so missing-secret exploitability on current production is not established.
+
+- [ ] **L06 — Verify live Stripe setup without charging a customer. UNVERIFIED.** Check the intended account, live/test mode, published offers and price IDs, Checkout return URLs, customer portal, webhook endpoints, signing secrets and subscribed events. Completion: a supported test environment demonstrates purchase, access grant, duplicate webhook, async settlement, cancellation and renewal behavior; live configuration is compared without initiating a live charge. The current connector did not provide account data.
+
+- [ ] **L07 — Prove sign-up and recovery end to end. UNVERIFIED.** On both domains, test registration, verification, login, logout, forgotten-password/reset, expired/tampered sessions and account deletion with disposable test data. Check authorization on direct API requests, not only page redirects. Completion: a new user can return and recover access without owner intervention; one user cannot access another user's data. Existing shared credentials do not imply cross-domain single sign-on.
+
+- [ ] **L08 — Prove trip and client access end to end. UNVERIFIED.** On Itineraries, create/save/reopen/edit a trip, attach/import a confirmation, create a proposal/client code under an eligible adviser plan, and open exactly that trip as a client. Test unpaid/paid entitlements and revocation. Completion: data persists across sessions/devices; unguessable share tokens isolate trips; wrong accounts/tokens fail. Browser testing must include phone-sized screens and the existing notice dismissal.
+
+- [ ] **L09 — Validate backup restoration and close Postgres/media coverage gaps. PARTLY VERIFIED.** The private Redis backup repository has encrypted daily files through November 2, and its latest ten nightly jobs succeeded. The workflow decrypts and validates its own output. This does not prove a full application restore. Its README excludes Postgres because of public content snapshots; the public snapshot deliberately excludes drafts and is not a complete database backup. Media stored on the two Railway /data volumes needs separate verified coverage. Completion: restore representative Redis data, a complete Postgres backup including drafts, and media into an isolated environment; record recovery procedure and confirm access to decryption material without exposing it.
+
+## P1 — reliability, cost and operations
+
+- [x] **L10 — Recover the previously failed page-cache deployment. DONE.** Travel commit `1cf82ea6b833971aa3121bfd64ad3fca3648c2bc` is now live in Railway deployment `057049bc-cf80-4151-a83f-778f2c99096b`; Railway reported SUCCESS, passing /api/health and one running replica. It raises six page-level revalidation windows and adds four crawler robots rules. Nested caches still shorten some effective lifetimes. This is distinct from the unmerged PRs in L03.
+
+- [ ] **L11 — Meet the hosting budget using measured data. IN PROGRESS.** The owner wants free operation if feasible, approximately $10/month otherwise. Pre-fix seven-day memory averages imply about $20.83/month at Railway's published $10/GB/month memory rate, before CPU/storage/network and plan-credit accounting. The later one-hour averages are about 0.579 GB Travel plus 0.841 GB Itineraries, approximately $14.20/month memory if sustained; these short-window figures are not a bill or a demonstrated steady-state saving. Completion: inspect actual invoices and plan, establish a stable monthly forecast, then optimize or prepare a migration that preserves the two products, stores, media and scheduled work. Avoid setting a hard spending cap that unexpectedly takes both sites offline.
+
+- [ ] **L12 — Separate process health from dependency readiness. CONFIRMED DESIGN GAP.** /api/health returns ready:true when Postgres is unreachable unless an older schema was positively detected; Redis failure is also nonfatal. The public guide can use fallbacks, but paid account/trip functions depend on live storage. Completion: expose and monitor dependency failures explicitly while preserving intended public fallback behavior; demonstrate a simulated database/Redis outage triggers a useful alert. Do not equate HTTP 200 with full service health.
+
+- [ ] **L13 — Resolve the remaining failed dependency probe. CONFIRMED UNRESOLVED SIGNAL.** The November 1 health workflow returned HTTP 200 with checked:4, failing:1, changed:[“The content database is working again”], told:true. The remaining failing provider is not identified by that response. Completion: inspect stored health results or the authorized admin connection screen, identify the probe, fix its configuration or permission assumptions and verify its recovery. A green GitHub run alone does not mean all four probes pass.
+
+- [ ] **L14 — Bound health checks and queries. SOURCE CONCERN.** The Postgres health helper passes a signal to a callback which ignores it, so its timer does not actually cancel or race the Prisma query. Readiness also has no explicit database deadline. Completion: a deliberately hung query cannot hang the health job or deployment readiness indefinitely; add behavior tests for timeout and cleanup.
+
+- [ ] **L15 — Add required automated validation before deployment. CONFIRMED GAP IN MAIN WORKFLOWS.** Both main branches contain an assistant workflow; Travel also has snapshot/notification workflows. Neither main tree contains a dedicated push/PR lint, typecheck and test workflow. Railway source configuration has checkSuites:false. Completion: a PR runs meaningful tests, lint/typecheck and build as appropriate; failed checks stop release and an intentionally failing change proves the gate. Inspect available branch rules rather than assume protection exists.
+
+- [ ] **L16 — Keep shared schemas compatible and retain migration protection. NEEDS VALIDATION.** Main branches have separate deployment configs; Travel runs migrations, Itineraries railway.json does not. Completion: compare every migration/schema hash in both repos, document a single migration owner and deployment order, and prove older app code tolerates the newer shared schema. A missing DB must not silently approve a schema-changing deploy.
+
+- [ ] **L17 — Review the staged inbound-email configuration. CONFIRMED PENDING CHANGE.** Itineraries has a staged INBOUND_EMAIL_DOMAIN change dating from September 4. Resend has an enabled email.received webhook at https://www.whitegloveitineraries.com/api/inbound/confirmation and verifies trips.whitegloveitineraries.com with receiving enabled. Completion: compare intended and live configuration, commit only the reviewed setting, and run a consented disposable inbound-mail test. Do not commit the entire environment patch blindly.
+
+- [ ] **L18 — Verify schedules and avoid duplicate reminders. PARTLY VERIFIED.** Travel's November 1 daily-notification jobs for reminders, alerts and provider health all succeeded. Itineraries also starts a 30-minute scheduler through instrumentation.ts, with a Redis lease. Both products share customer data. Completion: prove shared reminder markers prevent duplicate deliveries across the GitHub job and in-process timer; confirm missed-run recovery and eligible-plan checks. Do not run a sending job during an audit without authorization.
+
+- [ ] **L19 — Bound paid flight and AI usage. NEEDS MEASUREMENT.** Itineraries' sweep checks followed trips with push subscriptions and delegates per-flight throttling. Existing app variables include multiple paid travel/AI providers. Completion: document each feature's provider calls, effective cache/throttle, per-user limits and spend alerts; stress anonymous endpoints with safe mocks. Do not disable the in-process scheduler through app sleeping without an alternative trigger.
+
+- [ ] **L20 — Investigate Itineraries server-action errors. CONFIRMED LOG SIGNAL.** Its latest bounded runtime error sample includes “Failed to find Server Action” and malformed Server Reference IDs, plus aborted requests. These can be stale clients or automated traffic; the sample alone does not establish a user-facing defect or compromise. Completion: correlate paths/timestamps/statuses with client versions, reproduce a real failing flow if present, and handle stale deployments safely.
+
+- [ ] **L21 — Add external outage visibility. PARTLY VERIFIED.** Both Railway environments currently have one running replica and no active platform issues. No project webhooks are configured; separate daily provider health exists. Completion: confirm who receives Railway failure notices and set an appropriate external uptime/dependency alert path. Keep low-value checks from continually waking Neon. No messages were sent in this audit.
+
+- [ ] **L22 — Verify Postgres snapshot freshness and scope. RECOVERED, COVERAGE LIMITED.** Travel content snapshots failed October 26–31 in the sampled history. October 31 job logs confirm quota error 53000. November 1 and 2 succeeded, and November 2 reported no content changed. Completion: verify latest snapshot source/counters and date, flag failures promptly, and retain complete private backup coverage from L09. Do not label a public-only snapshot a full backup.
+
+- [ ] **L23 — Verify credential restrictions and rotation history. HISTORICAL CLAIM NEEDS CHECKING.** Existing security.md says earlier Maps/Gemini keys were exposed and should be rotated, but points to obsolete deployment instructions. This audit did not establish whether rotation already happened. Completion: verify provider-side rotation/restrictions and live key use without printing keys; update stale instructions to Railway. Do not rotate or revoke blindly and break working integrations.
+
+- [ ] **L24 — Review session revocation and expiration. CONFIRMED SOURCE LIMITATION.** Account sessions sign an email with HMAC and contain no server-enforced issue/expiry claim. Clearing the browser cookie does not revoke an extracted token. Completion: assess existing reset/delete/password-change paths, add a compatible expiry/revocation scheme if required, and prove stolen/expired credentials cannot persist through the intended revocation action. Plan any forced sign-out before release.
+
+- [ ] **L25 — Confirm storage identity and least privilege. ACCESS LIMITED.** Railway OAuth exposes variable names, not values. Presence of DATABASE_URL, session variables or provider keys does not prove values, permissions or matching stores. Completion: authorized server-side diagnostics verify both apps use the intended shared Redis/Postgres and provider permissions, without returning credentials. Remove obsolete legacy variables only after dependency inventory.
+
+## P2 — launch experience and business readiness
+
+- [x] **L26 — Verify configured public-domain certificates. DONE AT PROVIDER LEVEL.** Railway reports ownership verified and certificates valid for www.whiteglovekoshertravel.com, admin.whiteglovekoshertravel.com, whitegloveitineraries.com and www.whitegloveitineraries.com. It reports DNS propagated; some displayed target/current values differ. Do not rewrite working DNS from those strings alone. Apex redirect/canonical behavior still needs a live HTTP check.
+
+- [x] **L27 — Verify email domain configuration. DONE AT PROVIDER LEVEL.** Resend reports verified sending domains for both brands and the trips subdomain; the email.received webhook is enabled on Itineraries. This is configuration evidence, not a sent/received-message test.
+
+- [ ] **L28 — Exercise branded transactional mail. UNVERIFIED.** With explicitly authorized disposable recipients, test verification, password reset, receipt/entitlement notices and inbound confirmation processing. Completion: each brand sends from its own domain, links land on the correct app, attachments are handled safely, duplicate events do not duplicate imports and invalid signatures fail.
+
+- [ ] **L29 — Validate public discovery and planning flows. UNVERIFIED.** On Kosher Travel test search, destination pages, kosher food, shuls/mikvaos, maps, saved places, recommendation planning and partner booking handoff. Completion: useful data and map pins, working mobile controls, clear empty states and no broken partner links; sign-in is requested when saving rather than upon arrival.
+
+- [ ] **L30 — Validate partner attribution and disclosures. UNVERIFIED.** Provider variables and source code exist but dashboard approvals, tracked IDs and commissions were not inspected. Completion: each enabled booking destination uses an approved tracked link, required disclosure is present and unavailable providers fail clearly. Additional affiliate programs are optional growth work, not launch blockers.
+
+- [ ] **L31 — Confirm offers and entitlement consistency. UNVERIFIED CROSS-APP BEHAVIOR.** Repo instructions have drifted: Travel records Personal / Trip Pass / Advisor Starter / Advisor Pro, while Itineraries still describes an older One Trip offer. Instructions alone do not establish current runtime pricing. Completion: compare actual plan logic, stored offerings, Stripe prices and pages on both apps; free and paid promises match delivered behavior. Keep permanent stored plan keys stable.
+
+- [ ] **L32 — Test mobile, accessibility and installation. UNVERIFIED THIS SESSION.** Check keyboard navigation, visible focus, labels, contrast, dialogs, error messages, small screens, service-worker upgrades and offline fallback. Preserve the owner's chosen full-screen site notice while testing around its dismissal. Completion: the main flows in L07/L08/L29 pass on desktop and phone.
+
+- [ ] **L33 — Verify native-app release status separately. BUILD EVIDENCE ONLY.** Itineraries' September 25 Advisor and Itineraries native workflow builds succeeded. Main-tree listings do not cover the separate native branch. Completion: compare current Play tracks and version codes with signed artifacts, verify app links and offline startup on actual devices. Successful GitHub builds are not evidence of store publication.
+
+- [ ] **L34 — Verify SEO and public access at launch. UNVERIFIED HTTP BEHAVIOR.** Check canonical redirects, robots, sitemap content/statuses, legal pages, the site lock and indexable product pages. Itineraries' sitemap source filters guide-only paths; that still needs response verification. Completion: the actual sitemap contains valid, public, canonical URLs for its own product. Removing the existing production banner/notice requires the owner's launch instruction.
+
+- [ ] **L35 — Confirm support and customer policies. NEEDS PRODUCT CHECK.** Verify working contact/support routes, privacy/account deletion, Terms, applicable payment/refund/subscription wording and a way to report a trip or billing problem. Completion: policies describe these software products accurately, support links work, and no removed personal planning service or invented owner details reappear.
+
+- [ ] **L36 — Publish and monitor a limited launch. NOT READY YET.** Completion: P0 items pass, spend is understood, recovery works, one new test user completes each product's core journey and monitoring detects failure. Start with a small invited audience, observe quota/fulfillment/error behavior, and expand only after evidence supports it. The checklist is working material for the agent, not a set of dashboard chores handed to the owner.
+
+## Work begun and verification record
+
+The earlier failed Travel cache deployment has been recovered. Session parser fixes and seven behavioral regressions per repo are prepared locally and pass. Tests deliberately override environment values with fixtures and do not use real credentials. Valid configured-secret cookies retain their format.
+
+The next implementation priority is L04's payment-fulfillment recovery, alongside reviewing the two existing cost PRs. Do not merge those PRs solely because GitHub reports a clean merge: they change data freshness, migration behavior and shared-store assumptions.
+
+Existing branches and old open PRs have not been bulk-merged or deleted. No live payment, sending test, DNS edit, destructive storage action, provider downgrade or new hosting migration has been performed.
+
+## Primary evidence
+
+- [Recovered Travel deployment](https://railway.com/project/703c363e-7a84-460e-a9f9-593a208bf545/service/4771edc0-77ec-4acf-9658-64b0de94904d?environmentId=e417eccf-bfd1-4313-a9f1-992adeb050dc)
+- [Itineraries production](https://railway.com/project/9486f97d-aa25-44a0-b6eb-063d53a1d0f4/service/aabcdddd-4708-4fdf-9bab-4eb66a8c190d?environmentId=eab6c21a-02b5-4be5-94aa-85c1242bb9f6)
+- [Travel database-cost PR #465](https://github.com/Enove-nyc/Whiteglove/pull/465)
+- [Itineraries database-cost PR #82](https://github.com/Enove-nyc/Whiteglove-Itineraries/pull/82)
+- [Recovered content snapshot, November 2](https://github.com/Enove-nyc/Whiteglove/actions/runs/41443246231)
+- [Failed content snapshot, October 31](https://github.com/Enove-nyc/Whiteglove/actions/runs/41192243179)
+- [Daily notifications and health, November 1](https://github.com/Enove-nyc/Whiteglove/actions/runs/41336566405)
+- [Private nightly backup, November 2](https://github.com/Enove-nyc/whiteglove-backups/actions/runs/41438450917)
+- [Railway resource pricing](https://docs.railway.com/pricing/plans)
