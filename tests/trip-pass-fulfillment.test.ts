@@ -27,7 +27,7 @@ let beforeCommand: ((command: Array<string | number>) => Promise<void>) | undefi
 let afterCommand: ((command: Array<string | number>) => void) | undefined;
 beforeEach(() => {
   fixture = paymentRedisFixture({
-    [accountKey]: JSON.stringify({ email: account, passwordHash: "preserved", plan: "free" }),
+    [accountKey]: JSON.stringify({ email: account, passwordHash: "preserved", plan: "free", team: [], extra: { empty: [] } }),
     [`white-glove:account-data:${account}`]: JSON.stringify({ trips: [{ id: "trip-a" }] }),
   });
   notifications = 0;
@@ -70,6 +70,8 @@ fulfillmentTest("a purchase atomically saves pass, plan, purchase record and per
   const stored = JSON.parse(fixture.state[accountKey]);
   assert.equal(stored.plan, "one_trip");
   assert.equal(stored.passwordHash, "preserved");
+  assert.deepEqual(stored.team, []);
+  assert.deepEqual(stored.extra, { empty: [] });
   assert.equal(JSON.parse(fixture.state[purchaseKey]).plan, "one_trip");
   assert.equal(JSON.parse(fixture.state[receiptKey(input.sessionId)]).passId, passes()[0].id);
 });
@@ -79,7 +81,7 @@ fulfillmentTest("concurrent and completed/async redeliveries of one session crea
   assert.equal(passes().length, 1);
 });
 fulfillmentTest("a lost response after commit can be retried without granting twice", async () => {
-  afterCommand = () => { throw new TypeError("connection lost after commit"); };
+  afterCommand = (command) => { if (command[0] === "EVAL") throw new TypeError("connection lost after commit"); };
   await assert.rejects(fulfillTripPassPurchase(input));
   afterCommand = undefined;
   assert.equal(await fulfillTripPassPurchase(input), "duplicate");
@@ -177,7 +179,7 @@ fulfillmentTest("completed and async HTTP deliveries share one permanent grant a
   assert.equal(notifications, 1);
 });
 fulfillmentTest("an HTTP retry after a lost commit response does not duplicate purchased access", async () => {
-  afterCommand = () => { throw new TypeError("lost response"); };
+  afterCommand = (command) => { if (command[0] === "EVAL") throw new TypeError("lost response"); };
   assert.equal((await webhook()).status, 503);
   afterCommand = undefined;
   assert.equal((await webhook()).status, 200);
@@ -204,3 +206,15 @@ fulfillmentTest("a missing account is retryable at the HTTP boundary, never ackn
 });
 
 void routeMocks;
+
+fulfillmentTest("a profile update between read and fulfillment is preserved by the atomic compare", async () => {
+  beforeCommand = async (command) => {
+    if (command[0] === "EVAL" && command[2] === 6) {
+      beforeCommand = undefined;
+      fixture.execute(["SET", accountKey, JSON.stringify({ email: account, passwordHash: "changed", team: [] })]);
+    }
+  };
+  assert.equal(await fulfillTripPassPurchase(input), "created");
+  assert.equal(JSON.parse(fixture.state[accountKey]).passwordHash, "changed");
+  assert.equal(passes().length, 1);
+});

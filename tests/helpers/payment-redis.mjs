@@ -90,6 +90,7 @@ export function paymentRedisFixture(initial = {}) {
      return result;
    }
    if(command[0]==='GET') return state[command[1]] ?? null;
+   if(command[0]==='SET') { state[command[1]]=String(command[2]); return 'OK'; }
    if(command[0]==='EVAL') return evalLua(command,state);
    throw new Error('Unsupported fixture command');
  }

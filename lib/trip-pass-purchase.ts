@@ -24,7 +24,7 @@ local accountRaw = redis.call("GET", KEYS[3])
 if not accountRaw or string.sub(accountRaw, 1, 1) ~= "{" then
   return redis.error_reply("account is unavailable")
 end
-local account = cjson.decode(accountRaw)
+if accountRaw ~= ARGV[6] then return "retry" end
 local passesRaw = redis.call("GET", KEYS[4])
 if passesRaw and string.sub(passesRaw, 1, 1) ~= "[" then
   return redis.error_reply("invalid pass ledger")
@@ -51,10 +51,7 @@ end
 local pass = { id = ARGV[5], boughtAt = ARGV[4], tripId = trip, spentAt = cjson.null }
 if trip ~= cjson.null then pass.spentAt = ARGV[4] end
 table.insert(passes, pass)
-account.plan = ARGV[2]
-account.planSince = ARGV[4]
-account.planSetBy = "Stripe one-time purchase"
-local accountJSON = cjson.encode(account)
+local accountJSON = ARGV[7]
 local passesJSON = cjson.encode(passes)
 local purchaseJSON = cjson.encode({ plan = ARGV[2], purchasedAt = ARGV[4] })
 local receiptJSON = cjson.encode({ version = 1, account = ARGV[1], plan = ARGV[2], passId = ARGV[5], fulfilledAt = ARGV[4] })
@@ -72,18 +69,31 @@ export async function fulfillTripPassPurchase(input: {
   if (!account || input.plan !== "one_trip" || !input.sessionId.startsWith("cs_")) {
     throw new Error("Invalid Trip Pass purchase.");
   }
-  const result = await paidRedisCommand<unknown>([
-    "EVAL", FULFILL_TRIP_PASS, 6,
-    `white-glove:fulfilled-checkout:${input.sessionId}`,
-    `white-glove:stripe-events:${input.sessionId}`,
-    `white-glove:account:${account}`,
-    `white-glove:trip-passes:${account}`,
-    `white-glove:one-time-purchase:${account}`,
-    `white-glove:account-data:${account}`,
-    account, input.plan, input.tripId ?? "", new Date().toISOString(),
-    randomBytes(9).toString("base64url"),
-  ]);
-  if (result !== "created" && result !== "duplicate") throw new Error("Invalid fulfillment response.");
-  return result;
+  const accountKey = `white-glove:account:${account}`;
+  const now = new Date().toISOString();
+  const passId = randomBytes(9).toString("base64url");
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const raw = await paidRedisCommand<string | null>(["GET", accountKey]);
+    let next = "";
+    if (raw !== null) {
+      const record: unknown = JSON.parse(raw);
+      if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("Invalid purchase account.");
+      // Serialize in JavaScript: Redis cjson changes nested empty arrays to
+      // objects, which would corrupt fields such as the account's team roster.
+      next = JSON.stringify({ ...record, plan: input.plan, planSince: now, planSetBy: "Stripe one-time purchase" });
+    }
+    const result = await paidRedisCommand<unknown>([
+      "EVAL", FULFILL_TRIP_PASS, 6,
+      `white-glove:fulfilled-checkout:${input.sessionId}`,
+      `white-glove:stripe-events:${input.sessionId}`,
+      accountKey,
+      `white-glove:trip-passes:${account}`,
+      `white-glove:one-time-purchase:${account}`,
+      `white-glove:account-data:${account}`,
+      account, input.plan, input.tripId ?? "", now, passId, raw ?? "", next,
+    ]);
+    if (result === "created" || result === "duplicate") return result;
+    if (result !== "retry") throw new Error("Invalid fulfillment response.");
+  }
+  throw new Error("Purchase account changed too often; please retry.");
 }
-
