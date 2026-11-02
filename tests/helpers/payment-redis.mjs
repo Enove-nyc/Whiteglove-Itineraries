@@ -95,3 +95,9 @@ export function paymentRedisFixture(initial = {}) {
  }
  return {state,execute};
 }
+
+// The required CI job always supplies Redis. Other developers may opt into the
+// integration cases with a local Redis port or an installed LuaTeX interpreter.
+export function paymentRedisAvailable() {
+  return Boolean(process.env.PAYMENT_TEST_REDIS_PORT) || spawnSync('texlua', ['--version'], {encoding:'utf8'}).status === 0;
+}

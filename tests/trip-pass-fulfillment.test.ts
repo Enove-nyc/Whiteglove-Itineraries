@@ -6,8 +6,10 @@ const routeMocks = mockBillingRouteDependencies();
 const { POST } = await import("../app/api/billing/webhook/route");
 import { fulfillTripPassPurchase } from "../lib/trip-pass-purchase";
 import { grantTripPass, spendTripPass } from "../lib/trip-pass-store";
-import { paymentRedisFixture } from "./helpers/payment-redis.mjs";
+import { paymentRedisAvailable, paymentRedisFixture } from "./helpers/payment-redis.mjs";
 
+// CI runs these against real Redis; a plain unit-test setup can skip the optional integration dependency.
+const fulfillmentTest = paymentRedisAvailable() ? test : test.skip;
 const account = "buyer@example.test";
 const accountKey = `white-glove:account:${account}`;
 const passesKey = `white-glove:trip-passes:${account}`;
@@ -61,7 +63,7 @@ afterEach(() => {
 });
 const passes = () => JSON.parse(fixture.state[passesKey] ?? "[]");
 
-test("a purchase atomically saves pass, plan, purchase record and permanent receipt", async () => {
+fulfillmentTest("a purchase atomically saves pass, plan, purchase record and permanent receipt", async () => {
   assert.equal(await fulfillTripPassPurchase(input), "created");
   assert.equal(passes().length, 1);
   assert.equal(passes()[0].tripId, "trip-a");
@@ -71,19 +73,19 @@ test("a purchase atomically saves pass, plan, purchase record and permanent rece
   assert.equal(JSON.parse(fixture.state[purchaseKey]).plan, "one_trip");
   assert.equal(JSON.parse(fixture.state[receiptKey(input.sessionId)]).passId, passes()[0].id);
 });
-test("concurrent and completed/async redeliveries of one session create one pass", async () => {
+fulfillmentTest("concurrent and completed/async redeliveries of one session create one pass", async () => {
   const results = await Promise.all(Array.from({ length: 8 }, () => fulfillTripPassPurchase(input)));
   assert.equal(results.filter((x) => x === "created").length, 1);
   assert.equal(passes().length, 1);
 });
-test("a lost response after commit can be retried without granting twice", async () => {
+fulfillmentTest("a lost response after commit can be retried without granting twice", async () => {
   afterCommand = () => { throw new TypeError("connection lost after commit"); };
   await assert.rejects(fulfillTripPassPurchase(input));
   afterCommand = undefined;
   assert.equal(await fulfillTripPassPurchase(input), "duplicate");
   assert.equal(passes().length, 1);
 });
-test("an outage before commit leaves no completed receipt and can be retried", async () => {
+fulfillmentTest("an outage before commit leaves no completed receipt and can be retried", async () => {
   beforeCommand = async () => { throw new TypeError("offline"); };
   await assert.rejects(fulfillTripPassPurchase(input));
   assert.equal(fixture.state[receiptKey(input.sessionId)], undefined);
@@ -91,7 +93,7 @@ test("an outage before commit leaves no completed receipt and can be retried", a
   beforeCommand = undefined;
   assert.equal(await fulfillTripPassPurchase(input), "created");
 });
-test("missing account or corrupt pass data fails before any fulfillment write", async () => {
+fulfillmentTest("missing account or corrupt pass data fails before any fulfillment write", async () => {
   fixture = paymentRedisFixture({});
   await assert.rejects(fulfillTripPassPurchase(input));
   assert.equal(fixture.state[receiptKey(input.sessionId)], undefined);
@@ -101,25 +103,25 @@ test("missing account or corrupt pass data fails before any fulfillment write", 
   assert.equal(fixture.state[receiptKey(input.sessionId)], undefined);
   assert.equal(JSON.parse(fixture.state[accountKey]).plan, "free");
 });
-test("a legacy pre-fulfillment marker requires reconciliation, not another grant", async () => {
+fulfillmentTest("a legacy pre-fulfillment marker requires reconciliation, not another grant", async () => {
   fixture = paymentRedisFixture({ [accountKey]: JSON.stringify({ plan: "free" }), "white-glove:stripe-events:cs_fixture": "1" });
   await assert.rejects(fulfillTripPassPurchase(input));
   assert.equal(fixture.state[receiptKey(input.sessionId)], undefined);
   assert.equal(passes().length, 0);
 });
-test("a second distinct purchase for a covered or deleted trip remains spare", async () => {
+fulfillmentTest("a second distinct purchase for a covered or deleted trip remains spare", async () => {
   await fulfillTripPassPurchase(input);
   await fulfillTripPassPurchase({ ...input, sessionId: "cs_second" });
   await fulfillTripPassPurchase({ ...input, sessionId: "cs_deleted", tripId: "deleted-trip" });
   assert.equal(passes().length, 3);
   assert.equal(passes().filter((p: { tripId: string | null }) => p.tripId === null).length, 2);
 });
-test("the same session cannot fulfill a different account", async () => {
+fulfillmentTest("the same session cannot fulfill a different account", async () => {
   await fulfillTripPassPurchase(input);
   await assert.rejects(fulfillTripPassPurchase({ ...input, account: "other@example.test" }));
   assert.equal(passes().length, 1);
 });
-test("missing configuration and Redis errors are not treated as successful grants", async () => {
+fulfillmentTest("missing configuration and Redis errors are not treated as successful grants", async () => {
   delete process.env.UPSTASH_REDIS_REST_TOKEN;
   await assert.rejects(fulfillTripPassPurchase(input), /not configured/);
   process.env.UPSTASH_REDIS_REST_TOKEN = "fixture-token";
@@ -128,7 +130,7 @@ test("missing configuration and Redis errors are not treated as successful grant
   globalThis.fetch = async () => new Response("unavailable", { status: 503 });
   await assert.rejects(fulfillTripPassPurchase(input), /request failed/);
 });
-test("a concurrent purchase cannot be overwritten by a stale pass-spend write", async () => {
+fulfillmentTest("a concurrent purchase cannot be overwritten by a stale pass-spend write", async () => {
   await fulfillTripPassPurchase({ ...input, tripId: undefined });
   beforeCommand = async (command) => {
     if (command[0] === "EVAL" && command[2] === 1) {
@@ -140,7 +142,7 @@ test("a concurrent purchase cannot be overwritten by a stale pass-spend write", 
   assert.equal(passes().length, 2);
   assert.equal(passes().filter((p: { tripId: string | null }) => p.tripId === "trip-a").length, 1);
 });
-test("a failed ledger read never overwrites paid passes with an empty ledger", async () => {
+fulfillmentTest("a failed ledger read never overwrites paid passes with an empty ledger", async () => {
   await fulfillTripPassPurchase(input);
   beforeCommand = async (command) => { if (command[0] === "GET") throw new TypeError("read failed"); };
   assert.equal(await grantTripPass(account), null);
@@ -160,7 +162,7 @@ async function webhook(type = "checkout.session.completed", paid = true, validSi
   }) as Parameters<typeof POST>[0]);
 }
 
-test("the signed HTTP handler returns 503 on storage failure, then 200 on successful retry", async () => {
+fulfillmentTest("the signed HTTP handler returns 503 on storage failure, then 200 on successful retry", async () => {
   beforeCommand = async () => { throw new TypeError("offline"); };
   assert.equal((await webhook()).status, 503);
   assert.equal(fixture.state[receiptKey(input.sessionId)], undefined);
@@ -168,34 +170,34 @@ test("the signed HTTP handler returns 503 on storage failure, then 200 on succes
   assert.equal((await webhook()).status, 200);
   assert.equal(passes().length, 1);
 });
-test("completed and async HTTP deliveries share one permanent grant and one notification", async () => {
+fulfillmentTest("completed and async HTTP deliveries share one permanent grant and one notification", async () => {
   assert.equal((await webhook()).status, 200);
   assert.equal((await webhook("checkout.session.async_payment_succeeded")).status, 200);
   assert.equal(passes().length, 1);
   assert.equal(notifications, 1);
 });
-test("an HTTP retry after a lost commit response does not duplicate purchased access", async () => {
+fulfillmentTest("an HTTP retry after a lost commit response does not duplicate purchased access", async () => {
   afterCommand = () => { throw new TypeError("lost response"); };
   assert.equal((await webhook()).status, 503);
   afterCommand = undefined;
   assert.equal((await webhook()).status, 200);
   assert.equal(passes().length, 1);
 });
-test("unpaid and incorrectly signed HTTP events never grant a pass", async () => {
+fulfillmentTest("unpaid and incorrectly signed HTTP events never grant a pass", async () => {
   assert.equal((await webhook("checkout.session.completed", false)).status, 200);
   assert.equal((await webhook("checkout.session.async_payment_succeeded", false)).status, 200);
   assert.equal((await webhook("checkout.session.completed", true, false)).status, 400);
   assert.equal(passes().length, 0);
   assert.equal(notifications, 0);
 });
-test("a notification failure cannot undo a saved grant or duplicate it on retry", async () => {
+fulfillmentTest("a notification failure cannot undo a saved grant or duplicate it on retry", async () => {
   notificationFails = true;
   assert.equal((await webhook()).status, 200);
   assert.equal((await webhook()).status, 200);
   assert.equal(passes().length, 1);
   assert.equal(notifications, 1);
 });
-test("a missing account is retryable at the HTTP boundary, never acknowledged as fulfilled", async () => {
+fulfillmentTest("a missing account is retryable at the HTTP boundary, never acknowledged as fulfilled", async () => {
   fixture = paymentRedisFixture({});
   assert.equal((await webhook()).status, 503);
   assert.equal(fixture.state[receiptKey(input.sessionId)], undefined);
