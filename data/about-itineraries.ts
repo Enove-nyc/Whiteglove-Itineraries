@@ -51,7 +51,7 @@ export const ITINERARIES_ABOUT_BLOCKS: PageBlock[] = [
     kind: "text",
     heading: "How the business is paid",
     body:
-      "Directly, and the prices are on the pricing page rather than behind a call. One Trip is a single small fee for somebody planning one trip for themselves. Advisor Starter and Advisor Pro are monthly, for people running client trips, and add handing each client their own app — Pro puts the adviser's own name and logo on it in place of ours. There is no free tier that quietly stops working mid-trip, and nothing here is paid for by selling what is in anybody's itinerary.",
+      "Personal planning is free: build, save and print your own itineraries. A Trip Pass is a one-time upgrade that opens one trip in the app on your phone. Advisor Starter and Advisor Pro are subscriptions for people running client trips; Pro adds the adviser's own name and logo. Available purchase options are shown in your account before you choose one. We do not sell what is in anybody's itinerary.",
   },
   {
     id: "about-not",

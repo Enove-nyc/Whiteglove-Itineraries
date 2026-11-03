@@ -52,8 +52,9 @@ jobs:
           sudo node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
           npx prisma migrate deploy
+      - run: npx tsx --test tests/account-plans.test.ts tests/account-limits.test.ts tests/plan-billing.test.ts
       - run: npx tsc --noEmit
-      - run: npx eslint components/Navbar.tsx components/LoginForm.tsx components/DateField.tsx components/SampleItineraryViews.tsx app/pricing/page.tsx app/sample-itinerary/page.tsx app/packing/page.tsx app/offline/page.tsx
+      - run: npx eslint components/Navbar.tsx components/LoginForm.tsx components/DateField.tsx components/SampleItineraryViews.tsx app/pricing/page.tsx app/sample-itinerary/page.tsx app/packing/page.tsx app/offline/page.tsx components/PackingListPanel.tsx components/SiteTracker.tsx components/HomeAudience.tsx lib/account-plans.ts data/about-itineraries.ts
       - run: npm run build
         env:
           NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt

@@ -122,9 +122,15 @@ export default async function PricingPage() {
               planner now, which genuinely is the same on every plan, and
               leaves clients to the row that gates them. */}
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-6 text-stone-600">
-            One trip for yourself, or the tools to run clients. The planner, the map and the guides are the
-            same on every plan; what changes is how many trips you keep and what you can hand a client.
+            Planning your own trips is free. A Trip Pass opens one trip in the app on your phone;
+            adviser subscriptions add the tools to hand trips to clients.
           </p>
+
+          <div className="mt-8 rounded-lg border border-[var(--gold-light)] bg-[var(--cream)] p-6">
+            <h3 className="text-lg font-bold text-[var(--navy)]">Personal — Free</h3>
+            <p className="mt-2 text-sm leading-6 text-stone-700">Build, save and print your own itineraries. A paid plan is not required to start planning.</p>
+            <div className="mt-4"><LinkButton href="/itinerary">Start planning</LinkButton></div>
+          </div>
 
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             {cards.map((card) => {
@@ -169,7 +175,7 @@ export default async function PricingPage() {
                   </ul>
 
                   <div className="mt-6">
-                    <LinkButton href="/account">Choose {card.name}</LinkButton>
+                    <LinkButton href="/account">View {card.name} options</LinkButton>
                   </div>
                 </div>
               );
@@ -210,8 +216,7 @@ export default async function PricingPage() {
           <div>
             <dt className="text-sm font-bold text-[var(--navy)]">I am planning one trip, for myself.</dt>
             <dd className="mt-1 text-sm leading-6 text-stone-600">
-              One Trip is for exactly that — a single fee, no subscription, and the app on your own phone while you
-              travel.
+              Planning it is free. A Trip Pass adds the app on your phone for one trip, with no subscription.
             </dd>
           </div>
         </dl>

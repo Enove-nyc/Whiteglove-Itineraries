@@ -35,7 +35,7 @@ const COPY: Record<Audience, { heading: string; body: string; primary: { href: s
   own: {
     heading: "Your whole trip, on your phone, in order.",
     body:
-      "Flights, hotels, transport and the days themselves in one place — with the map, the documents and the travel wallet kept for when there is no signal. One trip, one small fee, no subscription.",
+      "Flights, hotels, transport and the days themselves in one place — with the map, the documents and the travel wallet kept for when there is no signal. Build your itinerary free; add a Trip Pass to open it in the app.",
     primary: { href: "/itinerary", label: "Start my trip" },
   },
 };
