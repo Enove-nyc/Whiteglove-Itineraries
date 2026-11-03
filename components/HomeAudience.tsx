@@ -15,6 +15,8 @@ const COPY: Record<Audience, { heading: string; body: string }> = {
   },
 };
 
+const CTA = "inline-flex min-h-11 items-center justify-center rounded-full px-6 py-3 text-sm font-semibold";
+
 export default function HomeAudience() {
   const [who, setWho] = useState<Audience>("clients");
   const copy = COPY[who];
@@ -34,8 +36,8 @@ export default function HomeAudience() {
       <h1 className="mt-7 font-[family-name:var(--font-display)] text-4xl leading-tight sm:text-6xl">{copy.heading}</h1>
       <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-[#e0e7e7] sm:text-lg">{copy.body}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Link href="/sample-itinerary" className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[var(--navy)]">Explore a sample itinerary</Link>
-        <Link href="/about" className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/50 px-6 py-3 text-sm font-semibold text-white">What we are building</Link>
+        <Link href="/sample-itinerary" className={`${CTA} bg-white text-[var(--navy)]`}>Explore a sample itinerary</Link>
+        <Link href="/about" className={`${CTA} border border-white/50 text-white`}>What we are building</Link>
       </div>
     </>
   );

@@ -25,15 +25,15 @@ export const ITINERARIES_ABOUT_BLOCKS: PageBlock[] = [
     ],
   },
   {
-    id: "about-preview",
+    id: "about-paid",
     kind: "text",
-    heading: "What you are seeing today",
+    heading: "Plans and pricing are not open yet",
     body: "You are looking at a development preview, including example itineraries and app screens. These show the product we are working toward; they are not an offer of a service that is already open. Features, pricing and availability may change before launch.",
   },
   {
-    id: "about-product",
+    id: "about-not",
     kind: "text",
-    heading: "Travel software, for travellers and advisers",
+    heading: "What we will not do",
     body: "White Glove Itineraries is being developed as a general travel itinerary and trip-management platform. We are building software for planning and carrying a trip; we are not offering a personal trip-planning or booking service.",
   },
 ];
