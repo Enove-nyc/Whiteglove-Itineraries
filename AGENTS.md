@@ -127,3 +127,12 @@ Mobile layouts must keep controls clear of fixed navigation, avoid nested phone 
 The owner wants a polished, usable-looking website with a compact but visible Demo / In development status, rather than repeated prominent not-open paragraphs. About and pricing must still explain that the company is in development and purchases are unavailable. Purchases stay closed. The full-screen site notice remains unless the owner separately changes it. Keep the separate company identities and the owner-confirmed shared login details and trips; do not migrate or split customer data.
 
 The Kosher Travel homepage should feel inviting for travellers, with soft sea-blue, mint and warm-sand shading, light card surfaces and gentle gradients. Keep contrast and mobile controls readable, the search-only hero and six section links. Replace the bold tight food close-up with a calmer real licensed food photograph; no generated photographs. A reference to an unreleased Beeper-like app is awaiting its name or URL, so do not claim to have identified or copied it.
+
+
+## Current owner direction — invitation-only accounts, normal product language
+
+The owner has replaced the earlier development/demo presentation: use normal present-tense product language, as an operating website. Do not show our Demo badges, development strips, coming-soon pitches or repeated not-open wording. Keep real illustrative trips labelled as samples and preserve the existing travel-verification notice.
+
+Public authentication is LOGIN ONLY. No public signup tab, button or create-account invitation. A new account must use an expiring, single-use invitation link issued by the owner from Admin → Accounts. The server enforces the invitation, including identity binding and atomic consumption; hiding signup controls is not sufficient. Google signs in existing accounts only and must not silently create new accounts. Existing account access, recovery, shared login details and shared trips remain intact. Do not split customer stores.
+
+Keep purchases closed: normal product wording and private registration do not authorize charging or establish a one-/two-dollar itinerary price. The owner generates and copies links personally; do not send invitations or other messages through tools unless explicitly requested. Invitation credentials must not appear in logs, documents or persisted plaintext. No further app-reference question is needed; this instruction replaces that reference.

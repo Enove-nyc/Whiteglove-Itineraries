@@ -1,16 +1,16 @@
 name: Visitor journeys
 on:
   push:
-    branches: [codex/demo-colour-refresh]
+    branches: [codex/invitation-only]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: travel-colour-refresh
+  group: invitation-only
   cancel-in-progress: true
 jobs:
   isolated:
-    if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
+    if: contains(github.event.head_commit.message, '[validate invitations]') || contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -46,8 +46,8 @@ jobs:
           cache: npm
       - run: sudo apt-get update -qq && sudo apt-get install -y redis-tools
       - run: npm ci
-      - name: Relevant UI and copy regression checks
-        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npx tsx --test tests/home-audience.test.ts tests/itineraries-home-links.test.ts tests/about-brand.test.ts tests/pricing-page.test.ts tests/sample-itinerary.test.ts tests/mobile-bottom-bar.test.ts
+      - name: Complete regression suite
+        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npm test
       - run: npm install --ignore-scripts --no-save --package-lock=false @axe-core/playwright
       - run: npx playwright install --with-deps chromium
       - name: Start disposable stores and install schema
@@ -56,12 +56,18 @@ jobs:
           sudo node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
           npx prisma migrate deploy
+      - name: Invitation acceptance against real Redis
+        run: npx tsx --test tests/account-invitations.test.ts
+        env:
+          INVITE_INTEGRATION: '1'
       - run: npx tsc --noEmit
-      - run: npx eslint components/ItinerariesHome.tsx components/DevelopmentNotice.tsx lib/launch-status.ts
+      - run: npx eslint components/ServiceWorkerRegister.tsx components/TravelpayoutsScript.tsx lib/account-invitations.ts lib/account-store.ts app/api/account/register/route.ts app/api/account/invitation/route.ts app/join/page.tsx components/InvitationJoin.tsx components/LoginForm.tsx components/SignInGate.tsx app/login/page.tsx app/pricing/page.tsx lib/beta-notice.ts components/HomeAudience.tsx components/ItinerariesHome.tsx data/about-itineraries.ts data/about-profile.ts app/page.tsx app/layout.tsx lib/site-assistant.ts
       - run: npm run build
+        if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
         env:
           NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt
       - name: Start actual production build
+        if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
         run: |
           NODE_EXTRA_CA_CERTS="$PWD/scripts/ws.crt" npx next start -p 3002 > /tmp/visitor-app.log 2>&1 &
           for n in $(seq 1 60); do
@@ -71,9 +77,10 @@ jobs:
           cat /tmp/visitor-app.log
           exit 1
       - name: Exercise isolated visitor and account journeys
+        if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
         run: node scripts/visitor-journeys.mjs
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && (contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch')
         with:
           name: isolated-visitor-journeys
           path: journey-results/
@@ -110,5 +117,6 @@ jobs:
           name: live-visitor-journeys-${{ matrix.brand }}
           path: journey-results/
           retention-days: 7
+
 
 

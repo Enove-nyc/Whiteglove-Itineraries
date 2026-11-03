@@ -306,7 +306,7 @@ export default function TripSetupPanel({
                   href="/login?next=%2Fitinerary"
                   className="mt-3 inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-5 text-xs font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]"
                 >
-                  Sign in or create an account
+                  Log in
                 </Link>
               </>
             ) : signedIn ? (
@@ -328,3 +328,4 @@ export default function TripSetupPanel({
     </section>
   );
 }
+

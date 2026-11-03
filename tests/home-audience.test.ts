@@ -5,9 +5,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import HomeAudience from "@/components/HomeAudience";
 
 describe("the public development preview", () => {
-  it("describes a product being built rather than a service already for sale", () => {
+  it("describes the product in normal present-tense language without public purchase buttons", () => {
     const html = renderToStaticMarkup(createElement(HomeAudience));
-    assert.match(html, /We are building/);
+    assert.match(html, /Bring your itinerary/);
+    assert.doesNotMatch(html, /We are building|in development|coming soon/i);
     assert.doesNotMatch(html, /Choose a plan|Buy now|Subscribe now/i);
   });
 
@@ -27,3 +28,4 @@ describe("the public development preview", () => {
     assert.doesNotMatch(html, /href="\/(?:login|account|itinerary)(?:[?"/])/);
   });
 });
+

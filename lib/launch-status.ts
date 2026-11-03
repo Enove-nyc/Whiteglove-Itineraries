@@ -2,5 +2,6 @@
 export const ITINERARIES_IN_DEVELOPMENT = true;
 
 export const ITINERARIES_DEVELOPMENT_MESSAGE =
-  "Demo · White Glove Itineraries is in development.";
+  "New accounts are available by invitation. Existing members can log in.";
+
 
