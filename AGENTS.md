@@ -136,3 +136,20 @@ The owner has replaced the earlier development/demo presentation: use normal pre
 Public authentication is LOGIN ONLY. No public signup tab, button or create-account invitation. A new account must use an expiring, single-use invitation link issued by the owner from Admin → Accounts. The server enforces the invitation, including identity binding and atomic consumption; hiding signup controls is not sufficient. Google signs in existing accounts only and must not silently create new accounts. Existing account access, recovery, shared login details and shared trips remain intact. Do not split customer stores.
 
 Keep purchases closed: normal product wording and private registration do not authorize charging or establish a one-/two-dollar itinerary price. The owner generates and copies links personally; do not send invitations or other messages through tools unless explicitly requested. Invitation credentials must not appear in logs, documents or persisted plaintext. No further app-reference question is needed; this instruction replaces that reference.
+
+## Standing owner instruction — fix causes, minimize costs, preserve useful alerts
+
+Confirmed by the owner on 3 November 2026. This supersedes earlier suggestions to turn off GitHub notifications or treat the two email addresses as separate owner accounts.
+
+- Make White Glove hosting and database usage as cheap as possible, aiming for free operation where technically viable. Investigate and fix waste, excessive queries, resource use, configuration and architecture. Report actual bills, changes and measured savings accurately; do not promise zero cost without verifying it.
+- Do not treat taking the site or its useful features offline, hiding errors, or suppressing alerts as the cost fix. Preserve existing accounts, shared login details, trips and data while optimizing. Discuss material functionality trade-offs explicitly.
+- When GitHub reports a failed run, diagnose and fix the failed workflow, test or underlying application. Keep useful failure notifications enabled. Do not recommend disabling Actions email, filtering, archiving or muting notifications as the solution to a failing run. Earlier archival of development-run messages was inbox cleanup only, not a fix. If the owner changed notification settings following the earlier advice, explain how to restore failure alerts; do not assume they changed them.
+- The owner confirms that skristikartu@gmail.com and whitegloveitineraries@gmail.com are linked to the same account. Do not ask again whether they control the first address or assume it identifies a different owner. A connector authorization failure still needs investigation into project permissions, organization scope or integration ownership; the linked-address fact does not itself prove that a connector can access the project.
+- The relevant Neon quota alert names White Glove KT, project bold-glade-26719402, and a 100 CU-hour monthly allowance. Keep the known live project separate from the unrelated project exposed by the connector; do not repoint production or discard data as a shortcut.
+- Ask only short, clearly visible questions when information or a material decision is truly needed. Continue authorized independent work while waiting.
+
+
+
+## Database cost changes
+
+Public content reads use bounded caches; successful writes refresh both deployments. Preserve schema-migration failure checks, public/private filters, review limits, transaction semantics and existing uncached admin reads. Cache refresh failures must be logged; do not suppress GitHub failure alerts. Account/trip storage remains unchanged.

@@ -61,13 +61,22 @@ export function reviewsStoreAvailable(): boolean {
 export async function listPlaceReviews(placeKind: ReviewPlaceKind, placeRef: string): Promise<PlaceReview[]> {
   if (!reviewsStoreAvailable()) return [];
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const rows = await prisma.placeReview.findMany({
-      where: { placeKind, placeRef, status: "PUBLISHED" },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
-    return rows.map(toReview);
+    const { cachedRead, DB_CACHE_SECONDS } = await import("@/lib/cache-tags");
+    // One small index makes empty review sections cheap, without loading or truncating reviews.
+    const places = await cachedRead(async () => {
+      const { prisma } = await import("@/lib/prisma");
+      return prisma.placeReview.groupBy({ by: ["placeKind", "placeRef"], where: { status: "PUBLISHED" } });
+    }, ["published-review-places"], ["published-place-reviews"], DB_CACHE_SECONDS);
+    if (!places.some(place => place.placeKind === placeKind && place.placeRef === placeRef)) return [];
+    return await cachedRead(async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const rows = await prisma.placeReview.findMany({
+        where: { placeKind, placeRef, status: "PUBLISHED" },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+      return rows.map(toReview);
+    }, ["published-place-reviews", placeKind, placeRef], ["published-place-reviews"], DB_CACHE_SECONDS);
   } catch (error) {
     console.error("[reviews] could not read reviews", error);
     return [];
@@ -187,3 +196,4 @@ export async function removePlaceReview(id: string): Promise<{ ok: true } | { ok
     return { ok: false, error: "Could not remove that just now. Try again shortly." };
   }
 }
+
