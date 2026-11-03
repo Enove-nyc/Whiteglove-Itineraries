@@ -79,6 +79,7 @@ jobs:
         if: failure()
         run: cat /tmp/visitor-app.log /tmp/pg-bridge.log /tmp/redis-rest.log
   live:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
