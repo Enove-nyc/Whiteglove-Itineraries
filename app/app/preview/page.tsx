@@ -57,8 +57,7 @@ export default function AppPreviewPage() {
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-700">
                 <span className="font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Sample</span>{" "}
-                — a made-up family, a made-up advisor, a real week in Rome. This is what your client opens when
-                you send them the app.
+                — an illustrative trip for a fictional family in Rome. Explore the schedule, map and travel wallet.
               </p>
             </div>
             <Link
@@ -105,3 +104,4 @@ export default function AppPreviewPage() {
     </main>
   );
 }
+

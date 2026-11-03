@@ -751,7 +751,7 @@ p {
     scroll-margin-top: 8rem;
   }
 
-  :where(button, input, select, textarea, summary, a[class*="bg-"], a[class*="border"]) {
+  :where(button, input, select, textarea, summary, a[class*="bg-"], a[class*="border"]):not(:where(.wg-app-root *)) {
     min-height: 3rem;
   }
 
@@ -772,6 +772,15 @@ p {
   /* Room for the fixed mobile bottom bar (Search/Route/Itinerary/Account).
    * The class is set only while Navbar is mounted — never on /admin, which
    * has its own shell — so this never adds dead space there. */
+  /* Keep focused and scrolled controls clear of the fixed navigation. */
+  html:has(body.wg-has-mobile-bar) {
+    scroll-padding-top: 6rem;
+    scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+  body.wg-has-mobile-bar :where(label, button, input, select, textarea, summary, a) {
+    scroll-margin-top: 6rem;
+    scroll-margin-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
   body.wg-has-mobile-bar {
     padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
   }
@@ -810,3 +819,4 @@ html[data-app-shell] nav[aria-label="Main"]::before {
   height: var(--wg-safe-top);
   background: var(--navy);
 }
+

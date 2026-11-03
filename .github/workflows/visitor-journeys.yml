@@ -1,7 +1,7 @@
 name: Visitor journeys
 on:
   push:
-    branches: [codex/visitor-journeys]
+    branches: [codex/mobile-company-refinement]
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,7 @@ jobs:
           POSTGRES_USER: wg
           POSTGRES_PASSWORD: wg
           POSTGRES_DB: whiteglove
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports: ['5433:5432']
         options: --health-cmd pg_isready --health-interval 5s --health-retries 10
       redis:
@@ -109,3 +110,4 @@ jobs:
           name: live-visitor-journeys-${{ matrix.brand }}
           path: journey-results/
           retention-days: 7
+
