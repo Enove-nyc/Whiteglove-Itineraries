@@ -32,9 +32,9 @@ import type { SiteBrand } from "@/lib/site-brand-core";
 type View = "site" | "app" | "print";
 
 const TABS: ReadonlyArray<{ value: View; label: string; blurb: string }> = [
-  { value: "site", label: "On the site", blurb: "The trip as the planner lays it out." },
-  { value: "app", label: "In the app", blurb: "What the traveller opens on their phone." },
-  { value: "print", label: "Printed", blurb: "The document, as it comes out of a printer." },
+  { value: "site", label: "On the site", blurb: "Day-by-day itinerary." },
+  { value: "app", label: "In the app", blurb: "Companion app." },
+  { value: "print", label: "Printed", blurb: "Print layout." },
 ];
 
 export default function SampleItineraryViews({
@@ -92,7 +92,7 @@ export default function SampleItineraryViews({
              three controls no client will ever have, the same way
              /app/preview does — and advisorInbox is left off. What is drawn is
              what a traveller opens. */
-          <div className="overflow-hidden rounded-2xl border border-[var(--gold-light)]">
+          <div className="wg-sample-app overflow-hidden rounded-2xl border border-[var(--gold-light)]">
             <CompanionApp trip={{ ...companion, previewAsClient: true }} />
           </div>
         )}
@@ -160,3 +160,4 @@ function SiteView({ itin }: { itin: Itinerary }) {
     </div>
   );
 }
+

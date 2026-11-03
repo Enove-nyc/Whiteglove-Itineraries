@@ -5245,8 +5245,11 @@ export const COMPANION_CSS = `
 
 /* Phone: full screen on a phone, a device in a frame on a desktop. */
 .wg-phone { height: 100dvh; width: 100%; }
-.wg-stage { display: flex; justify-content: center; }
-.wg-frame { width: 100%; }
+.wg-stage { display: flex; justify-content: center; min-width: 0; max-width: 100%; }
+.wg-frame { width: 100%; min-width: 0; max-width: 100%; }
+.wg-sample-app .wg-app-root { min-height: 0; }
+.wg-sample-app .wg-phone { height: min(48rem, 80svh); }
+.wg-sample-app .wg-frame { height: auto; border-radius: 1rem; box-shadow: none; }
 .wg-chrome { display: none; }
 .wg-hint { display: none; }
 
@@ -5277,3 +5280,4 @@ export const COMPANION_CSS = `
   .wg-app-root[data-mode="web"] .wg-phone { height: min(880px, calc(100dvh - 48px)); }
 }
 `;
+

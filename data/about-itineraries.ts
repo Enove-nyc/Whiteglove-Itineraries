@@ -4,8 +4,8 @@ export const ITINERARIES_ABOUT_BLOCKS: PageBlock[] = [
   {
     id: "about-development",
     kind: "text",
-    heading: "In development — not open for business yet",
-    body: "White Glove Itineraries is a company and platform in development. The full website is available as a preview so you can see the direction we are taking. We are not accepting purchases or subscriptions, and we have not announced an opening date.",
+    heading: "In development · Preparing for launch",
+    body: "White Glove Itineraries is a company in development. We look forward to welcoming you soon. We are preparing for launch and are not open for business yet.",
   },
   {
     id: "about-why",
@@ -28,7 +28,7 @@ export const ITINERARIES_ABOUT_BLOCKS: PageBlock[] = [
     id: "about-paid",
     kind: "text",
     heading: "Plans and pricing are not open yet",
-    body: "You are looking at a development preview, including example itineraries and app screens. These show the product we are working toward; they are not an offer of a service that is already open. Features, pricing and availability may change before launch.",
+    body: "Purchases and subscriptions are not yet available. We will share our launch plans, available features and pricing when they are ready.",
   },
   {
     id: "about-not",
@@ -37,3 +37,4 @@ export const ITINERARIES_ABOUT_BLOCKS: PageBlock[] = [
     body: "White Glove Itineraries is being developed as a general travel itinerary and trip-management platform. We are building software for planning and carrying a trip; we are not offering a personal trip-planning or booking service.",
   },
 ];
+

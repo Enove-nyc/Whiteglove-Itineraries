@@ -22,11 +22,23 @@ for(const width of [1280,390]){
  if(brand==='travel'&&isolated)await scenario(`six real homepage photos load and carry immutable caching ${width}`,async()=>{await go('/');const section=page.locator('section').filter({has:page.getByRole('heading',{name:'Featured',exact:true})});const photos=section.locator('img');assert.equal(await photos.count(),6);for(const img of await photos.all()){await img.scrollIntoViewIfNeeded();await img.evaluate(img=>img.decode());assert((await img.evaluate(img=>img.naturalWidth))>0);}const src=await photos.first().getAttribute('src');assert.match(src,/\/_next\/static\/media\//);const asset=await ctx.request.get(origin+src);assert.match(asset.headers()['cache-control']||'',/immutable/);await section.getByRole('link',{name:'Photo credits',exact:true}).click();await page.locator('#photography').waitFor();assert.equal(await page.locator('#photography a').count(),12);});
  if(width===390)await scenario('mobile menu opens and closes',async()=>{await go('/');const open=page.getByRole('button',{name:'Open menu',exact:true});await open.click();await page.locator('#mobile-menu').waitFor({state:'visible'});await scan('/?menu=open',width);await page.getByRole('button',{name:'Close menu',exact:true}).click();await page.locator('#mobile-menu').waitFor({state:'hidden'});});
  if(brand==='travel'&&!isolated)await scenario(`destination search ${width}`,async()=>{await go('/');const input=page.getByPlaceholder('Search destinations',{exact:true});await input.fill('Rome');await page.waitForTimeout(700);await input.press('Enter');await page.waitForURL(url=>url.pathname!=='/',{timeout:15000});assert.match(await page.locator('body').innerText(),/Rome/i);});
- await scenario(`sample itinerary switches all views ${width}`,async()=>{await go('/sample-itinerary');for(const [label,text] of [['In the app','What the traveller opens'],['Printed','The document, as it comes out'],['On the site','The trip as the planner']]){await page.locator('label').filter({hasText:new RegExp('^'+label+'$')}).click();assert(await page.getByRole('radio',{name:label,exact:true}).isChecked());assert((await page.locator('main').first().innerText()).includes(text));}await scan('/sample-itinerary',width);});
- await scenario(`client app preview ${width}`,async()=>{await go('/app');await page.getByRole('link',{name:'Open a sample trip',exact:true}).click();await page.waitForURL('**/app/preview');await page.waitForTimeout(900);const text=await page.locator('body').innerText();assert(text.length>200);assert(!/application error/i.test(text));});
+ await scenario(`sample itinerary switches all views ${width}`,async()=>{await go('/sample-itinerary');for(const [label,text] of [['In the app','Companion app.'],['Printed','Print layout.'],['On the site','Day-by-day itinerary.']]){await page.locator('label').filter({hasText:new RegExp('^'+label+'$')}).click();assert(await page.getByRole('radio',{name:label,exact:true}).isChecked());assert((await page.locator('main').first().innerText()).includes(text));}await scan('/sample-itinerary',width);});
+ await scenario(`client app preview ${width}`,async()=>{await go('/app');await page.getByRole('link',{name:'Open a sample trip',exact:true}).click();await page.waitForURL('**/app/preview');await page.waitForTimeout(900);const text=await page.locator('body').innerText();assert(text.length>200);assert(!/application error/i.test(text));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));const phone=page.locator('.wg-phone').first();const box=await phone.boundingBox();assert(box&&box.width<=width);const shot=await phone.screenshot({path:out+'/app-'+width+'.jpg',type:'jpeg',quality:65});console.log('SITE_PREVIEW_IMAGE|'+brand+'|app-'+width+'.jpg|'+shot.toString('base64'));});
  await scenario(`signup password visibility ${width}`,async()=>{await go('/login');await page.getByRole('button',{name:/^sign up$/i}).click();await page.getByRole('button',{name:'Show password',exact:true}).click();assert.equal(await page.locator('input[autocomplete="new-password"]').getAttribute('type'),'text');await page.getByRole('button',{name:'Hide password',exact:true}).click();await scan('/login',width);});
  await scenario(`booking tabs ${width}`,async()=>{await go('/book');for(const name of ['FLIGHTS','CARS','WHERE TO STAY']){await page.getByRole('button',{name:new RegExp('^'+name+'$','i')}).click();assert(await page.locator('input:visible').count()>0);}await scan('/book',width);});
  for(const path of ['/pricing','/packing','/offline'])await scenario(`accessibility ${path} ${width}`,async()=>{await go(path);await scan(path,width);});
+ await ctx.close();
+}
+{
+ const ctx=await context(320);page=await ctx.newPage();
+ await scenario('narrow phone sample tabs remain reachable',async()=>{
+  await go('/sample-itinerary');
+  for(const label of ['In the app','Printed','On the site']){
+   await page.locator('label').filter({hasText:new RegExp('^'+label+'$')}).click();
+   assert(await page.getByRole('radio',{name:label,exact:true}).isChecked());
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  }
+ });
  await ctx.close();
 }
 if(isolated){
@@ -65,3 +77,4 @@ if(isolated){
 await browser.close();report.finishedAt=new Date().toISOString();writeFileSync(out+'/report.json',JSON.stringify(report,null,2));console.log('JOURNEY_REPORT_B64|'+brand+'|'+Buffer.from(JSON.stringify(report)).toString('base64'));console.log('JOURNEY_SUMMARY',JSON.stringify({brand,isolated,passed:report.scenarios.filter(s=>s.status==='passed').length,failed:report.scenarios.filter(s=>s.status==='failed').length,accessibility:report.accessibility.reduce((n,p)=>n+p.violations.length,0)}));
 
 if(isolated && (report.errors.length || report.scenarios.some(s=>s.status==='failed') || report.accessibility.some(p=>p.violations.some(v=>v.impact==='serious'||v.impact==='critical')))) process.exitCode=1;
+

@@ -23,8 +23,8 @@ export async function generateMetadata() {
   return pageMetadata({
     title:
       brand === "itineraries"
-        ? `A sample itinerary — what your client opens | ${BRAND_NAME.itineraries}`
-        : `A sample itinerary — what you actually receive | ${BRAND_NAME.kosher}`,
+        ? `A sample itinerary — a week in Rome | ${BRAND_NAME.itineraries}`
+        : `A sample itinerary — a week in Rome | ${BRAND_NAME.kosher}`,
     description:
       brand === "itineraries"
         ? "A whole week in Rome for a family of five, as the itinerary is handed over: a day per page, real walking and driving times, and what is filled in on a live trip that is left blank here."
@@ -101,9 +101,9 @@ export default async function SampleItineraryPage() {
       ) : (
         <section className="wg-page-hero border-b border-[var(--gold-light)] px-5 py-12 sm:px-8 sm:py-16">
           <div className="mx-auto max-w-7xl">
-            <p className="text-xs font-bold uppercase tracking-[0.26em] text-[var(--gold-ink)]">What you receive</p>
+            <p className="text-xs font-bold uppercase tracking-[0.26em] text-[var(--gold-ink)]">Sample itinerary</p>
             <h1 className="mt-5 max-w-4xl font-[family-name:var(--font-display)] text-[clamp(2.25rem,6vw,3.75rem)] leading-[1.08] text-[var(--navy)]">
-              A week in Rome, as it arrives.
+              A week in Rome.
             </h1>
             <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-700">
               {/* NOT "THE DOCUMENT" ANY MORE. The page shows the same week
@@ -112,8 +112,8 @@ export default async function SampleItineraryPage() {
                   file were the whole deliverable, which is the impression this
                   page existed to correct. */}
               {itineraries
-                ? "A family of five, seven nights — the trip your client is actually handed, in all three of the places it lives."
-                : "A family of five, seven nights, and a Shabbos in the middle of it — the trip you are actually handed, in all three of the places it lives."}
+                ? "An illustrative family itinerary, with a day-by-day schedule, companion app and printable travel plan."
+                : "A self-service family itinerary for seven nights in Rome, including Shabbos, with site, app and print views."}
             </p>
             <p className="mt-4 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-5 py-3 leading-7 text-stone-700">
               <span className="font-semibold text-[var(--navy)]">{SAMPLE_NOTICE}</span>
@@ -263,3 +263,4 @@ export default async function SampleItineraryPage() {
     </main>
   );
 }
+

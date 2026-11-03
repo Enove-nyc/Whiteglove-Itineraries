@@ -14,7 +14,7 @@ const PLANNED_FEATURES = [
     title: "Put the trip on the traveller’s phone",
     body: "We plan to turn that itinerary into a companion app with the schedule, directions and travel documents together, including access to saved information offline.",
     href: "/app/preview",
-    link: "Preview the client app",
+    link: "Explore the companion app",
   },
   {
     title: "Help advisers manage their clients’ trips",
@@ -30,11 +30,11 @@ export default function ItinerariesHome() {
       <Navbar brand="itineraries" />
       <section className="bg-[var(--navy)] px-5 py-16 text-white sm:px-8 sm:py-24">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D8BC7A]">In development · Not open yet</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D8BC7A]">In development · Preparing for launch</p>
           <HomeAudience />
           <p className="mx-auto mt-7 max-w-2xl text-sm leading-7 text-[#e0e7e7]">
-            White Glove Itineraries is a company and platform in development. We are not open for business
-            and are not accepting purchases. You are welcome to explore the website as a preview of what we hope to offer when we open.
+            White Glove Itineraries is a company in development. We look forward to welcoming you soon.
+            Purchases and subscriptions are not yet available.
           </p>
         </div>
       </section>
@@ -43,7 +43,7 @@ export default function ItinerariesHome() {
         <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">One connected experience, from planning to travelling.</h2>
         <p className="mt-5 max-w-3xl text-base leading-7 text-stone-700">
           Our ambition is to make a meaningful step forward in how travellers and advisers build, organise and carry a trip.
-          The tools below show the direction we are working toward.
+          We are bringing these plans together as we prepare for launch.
         </p>
         <div className="mt-9 grid gap-6 md:grid-cols-3">
           {PLANNED_FEATURES.map((feature) => (
@@ -60,3 +60,4 @@ export default function ItinerariesHome() {
     </main>
   );
 }
+

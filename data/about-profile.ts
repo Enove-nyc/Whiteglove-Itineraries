@@ -71,7 +71,7 @@ export const EMPTY_ABOUT_PROFILE: AboutProfile = {
  * anybody's trip for them.
  */
 export const ABOUT_INTRO_ITINERARIES: readonly string[] = [
-  "White Glove Itineraries is a company and travel platform in development. We are not open for business yet; this website is a preview of what we are planning to offer.",
+  "White Glove Itineraries is a company in development, creating travel software for travellers and advisers. We look forward to welcoming you soon.",
   "We are working toward one connected place for itineraries, flights, accommodation, transport, documents and the day-by-day details of a trip.",
   "Our plans include tools for travellers organising their own trips and for advisers building and managing trips for clients. We hope to make a meaningful step forward in how that work is brought together.",
 ];
@@ -98,3 +98,4 @@ export const ABOUT_HEADING: Record<"kosher" | "itineraries", string> = {
 export function aboutIntroFor(brand: "kosher" | "itineraries"): readonly string[] {
   return brand === "itineraries" ? ABOUT_INTRO_ITINERARIES : ABOUT_INTRO;
 }
+

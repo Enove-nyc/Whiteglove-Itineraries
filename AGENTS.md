@@ -111,3 +111,12 @@ The three ways into the site are named once in `lib/starting-points.ts` — get 
 White Glove Itineraries is a public development preview, not an open company or a service currently for sale. Keep the full site viewable, make this status clear on every page, and describe capabilities as future plans. Do not restore purchase invitations or open new purchases without the owner explicitly opening the product. Preserve existing account/trip access and billing-management rights. The development flag must not overwrite the shared offering record.
 
 The immediate public-site focus is White Glove Kosher Travel. Its homepage keeps the search-only hero and six section links, but the owner has now requested real photographs for all six sections. Use actual photographs with documented commercial reuse rights, never generated images, and provide required credits on /sources. This replaces the earlier icon-only treatment; the sections and navigation remain as settled.
+
+
+## Owner direction — 3 November 2026, independent companies
+
+The owner now wants White Glove Kosher Travel and White Glove Itineraries positioned as two separate companies. Kosher Travel must offer a complete self-service itinerary section on its own domain; do not funnel travellers into Itineraries or describe it as the fuller planner. This supersedes the earlier one-company/one-way marketing handoff. Existing shared account and trip data must be preserved; separating authentication, stores and billing requires a reviewed migration, not a silent namespace or credential change.
+
+Use concise, professional development copy: the company is in development, preparing for launch, and looks forward to welcoming visitors soon. Do not describe the website as what the final product will look like. Keep the full site available and purchases closed until launch is explicitly approved. Real examples may remain clearly labelled as samples.
+
+Mobile layouts must keep controls clear of fixed navigation, avoid nested phone borders spilling outside their container, and preserve the companion app's own control sizing. The owner is considering a one- or two-dollar itinerary fee on Kosher Travel. This is a proposal, not an approved price or authorization to start charging; preserve existing access while designing separate, tested billing.
