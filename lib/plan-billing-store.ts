@@ -1,3 +1,4 @@
+import { ITINERARIES_IN_DEVELOPMENT } from "@/lib/launch-status";
 /**
  * Where the plan-offering switch lives, and where a live subscription is
  * written down.
@@ -66,6 +67,8 @@ async function redis<T>(path: string, body?: string): Promise<T | null> {
  * somebody's card being charged.
  */
 export async function readPlanOffering(): Promise<PlanOffering> {
+  // Keep this development preview closed without changing the shared offering record.
+  if (ITINERARIES_IN_DEVELOPMENT) return cleanOffering({ ...DEFAULT_OFFERING, open: false, how: "soon" });
   if (!planBillingStoreAvailable()) return { ...DEFAULT_OFFERING };
   const raw = await redis<string>(`get/${OFFERING_KEY}`);
   if (!raw) return { ...DEFAULT_OFFERING };

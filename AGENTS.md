@@ -104,3 +104,10 @@ The site had several names for each of its own features, so four front doors loo
 | Listing (White Glove’s curated listing, with a source) | record, entry, our data |
 
 The three ways into the site are named once in `lib/starting-points.ts` — get recommendations (`/plan`), build the trip yourself (`/itinerary`), search booking partners (`/book`). Link to one of them through that list rather than inventing a label at the call site.
+
+
+## Current launch direction — 3 November 2026
+
+White Glove Itineraries is a public development preview, not an open company or a service currently for sale. Keep the full site viewable, make this status clear on every page, and describe capabilities as future plans. Do not restore purchase invitations or open new purchases without the owner explicitly opening the product. Preserve existing account/trip access and billing-management rights. The development flag must not overwrite the shared offering record.
+
+The immediate public-site focus is White Glove Kosher Travel. Its homepage keeps the search-only hero and six section links, but the owner has now requested real photographs for all six sections. Use actual photographs with documented commercial reuse rights, never generated images, and provide required credits on /sources. This replaces the earlier icon-only treatment; the sections and navigation remain as settled.

@@ -175,7 +175,7 @@ export default function DateField({
         aria-label={ariaLabel ? `${ariaLabel}: ${readableDate(value) || "choose a date"}` : `Choose a date${value ? `, currently ${readableDate(value)}` : ""}`}
         className={`${className} wg-date-face absolute inset-0 flex min-h-11 items-center justify-between text-left disabled:opacity-60`}
       >
-        <span className={value ? "text-[var(--navy)]" : "text-stone-400"}>{readableDate(value) || "Choose a date"}</span>
+        <span className={value ? "text-[var(--navy)]" : "text-stone-700"}>{readableDate(value) || "Choose a date"}</span>
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="ml-2 h-4 w-4 shrink-0 text-[var(--gold-ink)]">
           <rect x="3" y="5" width="18" height="16" rx="2" />
           <path d="M7 3v4M17 3v4M3 10h18" />
@@ -203,7 +203,7 @@ export default function DateField({
 
           <div className="mt-2 grid grid-cols-7 gap-0.5 text-center">
             {WEEKDAYS.map((d, i) => (
-              <span key={i} className="py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-stone-400">
+              <span key={i} className="py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-stone-700">
                 {d}
               </span>
             ))}
@@ -248,7 +248,7 @@ export default function DateField({
                   onChange("");
                   setOpen(false);
                 }}
-                className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500 underline decoration-stone-300 underline-offset-4"
+                className="text-[11px] font-bold uppercase tracking-[0.1em] text-stone-700 underline decoration-stone-300 underline-offset-4"
               >
                 Clear
               </button>

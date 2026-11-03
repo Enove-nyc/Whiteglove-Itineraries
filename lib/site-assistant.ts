@@ -1,3 +1,4 @@
+import { ITINERARIES_IN_DEVELOPMENT, ITINERARIES_DEVELOPMENT_MESSAGE } from "@/lib/launch-status";
 import { BRAND_NAME, type SiteBrand } from "@/lib/site-brand-core";
 
 /**
@@ -65,6 +66,7 @@ export function siteAssistantSystemFor(brand: SiteBrand): string {
   const name = BRAND_NAME[brand];
   return [
     `You are the site assistant for ${name}.`,
+    ...(brand === "itineraries" && ITINERARIES_IN_DEVELOPMENT ? [ITINERARIES_DEVELOPMENT_MESSAGE, "Describe capabilities as planned features of the development preview. Do not say the company is open or invite purchases."] : []),
     // --- the one rule everything else serves ---------------------------------
     "You answer ONLY from the White Glove pages given to you in this message. They are your entire knowledge. You have no other knowledge and must not use any.",
     `If those pages do not contain the answer, reply with exactly this and nothing else: ${NOT_ON_THE_SITE}`,

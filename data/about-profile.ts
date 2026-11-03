@@ -71,9 +71,9 @@ export const EMPTY_ABOUT_PROFILE: AboutProfile = {
  * anybody's trip for them.
  */
 export const ABOUT_INTRO_ITINERARIES: readonly string[] = [
-  "White Glove Itineraries is for the part of a trip that happens after the planning. A day laid out properly — the flight, where everybody sleeps, what happens and when — handed over so the person travelling has it in their pocket rather than in an email they have to find at an airport.",
-  "What it shows is what you put in, worked out rather than guessed: how long the drive between two real places takes, what a border adds to it, what time a day actually ends once the driving is counted. Where a figure comes from somewhere else — a flight's status, a government advisory — it says so, and says when it was last true.",
-  "An adviser builds a trip once and sends it to their client as a link that opens like an app, under their own name. Somebody planning their own trip uses the same thing for themselves.",
+  "White Glove Itineraries is a company and travel platform in development. We are not open for business yet; this website is a preview of what we are planning to offer.",
+  "We are working toward one connected place for itineraries, flights, accommodation, transport, documents and the day-by-day details of a trip.",
+  "Our plans include tools for travellers organising their own trips and for advisers building and managing trips for clients. We hope to make a meaningful step forward in how that work is brought together.",
 ];
 
 export const ABOUT_INTRO: readonly string[] = [
@@ -91,7 +91,7 @@ export const ABOUT_FALLBACK_INTRO = ABOUT_INTRO[0];
 /** The heading above each, so neither page opens with the other's promise. */
 export const ABOUT_HEADING: Record<"kosher" | "itineraries", string> = {
   kosher: "Travel information you can plan around.",
-  itineraries: "The trip you plan, in your client's pocket.",
+  itineraries: "A company and platform in development.",
 };
 
 /** Which opening a brand gets. */

@@ -147,7 +147,7 @@ describe("how long it has been waiting", () => {
 
 describe("what the account page says", () => {
   it("names the plan", () => {
-    assert.equal(describePlan("free", null), "You are on No plan yet.");
+    assert.equal(describePlan("free", null), "You are on Personal.");
   });
 
   it("says an open request is with a person", () => {
