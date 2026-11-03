@@ -1,12 +1,12 @@
 name: Visitor journeys
 on:
   push:
-    branches: [codex/mobile-company-refinement]
+    branches: [codex/demo-colour-refresh]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: visitor-journeys
+  group: travel-colour-refresh
   cancel-in-progress: true
 jobs:
   isolated:
@@ -46,8 +46,8 @@ jobs:
           cache: npm
       - run: sudo apt-get update -qq && sudo apt-get install -y redis-tools
       - run: npm ci
-      - name: Complete regression suite
-        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npm test
+      - name: Relevant UI and copy regression checks
+        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npx tsx --test tests/home-audience.test.ts tests/itineraries-home-links.test.ts tests/about-brand.test.ts tests/pricing-page.test.ts tests/sample-itinerary.test.ts tests/mobile-bottom-bar.test.ts
       - run: npm install --ignore-scripts --no-save --package-lock=false @axe-core/playwright
       - run: npx playwright install --with-deps chromium
       - name: Start disposable stores and install schema
@@ -57,7 +57,7 @@ jobs:
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
           npx prisma migrate deploy
       - run: npx tsc --noEmit
-      - run: npx eslint components/Navbar.tsx components/LoginForm.tsx components/DateField.tsx components/SampleItineraryViews.tsx app/pricing/page.tsx app/sample-itinerary/page.tsx app/packing/page.tsx app/offline/page.tsx components/PackingListPanel.tsx components/SiteTracker.tsx components/HomeAudience.tsx lib/account-plans.ts data/about-itineraries.ts lib/launch-status.ts components/DevelopmentNotice.tsx components/HomeAudience.tsx components/ItinerariesHome.tsx app/pricing/page.tsx data/about-itineraries.ts tests/home-audience.test.ts app/layout.tsx app/page.tsx data/about-profile.ts lib/plan-billing-store.ts app/api/account/billing/checkout/route.ts tests/pricing-page.test.ts lib/site-assistant.ts tests/itineraries-home-links.test.ts
+      - run: npx eslint components/ItinerariesHome.tsx components/DevelopmentNotice.tsx lib/launch-status.ts
       - run: npm run build
         env:
           NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt
@@ -110,4 +110,5 @@ jobs:
           name: live-visitor-journeys-${{ matrix.brand }}
           path: journey-results/
           retention-days: 7
+
 

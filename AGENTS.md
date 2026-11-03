@@ -120,3 +120,10 @@ The owner now wants White Glove Kosher Travel and White Glove Itineraries positi
 Use concise, professional development copy: the company is in development, preparing for launch, and looks forward to welcoming visitors soon. Do not describe the website as what the final product will look like. Keep the full site available and purchases closed until launch is explicitly approved. Real examples may remain clearly labelled as samples.
 
 Mobile layouts must keep controls clear of fixed navigation, avoid nested phone borders spilling outside their container, and preserve the companion app's own control sizing. The owner is considering a one- or two-dollar itinerary fee on Kosher Travel. This is a proposal, not an approved price or authorization to start charging; preserve existing access while designing separate, tested billing.
+
+
+## Owner direction — travel appeal and quiet demo status
+
+The owner wants a polished, usable-looking website with a compact but visible Demo / In development status, rather than repeated prominent not-open paragraphs. About and pricing must still explain that the company is in development and purchases are unavailable. Purchases stay closed. The full-screen site notice remains unless the owner separately changes it. Keep the separate company identities and the owner-confirmed shared login details and trips; do not migrate or split customer data.
+
+The Kosher Travel homepage should feel inviting for travellers, with soft sea-blue, mint and warm-sand shading, light card surfaces and gentle gradients. Keep contrast and mobile controls readable, the search-only hero and six section links. Replace the bold tight food close-up with a calmer real licensed food photograph; no generated photographs. A reference to an unreleased Beeper-like app is awaiting its name or URL, so do not claim to have identified or copied it.
