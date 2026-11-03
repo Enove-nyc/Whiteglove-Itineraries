@@ -26,16 +26,13 @@ const PLANNED_FEATURES = [
 
 export default function ItinerariesHome() {
   return (
-    <main className="min-h-screen bg-[var(--cream)] text-[var(--ink)]">
+    <main className="wg-itineraries-home min-h-screen bg-[var(--cream)] text-[var(--ink)]">
       <Navbar brand="itineraries" />
-      <section className="bg-[var(--navy)] px-5 py-16 text-white sm:px-8 sm:py-24">
+      <section className="wg-itineraries-hero bg-[var(--navy)] px-5 py-16 text-white sm:px-8 sm:py-24">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D8BC7A]">In development · Preparing for launch</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D8BC7A]">Demo · In development</p>
           <HomeAudience />
-          <p className="mx-auto mt-7 max-w-2xl text-sm leading-7 text-[#e0e7e7]">
-            White Glove Itineraries is a company in development. We look forward to welcoming you soon.
-            Purchases and subscriptions are not yet available.
-          </p>
+
         </div>
       </section>
       <section id="planned-features" className="mx-auto max-w-5xl px-5 py-14 sm:px-8 sm:py-20">
@@ -60,4 +57,5 @@ export default function ItinerariesHome() {
     </main>
   );
 }
+
 
