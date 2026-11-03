@@ -7,6 +7,9 @@ const slug = "cost-fixture-00";
 async function main() {
   switch (process.argv[2]) {
     case "probe":
+      // Model operations exercise the actual Prisma extension, beyond raw SQL.
+      await prisma.page.findMany({ take: 1 });
+      await prisma.cemetery.findMany({ take: 1, include: { contacts: true } });
       assert.equal((await prisma.$queryRaw<Array<{ ok: number }>>`SELECT 1::int AS ok`)[0]?.ok, 1);
       await prisma.$queryRaw`SELECT "lastVerified" FROM "Contact" LIMIT 1`;
       break;

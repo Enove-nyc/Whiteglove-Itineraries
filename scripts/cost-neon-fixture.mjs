@@ -8,7 +8,7 @@ neonConfig.pipelineConnect = false;
 // Prisma/Next can load the CommonJS export alongside the ESM export.
 createRequire(import.meta.url)('@neondatabase/serverless').neonConfig.pipelineConnect = false;
 const nativeFetch = globalThis.fetch;
-globalThis.fetch = (input, init) => {
+globalThis.fetch = async (input, init) => {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
   if (url.hostname !== '127.0.0.1') throw Error('Cost fixtures cannot call external services.');
   return nativeFetch(input, init);
