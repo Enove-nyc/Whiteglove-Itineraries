@@ -15,16 +15,9 @@ import { describe, it } from "node:test";
 describe("the homepage cards open onto the thing they name", () => {
   const HOME = readFileSync("components/ItinerariesHome.tsx", "utf8");
 
-  it("'See the app' opens the public demonstration", () => {
-    const card = HOME.slice(HOME.indexOf('title: "Hand it over"'), HOME.indexOf('title: "Stay in touch"'));
-    assert.match(card, /href: "\/app\/preview"/, "'See the app' still opens the code-and-login door");
-  });
-
-  it("'Open your inbox' goes to sign-in, carrying where it was headed", () => {
-    // There is no public inbox and there should not be — it holds real client
-    // conversations. Sign-in is the honest door, and it returns them to /app.
-    const card = HOME.slice(HOME.indexOf('title: "Stay in touch"'));
-    assert.match(card, /href: "\/login\?next=%2Fapp"/);
+  it("offers the public client app preview without asking a prospective visitor to sign in", () => {
+    assert.match(HOME, /href: "\/app\/preview"/);
+    assert.doesNotMatch(HOME, /href: "\/login\?next=/);
   });
 
   it("the demonstration it points at exists and is public", () => {
