@@ -133,7 +133,7 @@ describe("single-use invitations on real isolated Redis", { skip: process.env.IN
   });
   it("enforces invitation-only registration at the HTTP handler", async () => {
     const issued = await issue(), email = issued.invitation.identity;
-    const request = (data: unknown) => new NextRequest("http://127.0.0.1:3002/api/account/register", { method: "POST", headers: { origin: "http://127.0.0.1:3002", "content-type": "application/json", "x-wg-brand": "kosher" }, body: JSON.stringify(data) });
+    const request = (data: unknown) => new NextRequest("http://127.0.0.1:3002/api/account/register", { method: "POST", headers: { origin: "http://127.0.0.1:3002", "content-type": "application/json", "x-wg-brand": "kosher", "cf-connecting-ip": "192.0.2.200", "x-forwarded-for": "192.0.2.200" }, body: JSON.stringify(data) });
     assert.equal((await register(request({ email, password: "Audit-local-pass-1!" }))).status, 403);
     assert.equal(await getAccountRecord(email), null);
     assert.equal((await register(request({ email: "someone-else@audit.local", password: "Audit-local-pass-1!", invitationToken: issued.token }))).status, 403);
