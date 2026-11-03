@@ -302,7 +302,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
             {/* Shown from 360px: a 390px phone is the common case, and hiding
                 the site's own name there left the header as a bare mark. */}
             <span className="hidden flex-col leading-none min-[360px]:flex">
-              <span className="font-[family-name:var(--font-display)] text-lg text-[var(--navy)]">White Glove</span>
+              <span className="font-[family-name:var(--font-display)] text-lg text-[var(--navy)]">White Glove{" "}</span>
               <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{isItineraries ? "Itineraries" : "Kosher Travel"}</span>
             </span>
           </Link>
@@ -387,7 +387,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
                             role="menuitem"
                             href={link.href}
                             aria-current={linkCurrent ? "page" : undefined}
-                            aria-label={link.description}
+                            aria-description={link.description}
                             title={link.description}
                             onClick={closeAll}
                             className={`flex min-h-11 items-center px-4 py-2 text-sm transition ${

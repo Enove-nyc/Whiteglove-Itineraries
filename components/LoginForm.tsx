@@ -325,7 +325,7 @@ export default function LoginForm({
               not. */}
           <div className="my-5 flex items-center gap-4">
             <span className="h-px flex-1 bg-[var(--gold-light)]" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-400">or</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-700">or</span>
             <span className="h-px flex-1 bg-[var(--gold-light)]" />
           </div>
         </div>
@@ -364,7 +364,7 @@ export default function LoginForm({
           className="mt-2 w-full border border-[var(--gold-light)] bg-white px-4 py-3 outline-none focus:border-[var(--gold)]"
         />
         {phoneSignupAvailable && mode === "signup" && (
-          <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-500">
+          <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-700">
             Either one. Whichever you use, that is where the code comes — by text if you give a number.
           </span>
         )}
@@ -372,7 +372,7 @@ export default function LoginForm({
 
       {mode === "signup" && (
         <label className="block text-sm font-semibold text-[var(--navy)]">
-          Phone number <span className="font-normal text-stone-500">— optional</span>
+          Phone number <span className="font-normal text-stone-700">— optional</span>
           <input
             value={contactPhone}
             onChange={(event) => setContactPhone(event.target.value)}
@@ -383,7 +383,7 @@ export default function LoginForm({
             placeholder="+1 555 123 4567"
             className="mt-2 w-full border border-[var(--gold-light)] bg-white px-4 py-3 outline-none focus:border-[var(--gold)]"
           />
-          <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-500">
+          <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-700">
             Only so we can reach you about a trip — it is never how you sign in. Leave it blank if you would rather not; nothing needs it.
           </span>
         </label>
@@ -411,7 +411,7 @@ export default function LoginForm({
           </div>
           {/* Said before it is typed, not after it is rejected. */}
           {mode === "signup" && (
-            <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-500">
+            <span className="mt-1.5 block text-xs font-normal leading-5 text-stone-700">
               At least {MIN_PASSWORD_LENGTH} characters.
             </span>
           )}

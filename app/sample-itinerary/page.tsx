@@ -105,7 +105,7 @@ export default async function SampleItineraryPage() {
             <h1 className="mt-5 max-w-4xl font-[family-name:var(--font-display)] text-[clamp(2.25rem,6vw,3.75rem)] leading-[1.08] text-[var(--navy)]">
               A week in Rome, as it arrives.
             </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-600">
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-700">
               {/* NOT "THE DOCUMENT" ANY MORE. The page shows the same week
                   three ways now — on the site, in the app, printed — and the
                   document is the last of them. It read as though the printable
@@ -130,7 +130,7 @@ export default async function SampleItineraryPage() {
           <h2 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
             The same week, three ways
           </h2>
-          <p className="mt-3 max-w-3xl leading-7 text-stone-600">
+          <p className="mt-3 max-w-3xl leading-7 text-stone-700">
             {itineraries
               ? "Read on the site, opened as an app on your client's phone, or printed as a cover and a page per day. One trip behind all three — it stays in your account, where you can move a day and hand it over again."
               : "Read on the site, opened as an app on your phone, or printed as a cover and a page per day. One trip behind all three — it arrives in your account too, where you can move a day and print it again."}
@@ -165,7 +165,7 @@ export default async function SampleItineraryPage() {
           {WHAT_IS_IN_IT.map(([term, detail]) => (
             <div key={term} className="border-t border-[var(--gold-light)] pt-4">
               <dt className="font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">{term}</dt>
-              <dd className="mt-2 leading-7 text-stone-600">{detail}</dd>
+              <dd className="mt-2 leading-7 text-stone-700">{detail}</dd>
             </div>
           ))}
         </dl>
@@ -203,7 +203,7 @@ export default async function SampleItineraryPage() {
                       "Neither carries opening hours — they change by season, and a stale one sends a family to a locked door.",
                     ]
               }
-              className="mt-8 space-y-3 leading-7 text-stone-600"
+              className="mt-8 space-y-3 leading-7 text-stone-700"
             />
             {/* /verification is guide-only: on this domain the button would
                 throw the reader onto the other company's site, which is the
@@ -236,7 +236,7 @@ export default async function SampleItineraryPage() {
                 {itineraries ? "Build one of these" : "Free, either way"}
               </p>
             </div>
-            <p className="mt-4 leading-7 text-stone-600">
+            <p className="mt-4 leading-7 text-stone-700">
               {itineraries
                 ? "The planner builds this document from the days you enter, and the same trip opens as an app on a phone. Planning your own trips is free; a Trip Pass upgrades one trip to the app, and an adviser plan runs your clients’ trips."
                 : "Build the same document yourself, for your own dates — or answer three short steps for destination ideas first. Sign in to start; it’s free."}

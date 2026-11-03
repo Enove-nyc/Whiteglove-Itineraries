@@ -140,13 +140,13 @@ export default async function PricingPage() {
                   {price ? (
                     <p className="mt-1 text-2xl font-bold text-[var(--navy)]">
                       {price}
-                      {card.oneTime && <span className="ml-2 text-xs font-semibold text-stone-500">once</span>}
+                      {card.oneTime && <span className="ml-2 text-xs font-semibold text-stone-700">once</span>}
                     </p>
                   ) : (
                     // No price is settled for this plan. Say what it is for and
                     // nothing about money — never a placeholder, and never a
                     // note about why. See the header of this file.
-                    <p className="mt-1 text-sm font-semibold text-stone-500">
+                    <p className="mt-1 text-sm font-semibold text-stone-700">
                       {card.oneTime ? "A single, one-time fee" : "A monthly subscription"}
                     </p>
                   )}
