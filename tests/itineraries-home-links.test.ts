@@ -52,6 +52,7 @@ describe("the preview page says what it is", () => {
     // Every screen below is a picture of somebody's private trip. A demo that
     // does not say so invites the reading that these are real people.
     assert.match(PREVIEW, /Sample<\/span>/);
-    assert.match(PREVIEW, /a made-up family, a made-up advisor/);
+    assert.match(PREVIEW, /an illustrative trip for a fictional family/);
   });
 });
+
