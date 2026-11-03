@@ -54,7 +54,7 @@ jobs:
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
           npx prisma migrate deploy
       - name: Complete regression suite
-        run: npm test
+        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npm test
       - run: npx tsc --noEmit
       - run: npx eslint components/Navbar.tsx components/LoginForm.tsx components/DateField.tsx components/SampleItineraryViews.tsx app/pricing/page.tsx app/sample-itinerary/page.tsx app/packing/page.tsx app/offline/page.tsx components/PackingListPanel.tsx components/SiteTracker.tsx components/HomeAudience.tsx lib/account-plans.ts data/about-itineraries.ts
       - run: npm run build
