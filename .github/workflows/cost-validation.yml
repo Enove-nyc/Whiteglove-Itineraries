@@ -53,6 +53,7 @@ jobs:
           sudo env AUDIT_ISOLATED=1 COST_TRUST_AUTH_BRIDGE=1 node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
           npx prisma migrate deploy
+          npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - name: Verify actual Prisma SQL over disposable transport before building
         run: node --import tsx scripts/cost-cache-fixture.ts probe
         env:

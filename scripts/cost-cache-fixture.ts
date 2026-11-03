@@ -8,6 +8,7 @@ async function main() {
   switch (process.argv[2]) {
     case "probe":
       assert.equal((await prisma.$queryRaw<Array<{ ok: number }>>`SELECT 1::int AS ok`)[0]?.ok, 1);
+      await prisma.$queryRaw`SELECT "lastVerified" FROM "Contact" LIMIT 1`;
       break;
     case "seed":
       await prisma.$transaction(async tx => {
