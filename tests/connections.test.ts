@@ -165,6 +165,10 @@ const NOT_A_CONNECTION = new Set([
   "VERCEL_GIT_COMMIT_MESSAGE",
   "BLOB_READ_WRITE_TOKEN",
   "LOCAL_PG",
+  // Disposable CI fixture switches; no provider account or production setup.
+  // Cache destination overrides are accepted only with isolated loopback Redis.
+  "AUDIT_ISOLATED",
+  "CONTENT_CACHE_FIXTURE_ORIGINS",
   "PORT",
   // Stamped in at build time by the deployment, not set by anybody.
   "BUILD_TIME",
