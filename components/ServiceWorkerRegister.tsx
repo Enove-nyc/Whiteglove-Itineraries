@@ -16,7 +16,9 @@ export default function ServiceWorkerRegister() {
     // a claim can never turn into a reload loop.
     let refreshing = false;
     const onControllerChange = () => {
-      if (refreshing) return;
+      // Joining has already removed its private fragment; a reload loses it.
+      // Let the new worker take control without interrupting account creation.
+      if (refreshing || /^\/join(?:\/|$)/.test(window.location.pathname)) return;
       refreshing = true;
       window.location.reload();
     };
@@ -33,3 +35,4 @@ export default function ServiceWorkerRegister() {
   }, []);
   return null;
 }
+
