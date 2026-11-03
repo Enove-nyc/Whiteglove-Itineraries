@@ -71,9 +71,9 @@ export const EMPTY_ABOUT_PROFILE: AboutProfile = {
  * anybody's trip for them.
  */
 export const ABOUT_INTRO_ITINERARIES: readonly string[] = [
-  "White Glove Itineraries is a company in development, creating travel software for travellers and advisers. We look forward to welcoming you soon.",
-  "We are working toward one connected place for itineraries, flights, accommodation, transport, documents and the day-by-day details of a trip.",
-  "Our plans include tools for travellers organising their own trips and for advisers building and managing trips for clients. We hope to make a meaningful step forward in how that work is brought together.",
+  "White Glove Itineraries brings travel itineraries and trip management together for travellers and advisers.",
+  "Organise itineraries, flights, accommodation, transport, documents and the day-by-day details of a trip in one connected place.",
+  "Plan your own trip or manage client itineraries, with the schedule and important details ready to carry with you.",
 ];
 
 export const ABOUT_INTRO: readonly string[] = [
@@ -91,11 +91,12 @@ export const ABOUT_FALLBACK_INTRO = ABOUT_INTRO[0];
 /** The heading above each, so neither page opens with the other's promise. */
 export const ABOUT_HEADING: Record<"kosher" | "itineraries", string> = {
   kosher: "Travel information you can plan around.",
-  itineraries: "A company and platform in development.",
+  itineraries: "Your itinerary, together.",
 };
 
 /** Which opening a brand gets. */
 export function aboutIntroFor(brand: "kosher" | "itineraries"): readonly string[] {
   return brand === "itineraries" ? ABOUT_INTRO_ITINERARIES : ABOUT_INTRO;
 }
+
 

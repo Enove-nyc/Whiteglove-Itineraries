@@ -38,7 +38,7 @@ import { BRAND_NAME, configuredBrand, type SiteBrand } from "@/lib/site-brand-co
 const BRAND = configuredBrand() ?? "kosher";
 const BRAND_DESCRIPTION: Record<SiteBrand, string> = {
   kosher: "Thoughtfully planned kosher travel and Jewish heritage journeys.",
-  itineraries: "White Glove Itineraries is in development and is not open for business yet. Explore a preview of the travel platform we are building.",
+  itineraries: "Build, organise and carry your travel itinerary with White Glove Itineraries.",
 };
 
 export const metadata: Metadata = {
@@ -163,3 +163,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

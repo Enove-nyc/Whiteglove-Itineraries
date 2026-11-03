@@ -7,11 +7,11 @@ type Audience = "clients" | "own";
 const COPY: Record<Audience, { heading: string; body: string }> = {
   clients: {
     heading: "A new way to plan and manage client trips.",
-    body: "We are building tools to bring an adviser’s itinerary, their client’s travel app and the work between them into one connected experience.",
+    body: "Bring your itinerary, your client’s travel app and the work between them into one connected experience.",
   },
   own: {
     heading: "A more connected way to plan your own trip.",
-    body: "We are developing a place for your flights, accommodation, documents and day-by-day plans, with the goal of keeping the whole trip together on your phone.",
+    body: "Keep your flights, accommodation, documents and day-by-day plans together, ready to use on your phone.",
   },
 };
 
@@ -37,8 +37,9 @@ export default function HomeAudience() {
       <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-[#e0e7e7] sm:text-lg">{copy.body}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Link href="/sample-itinerary" className={`${CTA} bg-white text-[var(--navy)]`}>Explore a sample itinerary</Link>
-        <Link href="/about" className={`${CTA} border border-white/50 text-white`}>What we are building</Link>
+        <Link href="/about" className={`${CTA} border border-white/50 text-white`}>Explore the platform</Link>
       </div>
     </>
   );
 }
+

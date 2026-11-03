@@ -135,6 +135,7 @@ export function SignInGateProvider({
               </button>
             </div>
             <LoginForm
+              initialMode="login"
               phoneSignupAvailable={phoneSignupAvailable}
               googleAvailable={googleAvailable}
               onSuccess={() => {
@@ -149,3 +150,4 @@ export function SignInGateProvider({
     </GateContext.Provider>
   );
 }
+

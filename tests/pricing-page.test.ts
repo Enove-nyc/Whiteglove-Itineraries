@@ -84,12 +84,14 @@ describe("the introduction does not promise what the table takes back", () => {
     );
   });
 
-  it("makes development status clear and keeps client entitlements separate", () => {
+  it("describes invitation access and keeps client entitlements separate", () => {
     // The claim is worth making — it is true of the planner, and it is why
     // One Trip is not a crippled tier. It just has to be the true version.
-    assert.match(PAGE, /not accepting purchases|not open for business/);
+    assert.match(PAGE, /New accounts are available by invitation/);
+    assert.doesNotMatch(PAGE, /not open for business|in development/i);
     const limits = readFileSync("lib/account-limits.ts", "utf8");
     assert.match(limits, /one_trip: \{[^}]*companionClients: false/);
     assert.match(limits, /starter: \{[^}]*companionClients: true/);
   });
 });
+

@@ -30,9 +30,9 @@ import Link from "next/link";
 export async function generateMetadata() {
   if ((await currentBrand()) === "itineraries") {
     return {
-      title: "White Glove Itineraries — in development",
+      title: "White Glove Itineraries — your trip, together",
       description:
-        "White Glove Itineraries is a company and platform in development, not yet open for business. Explore the itinerary and client trip tools we plan to offer.",
+        "Build your itinerary, organise trip details and share the journey with White Glove Itineraries.",
       alternates: { canonical: `${BRAND_ORIGIN.itineraries}/` },
     };
   }
@@ -298,3 +298,4 @@ export default async function Home() {
     </main>
   );
 }
+
