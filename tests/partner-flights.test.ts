@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { after, before, describe, it, mock } from "node:test";
 import { searchPartnerFlights } from "@/lib/partner-flights";
+
+// Keep the wall clock explicit so valid September fixtures do not expire.
+before(() => mock.timers.enable({ apis: ["Date"], now: new Date("2026-08-01T12:00:00Z") }));
+after(() => mock.timers.reset());
 
 describe("on-site flight compare rows", () => {
   it("builds a tracked /go link with the route and dates when live fares are off", async () => {

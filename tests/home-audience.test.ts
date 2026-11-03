@@ -52,10 +52,10 @@ describe("the two audiences are both addressed", () => {
   });
 
   it("says something true of the self-planner", () => {
-    // One Trip is a one-time fee capped at a single trip — lib/account-plans.ts
-    // — so the copy must not promise a subscription's worth of anything.
+    // Planning is free; a pass is an optional app upgrade, not a planning fee.
     const own = AUDIENCE.slice(AUDIENCE.indexOf("own: {"), AUDIENCE.indexOf("const CTA"));
-    assert.match(own, /one small fee, no subscription/);
+    assert.match(own, /itinerary free/);
+    assert.match(own, /Trip Pass/);
     assert.doesNotMatch(own, /client/i, "the self-planner's copy still talks about clients");
   });
 });

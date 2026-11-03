@@ -10,6 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   isolated:
+    if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -52,7 +53,8 @@ jobs:
           sudo node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
           npx prisma migrate deploy
-      - run: npx tsx --test tests/account-plans.test.ts tests/account-limits.test.ts tests/plan-billing.test.ts
+      - name: Complete regression suite
+        run: npm test
       - run: npx tsc --noEmit
       - run: npx eslint components/Navbar.tsx components/LoginForm.tsx components/DateField.tsx components/SampleItineraryViews.tsx app/pricing/page.tsx app/sample-itinerary/page.tsx app/packing/page.tsx app/offline/page.tsx components/PackingListPanel.tsx components/SiteTracker.tsx components/HomeAudience.tsx lib/account-plans.ts data/about-itineraries.ts
       - run: npm run build
@@ -77,7 +79,10 @@ jobs:
           retention-days: 7
       - name: Local service diagnostics
         if: failure()
-        run: cat /tmp/visitor-app.log /tmp/pg-bridge.log /tmp/redis-rest.log
+        run: |
+          for log in /tmp/visitor-app.log /tmp/pg-bridge.log /tmp/redis-rest.log; do
+            if [ -f "$log" ]; then tail -n 60 "$log"; fi
+          done
   live:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

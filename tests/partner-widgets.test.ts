@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, it } from "node:test";
+import { after, before, describe, it, mock } from "node:test";
 import { carsEmbedPath, flightsEmbedPath } from "@/lib/partner-widget-paths";
 import { AVIASALES_SEARCH_FORM, aviasalesWidgetSrc, LOCALRENT_SEARCH_FORM, localrentWidgetSrc } from "@/lib/partner-widgets";
 import { isPrivatePath } from "@/lib/site-map";
+
+// Keep the wall clock explicit so valid September fixtures do not expire.
+before(() => mock.timers.enable({ apis: ["Date"], now: new Date("2026-08-01T12:00:00Z") }));
+after(() => mock.timers.reset());
 
 describe("same-origin widget paths", () => {
   it("put the route and dates on /embed/flights, not on a partner host", () => {
