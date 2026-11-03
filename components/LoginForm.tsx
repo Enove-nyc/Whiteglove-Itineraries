@@ -156,9 +156,9 @@ export default function LoginForm({
     // forever. These are early returns with just a message — nothing is sent.
     if (mode === "signup") {
       if (!invitationToken) { setMessage("New accounts require an invitation."); setSaving(false); return; }
-      if (!agreed) { setMessage("Please agree to the terms and the privacy policy to create an account."); return; }
+      if (!agreed) { setMessage("Please agree to the terms and the privacy policy to create an account."); setSaving(false); return; }
       const problem = passwordProblem(password);
-      if (problem) { setMessage(problem); return; }
+      if (problem) { setMessage(problem); setSaving(false); return; }
     }
 
     setSaving(true);

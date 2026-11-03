@@ -7,7 +7,7 @@ import { currentBrand } from "@/lib/site-brand";
 export async function generateMetadata() {
   const brand = await currentBrand();
   return pageMetadata({
-    title: brand === "itineraries" ? "Planned options — White Glove Itineraries" : "Planned Itineraries options — White Glove Kosher Travel",
+    title: brand === "itineraries" ? "Account options — White Glove Itineraries" : "Account options — White Glove Kosher Travel",
     description: "Tools for your own itinerary or for managing client trips.",
     path: "/pricing",
   });

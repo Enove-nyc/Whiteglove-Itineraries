@@ -135,7 +135,7 @@ describe("single-use invitations on real isolated Redis", { skip: process.env.IN
     const issued = await issue(), email = issued.invitation.identity;
     const request = (data: unknown) => new NextRequest("http://127.0.0.1:3002/api/account/register", { method: "POST", headers: { origin: "http://127.0.0.1:3002", "content-type": "application/json", "x-wg-brand": "kosher", "cf-connecting-ip": "192.0.2.200", "x-forwarded-for": "192.0.2.200" }, body: JSON.stringify(data) });
     assert.equal((await register(request({ email, password: "Audit-local-pass-1!" }))).status, 403);
-    assert.equal(await getAccountRecord(email), null);
+    assert.equal(await getAccountRecord(email) ?? null, null);
     assert.equal((await register(request({ email: "someone-else@audit.local", password: "Audit-local-pass-1!", invitationToken: issued.token }))).status, 403);
     assert(await inspectAccountInvitation(issued.token));
     const accepted = await register(request({ email, password: "Audit-local-pass-1!", invitationToken: issued.token }));
@@ -149,7 +149,7 @@ describe("single-use invitations on real isolated Redis", { skip: process.env.IN
     const email = identity(); keys.add("white-glove:account:" + email); keys.add("white-glove:account-data:" + email);
     const result = await signInWithGoogle({ email, googleId: "fixture-subject" });
     assert.equal(result.ok, false);
-    assert.equal(await getAccountRecord(email), null);
+    assert.equal(await getAccountRecord(email) ?? null, null);
   });
   it("existing accounts keep Google login, their password and saved data", async () => {
     const issued = await issue(), email = issued.invitation.identity;
