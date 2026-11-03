@@ -50,9 +50,14 @@ jobs:
       - name: Prepare disposable database transport and schema
         run: |
           openssl req -x509 -newkey rsa:2048 -nodes -keyout scripts/ws.key -out scripts/ws.crt -days 2 -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
-          sudo node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
+          sudo env AUDIT_ISOLATED=1 COST_TRUST_AUTH_BRIDGE=1 node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
           npx prisma migrate deploy
+      - name: Verify actual Prisma SQL over disposable transport before building
+        run: node --import tsx scripts/cost-cache-fixture.ts probe
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/cost-neon-fixture.mjs
       - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npx eslint lib/cache-tags.ts lib/content-cache-invalidation.ts lib/prisma.ts lib/pages.ts lib/content.ts lib/cemeteries-view.ts lib/place-review-store.ts app/api/internal/content-cache/route.ts scripts/cost-cache-fixture.ts
