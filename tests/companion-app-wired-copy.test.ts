@@ -1,3 +1,5 @@
+// Legacy advisor gates remain tested below. The self-service companion
+// is exercised against real APIs and browser contexts in traveler-companion-journeys.mjs.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
@@ -60,12 +62,6 @@ describe("the empty guide does not promise content that will never come", () => 
     const guide = APP.slice(APP.indexOf("const guideChat"), APP.indexOf("const walletScreen"));
     assert.match(guide, /There is nothing local to show for this trip yet\./);
     assert.doesNotMatch(guide, /kosher food, the Shabbos times and the sights/);
-  });
-});
-
-describe("the bottom-nav chat tab reads as White Glove's own, not a generic messaging app", () => {
-  it("is labelled Advisor for a real trip, Messages only for the advisor's own inbox", () => {
-    assert.match(APP, /tabDefs\.push\(\["messages", advisorInbox \? "Messages" : "Advisor", "chat"\]\)/);
   });
 });
 

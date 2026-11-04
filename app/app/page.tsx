@@ -1,3 +1,6 @@
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { currentBrand } from "@/lib/site-brand";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -8,7 +11,10 @@ import { accountCookieName, getCurrentAccountSummary, getSharedItineraryByShareI
 import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = pageMetadata({ title: "Your trip companion", description: "Your itinerary, personal travel wallet and trip group chat.", path: "/app", noIndex: true });
+export async function generateMetadata() {
+  const brand = await currentBrand();
+  return pageMetadata({ title: brand === "itineraries" ? "Your trip companion — White Glove Itineraries" : "Your trip companion — White Glove Kosher Travel", description: "Your itinerary, personal travel wallet and trip group chat.", path: "/app", noIndex: true });
+}
 
 export default async function AppPage({ searchParams }: { searchParams: Promise<{ enter?: string }> }) {
   const params = await searchParams;
@@ -18,7 +24,7 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
   const match = /^\/i\/([A-Za-z0-9_-]+)\/app$/.exec(remembered);
   if (params.enter !== "1" && match && await getSharedItineraryByShareId(match[1])) redirect(remembered);
   const trips = account ? await getTrips(account.email) : [];
-  return <main className="min-h-screen bg-[#FAF8F3] px-5 pb-16 pt-[calc(2rem+env(safe-area-inset-top))] text-[#102F35]">
+  return <><Navbar minimal homeHref="/app" bottomBar={false} /><main className="min-h-screen bg-[#FAF8F3] px-5 pb-16 pt-[calc(2rem+env(safe-area-inset-top))] text-[#102F35]">
     {remembered && !match ? <ClientCodeMemory path={null} /> : null}
     <section className="mx-auto max-w-2xl">
       <p className="text-xs font-bold uppercase tracking-[0.2em]">White Glove · Trip companion</p>
@@ -36,6 +42,6 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
       </section> : <p className="mt-6 text-sm leading-7 text-stone-600">Already saved an itinerary? <Link href="/login?next=%2Fapp%3Fenter%3D1" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Log in to find your trips</Link></p>}
       <p className="mt-8 text-sm"><Link href="/sample-itinerary" className="inline-flex min-h-11 items-center underline underline-offset-4">Explore a sample itinerary</Link></p>
     </section>
-  </main>;
+  </main><Footer minimal /></>;
 }
 

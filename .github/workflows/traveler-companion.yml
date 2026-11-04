@@ -12,9 +12,12 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
     env:
-      DATABASE_URL: postgresql://wg:wg@localhost:5432/whiteglove
-      WHITE_GLOVE_SESSION_SECRET: isolated-companion-ci-secret
+      WHITE_GLOVE_SESSION_SECRET: isolated-companion-test-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +27,39 @@ jobs:
       - run: npm ci
       - run: npx next typegen
       - run: npx tsc --noEmit
+      - run: npm test
       - run: node tests/traveler-companion.test.mjs
       - name: Check changed app components
         run: npx eslint components/companion/PersonalTravelWallet.tsx components/companion/TripGroupChat.tsx components/companion/TripCompanionCode.tsx lib/personal-travel-wallet.ts lib/trip-group-identity.ts lib/trip-group-store.ts app/api/trip-group/route.ts app/api/account/companion-code/route.ts app/app/page.tsx app/i/\[shareId\]/app/page.tsx
+      - run: sudo apt-get update -qq && sudo apt-get install -y redis-tools
+      - run: npx playwright install --with-deps chromium
+      - name: Start disposable app and Redis transport
+        env:
+          UPSTASH_REDIS_REST_URL: http://127.0.0.1:6380
+          UPSTASH_REDIS_REST_TOKEN: local-test
+          NEXT_PUBLIC_SITE_BRAND: ${{ github.event.repository.name == 'Whiteglove' && 'kosher' || 'itineraries' }}
+        run: |
+          node scripts/visitor-redis.mjs > /tmp/companion-redis.log 2>&1 &
+          npm run dev -- --hostname 127.0.0.1 --port 3002 > /tmp/companion-app.log 2>&1 &
+          for n in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3002/app > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/companion-app.log
+          exit 1
+      - name: Traveler journeys against real local APIs and Redis
+        run: node scripts/traveler-companion-journeys.mjs
+        env:
+          COMPANION_TEST_SEARCH: ${{ github.event.repository.name == 'Whiteglove' && '1' || '0' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: traveler-companion-mobile
+          path: companion-results/
+          retention-days: 7
+      - name: Local service diagnostics
+        if: failure()
+        run: |
+          for log in /tmp/companion-app.log /tmp/companion-redis.log; do
+            if [ -f "$log" ]; then tail -n 50 "$log"; fi
+          done

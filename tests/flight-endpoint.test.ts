@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test, { describe } from "node:test";
 import { AIRPORTS, METRO_AREAS } from "../data/airports";
 import { airportsInMetro, foldAccents, metroMatches, resolveEndpoint } from "../lib/flight-endpoint";
-import { explainDuffelError } from "../app/api/flights/search/route";
+import { explainDuffelError } from "../lib/duffel-error";
 import { redact } from "../lib/redact";
 
 // Two faults, both of them the same fault twice over: the code knew something

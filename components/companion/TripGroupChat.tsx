@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { TripGroupMessage } from "@/lib/trip-group-store";
 
 type ChatReply = { messages?: TripGroupMessage[]; member?: { id: string; name: string }; needsName?: boolean; error?: string };
-export default function TripGroupChat({ code }: { code: string }) {
+function LiveTripGroupChat({ code }: { code: string }) {
   const id = useId();
   const [messages, setMessages] = useState<TripGroupMessage[]>([]);
   const [member, setMember] = useState<ChatReply["member"]>();
@@ -34,13 +34,14 @@ export default function TripGroupChat({ code }: { code: string }) {
     } catch (problem) { if (current === sequence.current) setError(problem instanceof Error ? problem.message : "Could not load messages."); }
     finally { if (current === sequence.current) setLoading(false); }
   }, [request]);
+  const invalidate = useCallback(() => { ++sequence.current; }, []);
   useEffect(() => {
-    void refresh();
+    const firstPoll = window.setTimeout(() => void refresh(), 0);
     const poll = () => { if (!mutating.current && document.visibilityState === "visible" && navigator.onLine) void refresh(); };
     const timer = window.setInterval(poll, 15000);
     window.addEventListener("online", poll); document.addEventListener("visibilitychange", poll);
-    return () => { ++sequence.current; clearInterval(timer); window.removeEventListener("online", poll); document.removeEventListener("visibilitychange", poll); };
-  }, [refresh]);
+    return () => { invalidate(); clearTimeout(firstPoll); clearInterval(timer); window.removeEventListener("online", poll); document.removeEventListener("visibilitychange", poll); };
+  }, [refresh, invalidate]);
   async function join() {
     setBusy(true); setError(""); mutating.current = true;
     try { const data = await request("join", { name }); setMember(data.member); setNeedsName(false); await refresh(); }
@@ -74,4 +75,14 @@ export default function TripGroupChat({ code }: { code: string }) {
       </form>
     </> : null}
   </section>;
+}
+
+export default function TripGroupChat({ code, preview = false }: { code?: string; preview?: boolean }) {
+  if (preview) return <section className="space-y-4 p-4 text-[#102F35]" aria-label="Sample trip group chat">
+    <h2 className="text-lg font-semibold">Trip group chat</h2>
+    <p className="text-sm leading-6 text-stone-600">Sample conversation between people on the same trip. Open your own trip code to send messages.</p>
+    <div className="rounded-2xl bg-white p-4"><p className="text-xs font-semibold">Miriam · Sample</p><p className="mt-1 text-sm leading-6">Let’s meet by the hotel entrance before we head out.</p></div>
+    <div className="ml-6 rounded-2xl bg-[#102F35] p-4 text-white"><p className="text-xs font-semibold">David · Sample</p><p className="mt-1 text-sm leading-6">On my way. I have the tickets in my wallet.</p></div>
+  </section>;
+  return code ? <LiveTripGroupChat key={code} code={code} /> : null;
 }

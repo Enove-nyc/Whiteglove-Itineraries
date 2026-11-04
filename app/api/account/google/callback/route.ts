@@ -4,7 +4,7 @@ import { hasSiteAccess } from "@/lib/admin-roles";
 import { claimsFromIdToken, googleConfig, identityFrom, TOKEN_ENDPOINT } from "@/lib/google-signin";
 import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
 import { recordSignIn, whereFrom } from "@/lib/signin-log";
-import { PENDING_COOKIE } from "@/app/api/account/google/start/route";
+import { PENDING_COOKIE } from "@/lib/google-signin";
 import { publicUrl } from "@/lib/public-origin";
 
 /**

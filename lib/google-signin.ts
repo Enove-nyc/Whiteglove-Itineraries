@@ -165,3 +165,6 @@ export function describeProblem(code: string | null | undefined): string | null 
   if (!code) return null;
   return SIGN_IN_PROBLEMS[code] ?? "That sign-in did not complete. Try again.";
 }
+
+/** Shared by the Google sign-in routes; route files export handlers only. */
+export const PENDING_COOKIE = "white_glove_google";

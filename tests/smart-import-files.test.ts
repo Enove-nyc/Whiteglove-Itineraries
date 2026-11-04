@@ -110,10 +110,11 @@ describe("each provider is given the file in the shape it accepts", () => {
     assert.match(lib, /image_url/);
   });
 
-  it("no OCR engine or PDF parser was added for this", () => {
+  it("Smart Import still sends files directly to the provider; PDF.js is only a browser wallet viewer", () => {
     const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { dependencies?: Record<string, string> };
+    assert.doesNotMatch(readFileSync("lib/smart-import.ts", "utf8"), /from ["']pdfjs|import\(["']pdfjs/);
     for (const dep of Object.keys(pkg.dependencies ?? {})) {
-      assert.ok(!/tesseract|pdf-parse|pdfjs|ocr/i.test(dep), `a document library crept in: ${dep}`);
+      assert.ok(!/tesseract|pdf-parse|ocr/i.test(dep), `a document library crept in: ${dep}`);
     }
   });
 });

@@ -1,3 +1,5 @@
+// Legacy advisor gates remain tested below. The self-service companion
+// is exercised against real APIs and browser contexts in traveler-companion-journeys.mjs.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
@@ -25,17 +27,13 @@ describe("the client app's payment surfaces keep the same fences everything else
     assert.match(screen, /fetch\(`\/api\/pay\/\$\{shareId\}`/);
   });
 
-  it("a whole-trip link only ever computes a payment when the trip has exactly one unit", () => {
-    const body = WHOLE_TRIP_PAGE.slice(WHOLE_TRIP_PAGE.indexOf("const units ="));
-    assert.match(body, /units\.length === 1/);
-  });
-
   it("a traveler-scoped link always resolves its OWN unit, never a client-supplied one", () => {
     assert.match(TRAVELER_PAGE, /travelerUnitKey\(shared\.traveler\)/);
   });
 
   it("both app pages redact/attach payment before CompanionApp ever renders, not inside it", () => {
-    assert.match(WHOLE_TRIP_PAGE, /trip\.payment = payment/);
+    // The self-service whole-trip companion has no payment surface.
+    assert.doesNotMatch(WHOLE_TRIP_PAGE, /trip\.payment = payment/);
     assert.match(TRAVELER_PAGE, /trip\.payment = payment/);
   });
 

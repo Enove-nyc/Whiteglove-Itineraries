@@ -1,3 +1,4 @@
+import { noteShareOpened } from "@/lib/share-open-recorder";
 import { redirect } from "next/navigation";
 import CompanionApp from "@/components/companion/CompanionApp";
 import ClientCodeMemory from "@/components/companion/ClientCodeMemory";
@@ -8,7 +9,10 @@ import { buildCompanionFromItinerary } from "@/lib/companion-build";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
 
-export const metadata = pageMetadata({ title: "Your trip", description: "Your itinerary, personal wallet and trip group chat.", path: "/i", noIndex: true });
+export async function generateMetadata() {
+  const brand = await currentBrand();
+  return pageMetadata({ title: brand === "itineraries" ? "Your trip — White Glove Itineraries" : "Your trip — White Glove Kosher Travel", description: "Your itinerary, personal travel wallet and trip group chat.", path: "/i", noIndex: true });
+}
 export const dynamic = "force-dynamic";
 
 // A code is already a read credential for this exact shared itinerary.
@@ -18,6 +22,7 @@ export default async function SharedAppPage({ params }: { params: Promise<{ shar
   if (shareId === SAMPLE_TRIP_CODE) return sampleApp();
   const shared = await getSharedItineraryByShareId(shareId);
   if (!shared) redirect(`/i/${encodeURIComponent(shareId)}`);
+  await noteShareOpened(shareId, shared.ownerEmail);
   const trip = await buildCompanionFromItinerary({ ...emptyItinerary(), ...shared.itinerary }, {
     today: new Date().toISOString().slice(0, 10),
     kosher: (await currentBrand()) === "kosher",
@@ -51,7 +56,7 @@ async function sampleApp() {
           trip, for seeing how the app works. Nothing here is booked.
         </p>
       </div>
-      <CompanionApp trip={trip} />
+      <CompanionApp trip={trip} travelerPreview personalWalletKey="sample:rome" />
     </main>
   );
 }
