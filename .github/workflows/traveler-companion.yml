@@ -27,7 +27,8 @@ jobs:
       - run: npm ci
       - run: npx next typegen
       - run: npx tsc --noEmit
-      - run: npm test
+      - name: Full regression suite without runtime test credentials
+        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npm test
       - run: node tests/traveler-companion.test.mjs
       - name: Check changed app components
         run: npx eslint components/companion/PersonalTravelWallet.tsx components/companion/TripGroupChat.tsx components/companion/TripCompanionCode.tsx lib/personal-travel-wallet.ts lib/trip-group-identity.ts lib/trip-group-store.ts app/api/trip-group/route.ts app/api/account/companion-code/route.ts app/app/page.tsx app/i/\[shareId\]/app/page.tsx
