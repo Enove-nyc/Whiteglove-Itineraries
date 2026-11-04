@@ -9,9 +9,9 @@ Updated 4 November 2026. This tracks the active app scope separately from deferr
 - [x] Shared accounts, trip storage, private attachment permissions and existing owner access preserved. Public signup and purchases stay closed.
 - [x] Web app release deployed and browser journeys passed: search/AI, code entry, wallet/offline PDF, chat and tablet portrait/landscape.
 - [x] First service-worker installation keeps the app open; replacement workers reload once. Installed search/private companion pages exclude affiliate scripts.
-- [x] Android startup repairs across all four apps: visible loading and failure screens, blank-page timeout, retry, automatic reconnection and outdated-WebView guidance. TLS failures are rejected; recovery does not clear user data.
+- [x] Android startup repairs across all four apps: visible loading and failure screens, blank-page timeout, retry, automatic reconnection and outdated-WebView guidance. Startup waits for Android to draw the new page before dismissing its loading screen. TLS failures are rejected; recovery does not clear user data.
 - [x] Correct native entry addresses: Kosher Travel opens `/travel`; Admin opens its canonical Kosher Travel domain rather than crossing domains during startup.
-- [x] Android tablet emulator: 24 instrumentation tests and 12 startup unit tests across all four packages. Live entry, rotation, offline first launch, reconnection, timeout, old-WebView guidance and error recovery passed. [Successful run](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41903338090).
+- [x] Android tablet emulator: 24 instrumentation tests and 12 startup unit tests across all four packages. Live entry controls, nonblank rendered frames, rotation, offline first launch, stable reconnection, timeout, old-WebView guidance and error recovery passed. [Successful run](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41907169042).
 - [x] All four signed APK/AAB updates built with original package IDs/signing identities, higher version codes and target SDK 36. Downloaded package hashes match verification reports.
 - [x] Admin checklist reconciled with implemented accounts, invitations, saved routes, permissions and legal pages; existing owner overrides/notes preserved.
 - [x] Privacy supplement covers personal wallet files, shared attachments, trip codes and group-message retention, including owner-edited policy pages.
@@ -23,10 +23,10 @@ Updated 4 November 2026. This tracks the active app scope separately from deferr
 
 | App | Version | Code | Successful signed build |
 | --- | --- | --- | --- |
-| Kosher Travel | 1.5 | 6 | [41904633196](https://github.com/Enove-nyc/Whiteglove/actions/runs/41904633196) |
-| Itineraries companion | 1.6 | 7 | [41904670086](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41904670086) |
-| Advisor | 1.8 | 12 | [41904670566](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41904670566) |
-| Admin | 1.1 | 2 | [41904670344](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41904670344) |
+| Kosher Travel | 1.5 | 6 | [41907158167](https://github.com/Enove-nyc/Whiteglove/actions/runs/41907158167) |
+| Itineraries companion | 1.6 | 7 | [41907169070](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41907169070) |
+| Advisor | 1.8 | 12 | [41907169072](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41907169072) |
+| Admin | 1.1 | 2 | [41907169012](https://github.com/Enove-nyc/Whiteglove-Itineraries/actions/runs/41907169012) |
 
 Each run contains `*-release-apk`, `*-release-aab` and `*-release-verification` artifacts. Verification checks package/version/SDK, cryptographic signatures and original upload certificate, and records SHA-256 hashes. A Play-installed app may use Google's app-signing certificate instead of the upload certificate. Do not uninstall or clear data to force an APK update: personal wallet files are device-only. Confirm the installation channel before choosing the update route.
 
