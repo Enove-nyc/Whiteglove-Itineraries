@@ -15,7 +15,7 @@ concurrency:
 jobs:
   tablet:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,7 +32,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+      - uses: actions/cache/restore@v4
+        id: gradle-cache
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: wg-native-gradle-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties', '**/build.gradle', '**/package-lock.json') }}
+          restore-keys: wg-native-gradle-${{ runner.os }}-
       - name: Validate shared startup decisions and build all four native packages
         run: |
           mkdir -p native-results
@@ -42,16 +49,31 @@ jobs:
             (cd "$project" && npm ci --no-audit --no-fund && npx cap sync android)
             (cd "$project/android" && ./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest --no-daemon --stacktrace)
           done
+      - uses: actions/cache/save@v4
+        if: steps.gradle-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
+      - name: Use one explicit Android device directory
+        run: |
+          echo "ANDROID_USER_HOME=$RUNNER_TEMP/wg-android-user" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$RUNNER_TEMP/wg-android-avd" >> "$GITHUB_ENV"
       - name: Install tablet emulator image
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" platform-tools 'system-images;android-35;google_apis;x86_64'
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name wg-tablet --package 'system-images;android-35;google_apis;x86_64' --device pixel_c
+          mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" --verbose create avd --force --name wg-tablet --path "$ANDROID_AVD_HOME/wg-tablet.avd" --package 'system-images;android-35;google_apis;x86_64' --device pixel_c
+          test -f "$ANDROID_AVD_HOME/wg-tablet.avd/config.ini"
+          "$ANDROID_HOME/emulator/emulator" -list-avds | tee native-results/avds.txt
+          rg '^wg-tablet$' native-results/avds.txt
           sudo chmod 666 /dev/kvm
       - name: Start Android tablet
         run: |
           "$ANDROID_HOME/emulator/emulator" -avd wg-tablet -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -no-metrics > native-results/emulator.log 2>&1 &
-          adb wait-for-device
+          timeout 120 adb wait-for-device
           for n in $(seq 1 120); do
             if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; then break; fi
             sleep 2
