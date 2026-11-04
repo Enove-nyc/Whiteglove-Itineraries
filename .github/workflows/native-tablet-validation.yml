@@ -32,6 +32,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
       - name: Validate shared startup decisions and build all four native packages
         run: |
           mkdir -p native-results
@@ -43,7 +44,8 @@ jobs:
           done
       - name: Install tablet emulator image
         run: |
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'system-images;android-35;google_apis;x86_64'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" platform-tools 'system-images;android-35;google_apis;x86_64'
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name wg-tablet --package 'system-images;android-35;google_apis;x86_64' --device pixel_c
           sudo chmod 666 /dev/kvm
       - name: Start Android tablet
@@ -68,6 +70,8 @@ jobs:
         if: always()
         run: |
           adb logcat -d -s AndroidRuntime chromium Capacitor > native-results/logcat.txt || true
+          if [ -f native-results/emulator.log ]; then tail -n 60 native-results/emulator.log; fi
+          if [ -f native-results/logcat.txt ]; then tail -n 60 native-results/logcat.txt; fi
           for project in kosher/native/kosher itineraries/native/itineraries itineraries/native/advisor itineraries/native/admin; do
             mkdir -p "native-results/$(basename "$project")/unit"
             cp -R "$project/android/app/build/test-results/testDebugUnitTest/." "native-results/$(basename "$project")/unit/" 2>/dev/null || true
