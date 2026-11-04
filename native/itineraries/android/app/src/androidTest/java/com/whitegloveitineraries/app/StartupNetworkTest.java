@@ -59,6 +59,23 @@ public class StartupNetworkTest {
                 shell("svc wifi enable");
                 shell("svc data enable");
                 await(scenario, StartupState.Status.READY);
+                AtomicBoolean controls = new AtomicBoolean();
+                long stableSince = 0;
+                long readyUntil = SystemClock.uptimeMillis() + 15000;
+                while (SystemClock.uptimeMillis() < readyUntil) {
+                    scenario.onActivity(activity -> {
+                        if (activity.startup.state.status != StartupState.Status.READY) { controls.set(false); return; }
+                        activity.getBridge().getWebView().evaluateJavascript(
+                            "!!Array.from(document.querySelectorAll('input')).find(function(e){var r=e.getBoundingClientRect();return r.width>0&&r.height>0;})",
+                            value -> controls.set("true".equals(value)));
+                    });
+                    SystemClock.sleep(200);
+                    if (controls.get()) {
+                        if (stableSince == 0) stableSince = SystemClock.uptimeMillis();
+                        if (SystemClock.uptimeMillis() - stableSince >= 1000) break;
+                    } else stableSince = 0;
+                }
+                assertTrue("Reconnection must show stable live entry controls", controls.get() && stableSince > 0 && SystemClock.uptimeMillis() - stableSince >= 1000);
                 capture("reconnected");
             }
         } finally {

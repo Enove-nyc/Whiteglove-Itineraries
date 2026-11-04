@@ -39,6 +39,23 @@ public class StartupSmokeTest {
         bitmap.recycle();
     }
 
+    private void captureRenderedEntry(String name) {
+        // Exclude system bars: a solid WebView background is not a rendered app.
+        long end = SystemClock.uptimeMillis() + 5000;
+        do {
+            SystemClock.sleep(250);
+            Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+            java.util.Set<Integer> colors = new java.util.HashSet<>();
+            for (int y = bitmap.getHeight()/10; y < bitmap.getHeight()*9/10; y += 4)
+                for (int x = bitmap.getWidth()/20; x < bitmap.getWidth()*19/20; x += 4)
+                    colors.add(bitmap.getPixel(x,y) & 0x00f8f8f8);
+            bitmap.recycle();
+            if (colors.size() > 8) { capture(name); return; }
+        } while (SystemClock.uptimeMillis() < end);
+        capture(name);
+        fail("Live entry remained a solid blank surface after DOM readiness");
+    }
+
     private void await(ActivityScenario<MainActivity> scenario, StartupState.Status expected, long timeout) {
         long end = SystemClock.uptimeMillis() + timeout;
         AtomicBoolean matched = new AtomicBoolean();
@@ -75,7 +92,17 @@ public class StartupSmokeTest {
                     assertEquals(View.VISIBLE, activity.findViewById(R.id.startup_website).getVisibility());
                 }
             });
-            capture("live-entry");
+            // Verify real entry controls, not just a ready flag or an undrawn surface.
+            AtomicBoolean controls = new AtomicBoolean();
+            long controlsEnd = SystemClock.uptimeMillis() + 10000;
+            while (!controls.get() && SystemClock.uptimeMillis() < controlsEnd) {
+                scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+                    "!!Array.from(document.querySelectorAll('input')).find(function(e){var r=e.getBoundingClientRect();return r.width>0&&r.height>0;})",
+                    value -> controls.set("true".equals(value))));
+                SystemClock.sleep(200);
+            }
+            assertTrue("The live entry must show its search, trip-code or login controls", controls.get());
+            captureRenderedEntry("live-entry");
         }
     }
 

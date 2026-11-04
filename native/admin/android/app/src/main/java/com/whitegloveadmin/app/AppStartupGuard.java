@@ -51,6 +51,7 @@ final class AppStartupGuard {
     private long startedAt;
     private boolean destroyed;
     private boolean rendererGone;
+    private boolean pageFinished;
     private ConnectivityManager.NetworkCallback networkCallback;
 
     static AppStartupGuard attach(BridgeActivity activity, String serverUrl, String appName) {
@@ -113,7 +114,7 @@ final class AppStartupGuard {
             }
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (state.status == StartupState.Status.LOADING) schedulePoll(0);
+                if (state.status == StartupState.Status.LOADING) { pageFinished = true; schedulePoll(0); }
             }
             // Android's modern callback delegates main-frame failures here;
             // this also covers the API 22 devices the shell still supports.
@@ -171,6 +172,7 @@ final class AppStartupGuard {
                 "Android System WebView is too old for this app. Update Android System WebView or Chrome in Google Play, then reopen the app.");
             return;
         }
+        pageFinished = false;
         state.begin();
         startedAt = SystemClock.uptimeMillis();
         title.setText("Opening " + appName);
@@ -191,16 +193,31 @@ final class AppStartupGuard {
                     "This is taking longer than expected. Check your connection and try again, or continue on the website.");
                 return;
             }
-            // Read only whether a real page is visible; never collect its text or URL.
-            webView.evaluateJavascript("(function(){return !!(document.body && document.body.innerText && document.body.innerText.trim().length > 16);})()", value -> {
-                if (destroyed) return;
-                if (state.acceptContent(generation, "true".equals(value))) {
-                    overlay.setVisibility(View.GONE);
-                    handler.removeCallbacks(poll);
-                } else if (state.status == StartupState.Status.LOADING) schedulePoll(500);
+            // Do not accept the previous document while a new navigation is starting.
+            if (!pageFinished) { schedulePoll(250); return; }
+            // Read only whether meaningful visible content exists, never its text or URL.
+            webView.evaluateJavascript("(function(){return !!(document.body && document.body.innerText.trim().length > 16 && Array.from(document.querySelectorAll('h1,h2,p,button,input,a')).some(function(e){var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&Number(s.opacity)>0;}));})()", value -> {
+                if (destroyed || state.generation() != generation || state.status != StartupState.Status.LOADING) return;
+                if (!"true".equals(value)) { schedulePoll(500); return; }
+                // DOM availability precedes WebView's next drawn frame. Keep the native
+                // screen until Android confirms that frame is ready to display.
+                if (android.os.Build.VERSION.SDK_INT >= 23) {
+                    webView.postVisualStateCallback(generation, new WebView.VisualStateCallback() {
+                        @Override public void onComplete(long requestId) { acceptRenderedContent(generation); }
+                    });
+                } else {
+                    webView.postOnAnimation(() -> webView.postOnAnimation(() -> acceptRenderedContent(generation)));
+                }
+                schedulePoll(500); // Retain the timeout if the renderer never produces a frame.
             });
         }
     };
+    private void acceptRenderedContent(int generation) {
+        if (!destroyed && state.acceptContent(generation, true)) {
+            overlay.setVisibility(View.GONE);
+            handler.removeCallbacks(poll);
+        }
+    }
     private void schedulePoll(long delay) { handler.removeCallbacks(poll); handler.postDelayed(poll, delay); }
 
     private void showFailure(StartupState.Status reason, String description) {
