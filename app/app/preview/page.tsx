@@ -1,107 +1,17 @@
 import Link from "next/link";
-import CompanionApp from "@/components/companion/CompanionApp";
 import { COMPANION_DEMO_TRIP } from "@/data/companion-demo";
+import CompanionApp from "@/components/companion/CompanionApp";
+import { SAMPLE_ITINERARY } from "@/data/sample-itinerary";
+import { buildCompanionFromItinerary } from "@/lib/companion-build";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
 
-/**
- * The client app, shown to somebody who has not bought it.
- *
- * WHAT WAS WRONG WITH /app. A buyer who clicked "the app" — the thing three
- * plans are sold on — arrived at a code field and a login button. Both doors
- * are for people who already have it. The product itself, which is the whole
- * promise, was invisible to everybody deciding whether to pay for it, and two
- * separate audits said the same thing about it in the same week.
- *
- * A demo trip was already in the repository and already the component's own
- * default, used for nothing. It is a made-up family in Rome with a made-up
- * advisor, written in the site's voice with real, publishable Rome information
- * — which is the right kind of sample, because a buyer can judge the quality of
- * what a client would actually read.
- *
- * IT SAYS SO ABOVE THE FOLD, IN WORDS. Every one of these screens is a picture
- * of somebody's private trip, and a demo that does not announce itself invites
- * exactly the wrong reading — that these are real people, or worse that
- * somebody's real trip is on a public page. The banner is not a footnote.
- *
- * NOT INDEXED. There is one page that should rank for the app and it is /app,
- * where the product is explained and sold. A second page carrying the same
- * subject and none of the explanation would compete with it.
- */
+export const dynamic = "force-dynamic";
 export async function generateMetadata() {
   const brand = await currentBrand();
-  return pageMetadata({
-    title: brand === "itineraries" ? "A sample client trip — White Glove Itineraries" : "A sample client trip",
-    description:
-      "What a traveller opens when their advisor sends them the app — a day at a time, with the wallet on the phone. A made-up trip, shown in full.",
-    path: "/app/preview",
-    noIndex: true,
-  });
+  return pageMetadata({ title: brand === "itineraries" ? "A sample trip — White Glove Itineraries" : "A sample trip — White Glove Kosher Travel", description: "Explore a sample itinerary, personal travel wallet and trip group chat.", path: "/app/preview", noIndex: true });
 }
-
-export default function AppPreviewPage() {
-  return (
-    <main>
-      {/* Above the app, not over it: the app below fills the screen and owns
-          every pixel of it, so a floating notice would cover a control. */}
-      <div className="border-b border-[var(--gold)]/30 bg-[var(--cream)] px-5 py-6 sm:px-8">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-            <div className="min-w-0">
-              {/* THE PAGE HAD NO HEADING AT ALL. Everything below this band is
-                  the app's own interface, which starts at a date and a city, so
-                  a screen reader asking for the page's headings got the sample
-                  trip's days and nothing saying what the page is. */}
-              <h1 className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)] sm:text-3xl">
-                A sample client trip
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-700">
-                <span className="font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">Sample</span>{" "}
-                — an illustrative trip for a fictional family in Rome. Explore the schedule, map and travel wallet.
-              </p>
-            </div>
-            <Link
-              href="/app"
-              className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-[var(--navy)] px-5 text-sm font-semibold text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-white"
-            >
-              Back to the app
-            </Link>
-          </div>
-
-          {/* WHAT THE PHONE BELOW IS SHOWING, said in words. A buyer looking at
-              a 402px phone on a wide screen has to find each of these by
-              tapping through somebody else's week to know the product has
-              them. Every line is a screen in the app below, not a promise. */}
-          <ul className="mt-6 grid gap-x-8 gap-y-2 text-sm leading-6 text-stone-700 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              "Today's schedule, a day at a time",
-              "The map, and directions to the next stop",
-              "Documents and confirmations in a travel wallet",
-              "Messages with their advisor, against the right trip",
-              "Flight times, kept up to date",
-              "The wallet stays on the phone when there is no signal",
-            ].map((line) => (
-              <li key={line} className="flex gap-2">
-                <span aria-hidden="true" className="text-[var(--gold-ink)]">·</span>
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* THE DEMO TRIP, SHOWN AS A CLIENT GETS IT. The component's own default
-          is this same object; what the page adds is `previewAsClient`, which
-          takes away the three controls no client will ever have — the
-          Concierge tab, the Concierge/Guide switch and the Traveler/Advisor
-          switch. They demonstrate a concierge tier that is not built, and on
-          the one page that promises "this is what your client opens" they were
-          a feature being shown to somebody who could not buy it. The scripted
-          advisor thread stays; it just sits where a client's thread sits.
-
-          No advisorInbox either — this is the client's side, the side sold. */}
-      <CompanionApp trip={{ ...COMPANION_DEMO_TRIP, previewAsClient: true }} />
-    </main>
-  );
+export default async function AppPreviewPage() {
+  const trip = await buildCompanionFromItinerary(SAMPLE_ITINERARY, { today: SAMPLE_ITINERARY.startDate, kosher: (await currentBrand()) === "kosher" });
+  return <main><div className="border-b border-stone-200 bg-[#FAF8F3] px-5 py-4 text-[#102F35]"><div className="mx-auto max-w-5xl"><h1 className="text-xl font-semibold">A sample trip</h1><p className="mt-2 text-sm leading-6"><span className="font-bold uppercase tracking-widest">Sample</span> — an illustrative trip for a fictional family in Rome. Explore the itinerary, personal travel wallet and sample group conversation. Nothing here is booked.</p><ul className="my-3 grid gap-2 text-sm leading-6 sm:grid-cols-2">{["Today's schedule, a day at a time", "The map and directions to each stop", "Personal documents in a travel wallet", "Messages with your travel group", "Flight times from your itinerary", "Saved documents for when there is no signal"].map((line) => <li key={line}>{line}</li>)}</ul><Link href="/app?enter=1" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Open your own trip</Link></div></div>{trip ? <CompanionApp trip={{ ...trip, walletGroups: COMPANION_DEMO_TRIP.walletGroups, previewAsClient: true }} travelerPreview personalWalletKey="sample:rome" /> : <p className="p-5">The sample trip is temporarily unavailable.</p>}</main>;
 }
-

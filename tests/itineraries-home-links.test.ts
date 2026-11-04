@@ -37,13 +37,13 @@ describe("the preview page says what it is", () => {
      * offered were the sample trip's days — nothing saying what the page is.
      */
     assert.match(PREVIEW, /<h1 className=/);
-    assert.match(PREVIEW, />\s*A sample client trip\s*</);
+    assert.match(PREVIEW, />\s*A sample trip\s*</);
   });
 
   it("says in words what the phone is showing", () => {
     // A buyer looking at a 402px phone on a wide screen would otherwise have
     // to tap through somebody else's week to learn the product has these.
-    for (const line of ["Today's schedule", "The map", "travel wallet", "Messages with their advisor", "Flight times", "no signal"]) {
+    for (const line of ["Today's schedule", "The map", "travel wallet", "Messages with your travel group", "Flight times", "no signal"]) {
       assert.ok(PREVIEW.includes(line), `the preview does not mention ${line}`);
     }
   });

@@ -17,7 +17,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     name: itineraries ? "White Glove Itineraries" : "White Glove Kosher Travel",
     short_name: "White Glove",
     description: itineraries
-      ? "The trip you plan, in your client's pocket — the itinerary a day at a time, a travel wallet for when there is no signal, and a line to their advisor."
+      ? "Your itinerary, private travel wallet and trip group chat, ready for travel."
       : "Thoughtfully planned kosher travel and Jewish heritage journeys — kevarim, kosher food, minyanim, and trip planning.",
     // The itineraries app is the planner app, not the marketing site, so it
     // launches straight into /app; the kosher app is the whole site and opens
@@ -30,15 +30,6 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     theme_color: "#102F35",
     orientation: "portrait",
     categories: ["travel", "lifestyle"],
-    // Lets the OS share sheet offer White Glove itself as a destination —
-    // sharing a place from Google Maps, say, lands it here rather than
-    // needing to be copied and pasted in by hand. Read by app/app/page.tsx
-    // and handed to the advisor as a message ready to send.
-    share_target: {
-      action: "/app",
-      method: "GET",
-      params: { title: "share_title", text: "share_text", url: "share_url" },
-    },
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

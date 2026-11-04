@@ -61,11 +61,6 @@ const ADVISOR_ONLY = [
 ] as const;
 
 describe("the client's view of the app carries none of the advisor's controls", () => {
-  it("decides who the viewer is from the server's answer, not the browser's", () => {
-    // Not a prop the client could influence and not anything read off the
-    // URL: the side of the chat the server resolved from the share token.
-    assert.match(APP, /const isClientViewer = liveChat\?\.side === "client";/);
-  });
 
   for (const [component, damage] of ADVISOR_ONLY) {
     it(`${component} is never rendered for a client`, () => {

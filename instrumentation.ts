@@ -4,7 +4,9 @@
 // reminders on a timer. Guarded to the Node runtime; the scheduler itself is a
 // no-op outside production and if called twice.
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const { startTripSchedulers } = await import("@/lib/cron-scheduler");
-  startTripSchedulers();
+  // Keep Node-only dependencies out of the Edge instrumentation bundle.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { startTripSchedulers } = await import("@/lib/cron-scheduler");
+    startTripSchedulers();
+  }
 }

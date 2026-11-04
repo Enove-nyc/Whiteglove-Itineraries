@@ -36,12 +36,13 @@ describe("the test code", () => {
     assert.match(fn, /today: SAMPLE_ITINERARY\.startDate,/);
   });
 
-  it("carries no conversation — there is nobody on the other end", () => {
+  it("shows a sample conversation without a live trip credential", () => {
     // The rule for every code without a second person behind it. CompanionApp
     // draws the Messages tab, its badge and its polling from the chat prop
     // alone, so passing none removes all of them together.
     const fn = ROUTE.slice(ROUTE.indexOf("async function sampleApp()"));
-    assert.match(fn, /<CompanionApp trip=\{trip\} \/>/);
+    assert.match(fn, /travelerPreview/);
+    assert.doesNotMatch(fn, /travelerGroupCode=/);
     assert.doesNotMatch(fn, /chat=/);
   });
 

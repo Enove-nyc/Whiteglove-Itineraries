@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { authorizeUrl, callbackUrl, googleConfig } from "@/lib/google-signin";
+import { PENDING_COOKIE, authorizeUrl, callbackUrl, googleConfig } from "@/lib/google-signin";
 import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
 import { siteOrigin } from "@/lib/seo";
 import { publicUrl } from "@/lib/public-origin";
@@ -20,7 +20,7 @@ import { publicUrl } from "@/lib/public-origin";
  */
 export const dynamic = "force-dynamic";
 
-export const PENDING_COOKIE = "white_glove_google";
+
 
 export async function GET(request: NextRequest) {
   const config = googleConfig({

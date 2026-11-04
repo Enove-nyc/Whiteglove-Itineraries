@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Local audit harness (never deployed)
 .audit/
+
+# Isolated traveler companion screenshots
+/companion-results/
