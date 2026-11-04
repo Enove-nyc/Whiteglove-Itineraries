@@ -35,6 +35,8 @@
 import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
+import PersonalTravelWallet from "@/components/companion/PersonalTravelWallet";
+import TripGroupChat from "@/components/companion/TripGroupChat";
 import {
   COMPANION_DEMO_TRIP,
   COMPANION_KIND,
@@ -901,6 +903,8 @@ function MediaViewer({
 }
 
 export default function CompanionApp({
+  travelerGroupCode,
+  personalWalletKey,
   trip = COMPANION_DEMO_TRIP,
   chat,
   advisorInbox = false,
@@ -910,6 +914,9 @@ export default function CompanionApp({
   embedded = false,
   onExit,
 }: {
+  /** A traveler-owned group, with no advisor role. */
+  travelerGroupCode?: string;
+  personalWalletKey?: string;
   trip?: CompanionTrip;
   chat?: CompanionChat;
   /** The advisor's own side: a Messages tab that lists every client's chat. */
@@ -940,13 +947,14 @@ export default function CompanionApp({
 }) {
   const router = useRouter();
   const liveChat = chat ?? null;
+  const groupCode = travelerGroupCode;
   // A client on a per-trip code, as opposed to whoever is signed into the
   // account that owns the trip (an advisor, or a Gold member on their own).
   // Attachments are served only to the owning account (lib/attachments.ts),
   // so a client link could never open one anyway — the wallet's "add" control
   // is only ever offered to the side that can actually use it.
-  const isClientViewer = liveChat?.side === "client";
-  const hasMessages = Boolean(liveChat) || advisorInbox;
+  const isClientViewer = Boolean(groupCode) || liveChat?.side === "client";
+  const hasMessages = Boolean(groupCode) || Boolean(liveChat) || advisorInbox;
   // Held until the advisor opens a client's thread to put it in — cleared the
   // moment that happens, so going back to the inbox and opening someone else
   // afterward doesn't carry the same shared place along with it.
@@ -1037,7 +1045,7 @@ export default function CompanionApp({
   useEffect(() => {
     // The client needs their share token to fetch; the advisor fetches by
     // account and needs none. Without either door, there is nothing to pull.
-    const shareId = liveChat?.shareId;
+    const shareId = groupCode ?? liveChat?.shareId;
     if (isClientViewer && !shareId) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
     let cancelled = false;
@@ -1063,7 +1071,7 @@ export default function CompanionApp({
     return () => {
       cancelled = true;
     };
-  }, [isClientViewer, liveChat?.shareId, trip.walletGroups]);
+  }, [isClientViewer, groupCode, liveChat?.shareId, trip.walletGroups]);
 
   // How many wallet documents are ACTUALLY on this device — so the wallet badge
   // tells the truth rather than promising "works with no signal" for a boarding
@@ -1336,7 +1344,7 @@ export default function CompanionApp({
     day: sel.name,
     activity: "On the day",
     chat: advisor,
-    messages: advisorInbox ? "Messages" : liveChat ? (liveChat.side === "advisor" ? "Your client" : liveChat.advisorName) : "Advisor",
+    messages: groupCode ? "Trip group chat" : advisorInbox ? "Messages" : liveChat ? (liveChat.side === "advisor" ? "Your client" : liveChat.advisorName) : "Advisor",
     alerts: "Changes",
     wallet: "Travel wallet",
     profile: "You",
@@ -1347,7 +1355,7 @@ export default function CompanionApp({
     day: `Day ${curDay + 1} of ${trip.days.length}`,
     activity: sel.name,
     chat: hasConcierge || usesRealChat ? "Your advisor" : "On your own",
-    messages: advisorInbox ? "Your clients" : liveChat?.side === "advisor" ? "Their trip, and yours to move" : "Your advisor · replies when they can",
+    messages: groupCode ? "Everyone on this trip" : advisorInbox ? "Your clients" : liveChat?.side === "advisor" ? "Their trip, and yours to move" : "Your advisor · replies when they can",
     alerts: open ? "One needs you" : unreadAlerts.length > 0 ? `${unreadAlerts.length} to see` : settled ? "All settled" : "Nothing right now",
     wallet: "Kept offline",
     profile: hasConcierge ? "The trip is in your name" : "This trip, and you",
@@ -1422,7 +1430,7 @@ export default function CompanionApp({
           [conciergeTabScreen, "Advisor", "chat"]
         : [conciergeTabScreen, isGuideMode ? "Guide" : "Concierge", "sparkle"],
     );
-  if (hasMessages && conciergeTabScreen !== "messages") tabDefs.push(["messages", advisorInbox ? "Messages" : "Advisor", "chat"]);
+  if (hasMessages && conciergeTabScreen !== "messages") tabDefs.push(["messages", groupCode ? "Chat" : advisorInbox ? "Messages" : "Advisor", "chat"]);
   tabDefs.push(["wallet", "Wallet", "wallet"], ["profile", "You", "account"]);
   const tabs = tabDefs.map(([id, label, icon]) => {
     const on = st.screen === id || (id === "home" && (st.screen === "day" || st.screen === "activity" || st.screen === "alerts"));
@@ -1997,6 +2005,7 @@ export default function CompanionApp({
 
   const walletScreen = (
     <div style={{ padding: "16px 16px 28px", display: "flex", flexDirection: "column", gap: 16, animation: "wgIn .28s ease both" }}>
+      {personalWalletKey ? <PersonalTravelWallet key={personalWalletKey} tripKey={personalWalletKey} /> : null}
       {(() => {
         // Only promise "works with no signal" when every document is actually
         // on the device. Until then, say plainly how many are kept and what to
@@ -2074,7 +2083,7 @@ export default function CompanionApp({
                   file through their own account; the client opens it through
                   this trip's code, and only the files the adviser marked for
                   them are in the payload at all. See app/api/trip-file. */}
-              {r.attachments && r.attachments.length > 0 && (att0Sample(r) || !isClientViewer || liveChat?.shareId) && (
+              {r.attachments && r.attachments.length > 0 && (att0Sample(r) || !isClientViewer || groupCode || liveChat?.shareId) && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 2 }}>
                   {r.attachments.map((att) => (
                     <span key={att.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
@@ -2086,7 +2095,7 @@ export default function CompanionApp({
                           att.sampleUrl
                             ? att.sampleUrl
                             : isClientViewer
-                              ? `/api/trip-file/${encodeURIComponent(liveChat!.shareId)}?id=${encodeURIComponent(att.id)}`
+                              ? `/api/trip-file/${encodeURIComponent(groupCode ?? liveChat!.shareId)}?id=${encodeURIComponent(att.id)}`
                               : `/api/account/attachments?id=${encodeURIComponent(att.id)}`
                         }
                         fileId={att.id}
@@ -2197,14 +2206,17 @@ export default function CompanionApp({
         {/* A client on a code from their advisor has no account — "signed in"
             would simply be false for them, so this reads differently for the
             two people who can land on this screen. */}
-        <span style={kicker("#6B4A1C")}>{liveChat?.side === "client" ? "Your trip" : "Signed in as"}</span>
+        <span style={kicker("#6B4A1C")}>{groupCode || liveChat?.side === "client" ? "Your trip" : "Signed in as"}</span>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: "#6B4A1C", textWrap: "pretty" }}>
-          {liveChat?.side === "client"
+          {groupCode
+            ? "You opened this trip with its code. Your group shares the itinerary and chat; personal wallet files stay on each person’s device."
+            : liveChat?.side === "client"
             ? "You opened this with the code your advisor sent you — no account needed."
             : st.role === "advisor"
               ? "The advisor side: the trips you are holding today, and the one that needs a decision from you."
               : "The trip is in your name. Two others can look at it; nobody but you can change it."}
         </p>
+        {groupCode ? <a href="/app?enter=1" style={{ minHeight: 44, display: "inline-flex", alignItems: "center", color: INK, textDecoration: "underline" }}>Open a different trip code</a> : null}
         {showcaseSwitches && (
           <div style={{ display: "flex", gap: 6, padding: 5, background: "rgba(255,255,255,.8)", borderRadius: 14, alignSelf: "flex-start" }}>
             {roleOpts.map((r) => (
@@ -2239,7 +2251,9 @@ export default function CompanionApp({
   else if (st.screen === "alerts") body = alertsScreen;
   else if (st.screen === "chat") body = isConcierge ? conciergeChat : guideChat;
   else if (st.screen === "messages")
-    body = advisorInbox ? (
+    body = groupCode ? (
+      <TripGroupChat code={groupCode} />
+    ) : advisorInbox ? (
       <AdvisorInbox
         pendingShare={pendingShare}
         onPendingShareUsed={() => setPendingShare(null)}
@@ -5280,4 +5294,5 @@ export const COMPANION_CSS = `
   .wg-app-root[data-mode="web"] .wg-phone { height: min(880px, calc(100dvh - 48px)); }
 }
 `;
+
 

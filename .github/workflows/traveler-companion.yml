@@ -1,0 +1,29 @@
+name: Traveler companion
+on:
+  push:
+    branches: [codex/traveler-companion]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: traveler-companion-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://wg:wg@localhost:5432/whiteglove
+      WHITE_GLOVE_SESSION_SECRET: isolated-companion-ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: node tests/traveler-companion.test.mjs
+      - name: Check changed app components
+        run: npx eslint components/companion/PersonalTravelWallet.tsx components/companion/TripGroupChat.tsx components/companion/TripCompanionCode.tsx lib/personal-travel-wallet.ts lib/trip-group-identity.ts lib/trip-group-store.ts app/api/trip-group/route.ts app/api/account/companion-code/route.ts app/app/page.tsx app/i/\[shareId\]/app/page.tsx

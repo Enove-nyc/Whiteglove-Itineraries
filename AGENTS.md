@@ -160,3 +160,13 @@ Public content reads use bounded caches; successful writes refresh both deployme
 Keep Next's filesystem cache active when cacheMaxMemorySize is zero: zero disables the extra process memory cache, not the six-hour SQL bundles or shared tag invalidation. Do not remove working cache freshness protections to cut RAM.
 
 The public promotion read path is lib/public-promotions.ts, with shared selection rules in lib/promotion-rules.ts. One current store read supplies all three global slots. Keep advertiser contacts and internal counters out of public API payloads and server-to-client props; administrative records retain them. Public reads must not construct the administrative destination directory or cache an old edit in a process-local value.
+
+
+## Owner direction — traveler apps, 4 November 2026
+
+White Glove Kosher Travel is the active business. Its installed app is a clean travel-information search experience, with an optional AI companion; itinerary building and booking remain on the website. Preserve ordinary browser planning and booking.
+
+The separate White Glove Itineraries business is paused. Reuse its EXISTING installed app as a traveler companion for anyone, including travelers who built their own itinerary on Kosher Travel. Do not create another installed app or require an advisor. The companion opens a specific trip by its code, shows the itinerary, offers a personal travel wallet for boarding passes, hotel confirmations and entry tickets, and a group chat for the people on that trip. No advisor is involved in this self-service flow, and chat has no travel-date cutoff. The existing Advisor and Admin apps remain separate.
+
+The companion code and chat use the existing shared backend across both deployments; preserve accounts, trips and private attachment boundaries. Opening an already-shared itinerary in the companion does not consume a Trip Pass or start a purchase. Do not reopen purchases. Personal wallet files are stored privately on that device, with explicit offline/device-only wording, removal controls, and sign-out cleanup; do not claim cloud sync. Group display names are self-chosen, not verified identities. Keep trip codes private and tell the owner plainly what is implemented and what has actually been verified.
+
