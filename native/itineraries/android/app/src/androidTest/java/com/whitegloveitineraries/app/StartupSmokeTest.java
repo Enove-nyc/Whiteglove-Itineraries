@@ -7,7 +7,6 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.SystemClock;
 import android.view.View;
-import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -139,16 +138,12 @@ public class StartupSmokeTest {
             await(scenario, StartupState.Status.READY, 10000);
             scenario.onActivity(activity -> {
                 WebView web = activity.getBridge().getWebView();
-                WebResourceError error = new WebResourceError() {
-                    public int getErrorCode() { return WebViewClient.ERROR_CONNECT; }
-                    public CharSequence getDescription() { return "Test connection failure"; }
-                };
-                web.getWebViewClient().onReceivedError(web, request(false), error);
+                WebResourceResponse response = new WebResourceResponse("text/plain", "UTF-8", 503, "Service Unavailable", Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
+                web.getWebViewClient().onReceivedHttpError(web, request(false), response);
                 assertEquals(StartupState.Status.READY, activity.startup.state.status);
-                web.getWebViewClient().onReceivedError(web, request(true), error);
+                web.getWebViewClient().onReceivedError(web, WebViewClient.ERROR_CONNECT, "Test connection failure", ORIGIN);
                 assertEquals(StartupState.Status.OFFLINE, activity.startup.state.status);
                 assertEquals(View.VISIBLE, activity.findViewById(R.id.startup_retry).getVisibility());
-                WebResourceResponse response = new WebResourceResponse("text/plain", "UTF-8", 503, "Service Unavailable", Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
                 web.getWebViewClient().onReceivedHttpError(web, request(true), response);
                 assertEquals(StartupState.Status.FAILED, activity.startup.state.status);
             });

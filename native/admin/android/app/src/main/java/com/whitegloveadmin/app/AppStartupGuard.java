@@ -19,7 +19,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.SslErrorHandler;
-import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -116,10 +115,12 @@ final class AppStartupGuard {
                 super.onPageFinished(view, url);
                 if (state.status == StartupState.Status.LOADING) schedulePoll(0);
             }
-            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                super.onReceivedError(view, request, error);
-                if (!request.isForMainFrame() || destroyed || state.status == StartupState.Status.UPDATE_REQUIRED) return;
-                int code = error.getErrorCode();
+            // Android's modern callback delegates main-frame failures here;
+            // this also covers the API 22 devices the shell still supports.
+            @SuppressWarnings("deprecation")
+            @Override public void onReceivedError(WebView view, int code, String description, String failingUrl) {
+                super.onReceivedError(view, code, description, failingUrl);
+                if (destroyed || state.status == StartupState.Status.UPDATE_REQUIRED) return;
                 boolean connection = code == ERROR_HOST_LOOKUP || code == ERROR_CONNECT || code == ERROR_TIMEOUT || disconnected();
                 showFailure(connection ? StartupState.Status.OFFLINE : StartupState.Status.FAILED,
                     connection ? "Check your internet connection. The app will try again when the connection returns, or you can retry below."
