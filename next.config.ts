@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import { contentSecurityPolicy, reportingEndpointsHeader } from "./lib/csp-policy";
 
 const nextConfig: NextConfig = {
+  // Reuse the filesystem cache instead of retaining another 50 MiB per process.
+  // SQL cache lifetimes and authenticated cross-site invalidation remain active.
+  cacheMaxMemorySize: 0,
   // The site advertised its framework and version on every response, for no
   // reason a visitor benefits from.
   poweredByHeader: false,

@@ -1,3 +1,4 @@
+import { readActivePromotions } from "@/lib/public-promotions";
 import { cemeteries } from "@/data/cemeteries";
 import { guidedDestinations, unguidedDestinations } from "@/data/destinations";
 import type { DirectoryDraft } from "@/lib/directory-fields";
@@ -175,6 +176,11 @@ export type Promotion = {
   lastShownAt?: string;
   lastClickedAt?: string;
 };
+
+/** Display and view-cap fields only; advertiser contacts and internal counters are private. */
+export type PublicPromotion = Pick<Promotion,
+  "id" | "title" | "description" | "buttonText" | "targetHref" | "imageUrl" | "pdfUrl" | "videoUrl" | "maxViewsPerVisitor" | "placements"
+>;
 
 export type AdminContentBundle = {
   settings: SiteSettings;
@@ -518,39 +524,6 @@ function normalizePromotion(promotion: Promotion): Promotion {
   };
 }
 
-function parsePromotionTargets(targetPaths: string) {
-  return targetPaths
-    .split(/\r?\n|,/)
-    .map((path) => path.trim())
-    .filter(Boolean);
-}
-
-function matchesPromotionPath(promotion: Promotion, pathname: string) {
-  const targets = parsePromotionTargets(promotion.targetPaths);
-  if (targets.length === 0 || targets.includes("*")) return true;
-  return targets.some((target) => pathname === target || pathname.startsWith(target.endsWith("/") ? target : `${target}/`));
-}
-
-function matchesPromotionDevice(promotion: Promotion, device: PromotionDevice) {
-  return promotion.device === "all" || promotion.device === device;
-}
-
-function isPromotionActive(promotion: Promotion) {
-  const now = new Date();
-  if (promotion.startDate) {
-    const start = new Date(promotion.startDate);
-    if (Number.isFinite(start.getTime()) && start > now) return false;
-  }
-  if (promotion.endDate) {
-    const end = new Date(promotion.endDate);
-    if (Number.isFinite(end.getTime())) {
-      end.setHours(23, 59, 59, 999);
-      if (end < now) return false;
-    }
-  }
-  return true;
-}
-
 export async function upsertPromotion(promotion: Promotion) {
   if (!contentStorageIsConfigured()) return false;
   const bundle = await bundleToModify();
@@ -619,14 +592,7 @@ export async function restorePromotion(promotion: Promotion): Promise<{ ok: bool
 }
 
 export async function getActivePromotions(placement: PromotionPlacement, pathname: string, device: PromotionDevice) {
-  const bundle = await readBundle();
-  return bundle.promotions
-    .filter((promotion) => promotion.enabled)
-    .filter((promotion) => promotion.placements.includes(placement))
-    .filter((promotion) => matchesPromotionDevice(promotion, device))
-    .filter((promotion) => matchesPromotionPath(promotion, pathname))
-    .filter(isPromotionActive)
-    .sort((left, right) => right.priority - left.priority || right.updatedAt.localeCompare(left.updatedAt));
+  return readActivePromotions(placement, pathname, device);
 }
 
 export async function getPromotionsDashboard() {

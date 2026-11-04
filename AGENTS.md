@@ -153,3 +153,10 @@ Confirmed by the owner on 3 November 2026. This supersedes earlier suggestions t
 ## Database cost changes
 
 Public content reads use bounded caches; successful writes refresh both deployments. Preserve schema-migration failure checks, public/private filters, review limits, transaction semantics and existing uncached admin reads. Cache refresh failures must be logged; do not suppress GitHub failure alerts. Account/trip storage remains unchanged.
+
+
+## Runtime memory and public promotion reads
+
+Keep Next's filesystem cache active when cacheMaxMemorySize is zero: zero disables the extra process memory cache, not the six-hour SQL bundles or shared tag invalidation. Do not remove working cache freshness protections to cut RAM.
+
+The public promotion read path is lib/public-promotions.ts, with shared selection rules in lib/promotion-rules.ts. One current store read supplies all three global slots. Keep advertiser contacts and internal counters out of public API payloads and server-to-client props; administrative records retain them. Public reads must not construct the administrative destination directory or cache an old edit in a process-local value.
