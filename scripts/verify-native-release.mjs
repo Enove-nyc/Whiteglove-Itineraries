@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
+import { apkCertificateFingerprint, jarSignatureIsVerified, certificateBlocks, gradleIdentity } from './native-release-metadata.mjs';
 
 // Public certificate fingerprints only. Signing keys remain in Actions secrets.
 const expected = process.env.EXPECTED_UPLOAD_CERT_SHA256?.replaceAll(':', '').toLowerCase();
@@ -15,16 +16,16 @@ const tools = readdirSync(join(androidSdk, 'build-tools')).sort((a, b) => b.loca
 assert.ok(tools, 'apksigner is required');
 const directory = join(androidSdk, 'build-tools', tools);
 const apkVerification = execFileSync(join(directory, 'apksigner'), ['verify', '--print-certs', apk], { encoding: 'utf8' });
-const fingerprint = /Signer #1 certificate SHA-256 digest:\s*([a-f0-9]+)/i.exec(apkVerification)?.[1]?.toLowerCase();
+const fingerprint = apkCertificateFingerprint(apkVerification);
+assert.ok(fingerprint, 'Could not read apksigner certificate output');
 assert.equal(fingerprint, expected, 'APK signing certificate changed');
 const aabVerification = execFileSync('jarsigner', ['-J-Duser.language=en', '-verify', aab], { encoding: 'utf8' });
-assert.match(aabVerification, /jar verified\./i, 'The AAB must have a valid JAR signature');
-const publicCertificates = execFileSync('keytool', ['-J-Duser.language=en', '-printcert', '-jarfile', aab, '-rfc'], { encoding: 'utf8' }).match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+assert.ok(jarSignatureIsVerified(aabVerification), 'The AAB must have a valid JAR signature');
+const publicCertificates = certificateBlocks(execFileSync('keytool', ['-J-Duser.language=en', '-printcert', '-jarfile', aab, '-rfc'], { encoding: 'utf8' }));
 assert.ok(publicCertificates.some(cert => new X509Certificate(cert).fingerprint256.replaceAll(':', '').toLowerCase() === expected), 'AAB signing certificate changed');
 const metadata = execFileSync(join(directory, 'aapt2'), ['dump', 'badging', apk], { encoding: 'utf8' });
 const gradle = readFileSync('android/app/build.gradle', 'utf8');
-const packageName = /applicationId\s+"([^"]+)"/.exec(gradle)?.[1];
-const versionCode = /versionCode\s+(\d+)/.exec(gradle)?.[1];
+const { applicationId: packageName, versionCode } = gradleIdentity(gradle);
 assert.ok(metadata.includes(`package: name='${packageName}'`), 'APK application ID changed');
 assert.ok(metadata.includes(`versionCode='${versionCode}'`), 'APK version code does not match the reviewed project');
 assert.match(metadata, /targetSdkVersion:'36'/, 'Android target SDK must remain 36');

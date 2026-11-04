@@ -12,6 +12,9 @@ on:
     paths:
       - "native/advisor/**"
       - ".github/workflows/native-advisor.yml"
+      - "scripts/verify-native-release.mjs"
+      - "scripts/native-release-metadata.mjs"
+      - "scripts/native-release-metadata.test.mjs"
 
 jobs:
   build:
@@ -35,6 +38,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Check release metadata parser
+        run: node --test ../../scripts/native-release-metadata.test.mjs
       - name: Install Capacitor
         run: npm ci --no-audit --no-fund
       - name: Sync web config + plugins into the committed Android project
