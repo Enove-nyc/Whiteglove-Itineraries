@@ -1,3 +1,4 @@
+import { geographicTerms } from "@/lib/destination-geography";
 // Search the site's own attractions and places to stay — for the /stops
 // directory search and for the itinerary planner's pickers.
 //
@@ -45,7 +46,7 @@ export type StayResult = {
 };
 
 function attractionHaystack(a: AttractionItem): string {
-  return [a.name, a.city, a.country, a.kind, a.summary, (a.notes ?? []).join(" "), extraSpellings([a.slug, a.city])].join(" ");
+  return [a.name, ...geographicTerms(a.city, a.country), a.kind, a.summary, (a.notes ?? []).join(" "), extraSpellings([a.slug, a.city])].join(" ");
 }
 
 function stayHaystack(s: KosherStayItem): string {
