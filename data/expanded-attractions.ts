@@ -781,5 +781,85 @@ export const expandedAttractions: Attraction[] = [
     summary: "A complex of decorated Buddhist cave temples beneath a large rock outcrop.",
     coordinates: "7.85666667, 80.64916667",
     sourceUrl: "https://en.wikipedia.org/wiki/Dambulla_cave_temple"
+  },
+  {
+    slug: "riga-central-market",
+    name: "Riga Central Market",
+    city: "Riga",
+    country: "Latvia",
+    kind: "Landmark",
+    summary: "Historic market halls housed in former airship hangars beside Riga's central transport hub.",
+    coordinates: "56.94371, 24.114904",
+    sourceUrl: "https://en.wikipedia.org/wiki/Riga_Central_Market"
+  },
+  {
+    slug: "riga-ethnographic-open-air-museum",
+    name: "Latvian Ethnographic Open-Air Museum",
+    city: "Riga",
+    country: "Latvia",
+    kind: "Museum",
+    summary: "Traditional farmsteads, workshops and rural buildings in a wooded open-air museum beside Lake Jugla.",
+    coordinates: "56.99472222, 24.27",
+    sourceUrl: "https://en.wikipedia.org/wiki/The_Ethnographic_Open-Air_Museum_of_Latvia"
+  },
+  {
+    slug: "riga-national-library",
+    name: "National Library of Latvia",
+    city: "Riga",
+    country: "Latvia",
+    kind: "Landmark",
+    summary: "A modern national library on the Daugava waterfront, known for its distinctive glass-and-steel silhouette.",
+    coordinates: "56.94083333, 24.09666667",
+    sourceUrl: "https://en.wikipedia.org/wiki/National_Library_of_Latvia"
+  },
+  {
+    slug: "bratislava-devin-castle",
+    name: "Devín Castle",
+    city: "Bratislava",
+    country: "Slovakia",
+    kind: "Landmark",
+    summary: "Ruined hilltop fortifications above the meeting of the Danube and Morava rivers.",
+    coordinates: "48.17361111, 16.97833333",
+    sourceUrl: "https://en.wikipedia.org/wiki/Dev%C3%ADn_Castle"
+  },
+  {
+    slug: "bratislava-slovak-national-gallery",
+    name: "Slovak National Gallery",
+    city: "Bratislava",
+    country: "Slovakia",
+    kind: "Museum",
+    summary: "Slovak and European art displayed in a renovated riverside gallery complex.",
+    coordinates: "48.14, 17.1086",
+    sourceUrl: "https://en.wikipedia.org/wiki/Slovak_National_Gallery"
+  },
+  {
+    slug: "belgrade-nikola-tesla-museum",
+    name: "Nikola Tesla Museum",
+    city: "Belgrade",
+    country: "Serbia",
+    kind: "Museum",
+    summary: "A museum devoted to Nikola Tesla's life and electrical inventions, with original documents and demonstrations.",
+    coordinates: "44.8051, 20.4707",
+    sourceUrl: "https://en.wikipedia.org/wiki/Nikola_Tesla_Museum"
+  },
+  {
+    slug: "belgrade-ada-ciganlija",
+    name: "Ada Ciganlija",
+    city: "Belgrade",
+    country: "Serbia",
+    kind: "Nature",
+    summary: "A river island and lakeside recreation area with paths, woodland and outdoor activities.",
+    coordinates: "44.78333333, 20.4",
+    sourceUrl: "https://en.wikipedia.org/wiki/Ada_Ciganlija"
+  },
+  {
+    slug: "belgrade-museum-of-yugoslavia",
+    name: "Museum of Yugoslavia",
+    city: "Belgrade",
+    country: "Serbia",
+    kind: "Museum",
+    summary: "Exhibitions and collections about Yugoslav history in a museum complex with landscaped grounds.",
+    coordinates: "44.78666667, 20.45166667",
+    sourceUrl: "https://en.wikipedia.org/wiki/Museum_of_Yugoslavia"
   }
 ];
