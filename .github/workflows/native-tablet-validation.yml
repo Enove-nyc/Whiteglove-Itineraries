@@ -1,0 +1,107 @@
+name: Android tablet startup validation
+on:
+  push:
+    branches: [codex/android-startup, claude/native-apps]
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-tablet-validation.yml'
+      - 'scripts/native-tablet-check.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-tablet-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tablet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: itineraries
+      - uses: actions/checkout@v4
+        with:
+          repository: Enove-nyc/Whiteglove
+          ref: ${{ github.ref_name == 'codex/android-startup' && 'codex/android-startup' || 'claude/native-shell-pilot' }}
+          path: kosher
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache/restore@v4
+        id: gradle-cache
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: wg-native-gradle-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties', '**/build.gradle', '**/package-lock.json') }}
+          restore-keys: wg-native-gradle-${{ runner.os }}-
+      - name: Validate shared startup decisions and build all four native packages
+        run: |
+          mkdir -p native-results
+          git -C itineraries rev-parse HEAD > native-results/itineraries-commit.txt
+          git -C kosher rev-parse HEAD > native-results/kosher-commit.txt
+          for project in kosher/native/kosher itineraries/native/itineraries itineraries/native/advisor itineraries/native/admin; do
+            (cd "$project" && npm ci --no-audit --no-fund && npx cap sync android)
+            (cd "$project/android" && ./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest --no-daemon --stacktrace)
+          done
+      - uses: actions/cache/save@v4
+        if: steps.gradle-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
+      - name: Use one explicit Android device directory
+        run: |
+          echo "ANDROID_USER_HOME=$RUNNER_TEMP/wg-android-user" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$RUNNER_TEMP/wg-android-avd" >> "$GITHUB_ENV"
+      - name: Install tablet emulator image
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" platform-tools 'system-images;android-35;google_apis;x86_64'
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" --verbose create avd --force --name wg-tablet --path "$ANDROID_AVD_HOME/wg-tablet.avd" --package 'system-images;android-35;google_apis;x86_64' --device pixel_c
+          test -f "$ANDROID_AVD_HOME/wg-tablet.avd/config.ini"
+          "$ANDROID_HOME/emulator/emulator" -list-avds | tee native-results/avds.txt
+          grep -Fx wg-tablet native-results/avds.txt
+          sudo chmod 666 /dev/kvm
+      - name: Start Android tablet
+        run: |
+          "$ANDROID_HOME/emulator/emulator" -avd wg-tablet -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -no-metrics > native-results/emulator.log 2>&1 &
+          timeout 120 adb wait-for-device
+          for n in $(seq 1 120); do
+            if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; then break; fi
+            sleep 2
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1
+          adb shell input keyevent 82
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell wm size 1600x2560
+          adb shell wm density 320
+          adb shell dumpsys webviewupdate > native-results/webview-provider.txt
+      - name: Exercise all four apps in a real Android WebView
+        run: bash itineraries/scripts/native-tablet-check.sh
+      - name: Native diagnostics
+        if: always()
+        run: |
+          timeout 10 adb logcat -d -s AndroidRuntime chromium Capacitor > native-results/logcat.txt || true
+          if [ -f native-results/emulator.log ]; then tail -n 60 native-results/emulator.log; fi
+          if [ -f native-results/logcat.txt ]; then tail -n 60 native-results/logcat.txt; fi
+          for project in kosher/native/kosher itineraries/native/itineraries itineraries/native/advisor itineraries/native/admin; do
+            mkdir -p "native-results/$(basename "$project")/unit"
+            cp -R "$project/android/app/build/test-results/testDebugUnitTest/." "native-results/$(basename "$project")/unit/" 2>/dev/null || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-tablet-validation
+          path: native-results/
+          if-no-files-found: error
+          retention-days: 14
