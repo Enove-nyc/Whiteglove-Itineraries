@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * A client's way into the app: the per-trip code their travel advisor sent them.
+ * A traveler's way into the app: the code for their trip.
  *
  * The code is the trip's share token. Entering it opens that one trip as the app
  * at /i/<code>/app — no account, no other trip reachable. An unknown code lands
@@ -27,7 +27,7 @@ export default function AppCodeEntry() {
   return (
     <form onSubmit={open} className="flex flex-wrap items-center gap-2">
       <label htmlFor="app-code" className="sr-only">
-        Code from your travel advisor
+        Trip code
       </label>
       <input
         id="app-code"

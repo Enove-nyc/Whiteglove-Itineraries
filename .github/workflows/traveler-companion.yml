@@ -1,7 +1,7 @@
 name: Traveler companion
 on:
   push:
-    branches: [codex/traveler-companion]
+    branches: [codex/traveler-companion, codex/tablet-startup]
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
       - run: npx tsc --noEmit
       - name: Full regression suite without runtime test credentials
         run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npm test
-      - run: node tests/traveler-companion.test.mjs
+      - run: node --test tests/traveler-companion.test.mjs tests/service-worker-startup.test.mjs
       - name: Check changed app components
         run: npx eslint components/companion/PersonalTravelWallet.tsx components/companion/TripGroupChat.tsx components/companion/TripCompanionCode.tsx lib/personal-travel-wallet.ts lib/trip-group-identity.ts lib/trip-group-store.ts app/api/trip-group/route.ts app/api/account/companion-code/route.ts app/app/page.tsx app/i/\[shareId\]/app/page.tsx
       - run: sudo apt-get update -qq && sudo apt-get install -y redis-tools
