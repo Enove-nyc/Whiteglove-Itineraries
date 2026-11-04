@@ -35,6 +35,7 @@
 import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import PersonalTravelWallet from "@/components/companion/PersonalTravelWallet";
 import TripGroupChat from "@/components/companion/TripGroupChat";
 import {
@@ -2231,7 +2232,7 @@ export default function CompanionApp({
               ? "The advisor side: the trips you are holding today, and the one that needs a decision from you."
               : "The trip is in your name. Two others can look at it; nobody but you can change it."}
         </p>
-        {groupCode ? <a href="/app?enter=1" style={{ ...TAP_INLINE, color: INK, textDecoration: "underline" }}>Open a different trip code</a> : null}
+        {groupCode ? <Link href="/app?enter=1" style={{ ...TAP_INLINE, color: INK, textDecoration: "underline" }}>Open a different trip code</Link> : null}
         {showcaseSwitches && (
           <div style={{ display: "flex", gap: 6, padding: 5, background: "rgba(255,255,255,.8)", borderRadius: 14, alignSelf: "flex-start" }}>
             {roleOpts.map((r) => (
