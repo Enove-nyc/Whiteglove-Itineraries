@@ -74,3 +74,16 @@ jobs:
           name: admin-release-apk
           path: native/admin/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      - name: Verify package, SDK, version and original signing certificate
+        if: env.WG_ADMIN_KEYSTORE_BASE64 != ''
+        env:
+          EXPECTED_UPLOAD_CERT_SHA256: 83e1cf83c59dd877f73fb9f284d99b3008c45007b85a5ef262846efb42dff12b
+        run: node ../../scripts/verify-native-release.mjs
+      - name: Upload public release verification
+        if: env.WG_ADMIN_KEYSTORE_BASE64 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-release-verification
+          path: native/admin/release-verification.json
+          if-no-files-found: error

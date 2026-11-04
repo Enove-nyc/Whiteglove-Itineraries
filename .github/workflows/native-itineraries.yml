@@ -73,3 +73,16 @@ jobs:
           name: itineraries-release-apk
           path: native/itineraries/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      - name: Verify package, SDK, version and original signing certificate
+        if: env.WG_ITIN_KEYSTORE_BASE64 != ''
+        env:
+          EXPECTED_UPLOAD_CERT_SHA256: 3af98de9a3da39f9ff3a34f1debf00b330ad2edc19e65003ff7012c8ed8f680a
+        run: node ../../scripts/verify-native-release.mjs
+      - name: Upload public release verification
+        if: env.WG_ITIN_KEYSTORE_BASE64 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: itineraries-release-verification
+          path: native/itineraries/release-verification.json
+          if-no-files-found: error
