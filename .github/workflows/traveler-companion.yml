@@ -1,7 +1,7 @@
 name: Traveler companion
 on:
   push:
-    branches: [codex/traveler-companion, codex/tablet-startup]
+    branches: [codex/traveler-companion, codex/tablet-startup, codex/chat-channels]
   workflow_dispatch:
 permissions:
   contents: read

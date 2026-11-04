@@ -84,7 +84,35 @@ try {
   await page.getByText('See you by the entrance', { exact: true }).waitFor();
   const received = await (await post(two, 'read')).json();
   assert.ok(received.messages.some((message) => message.text === 'See you by the entrance' && message.name === 'Miriam'));
-  assert.equal(await page.getByRole('button', { name: 'Add channel', exact: true }).count(), 0);
+  const channelButtons=page.getByRole('group',{name:'Chat channels'});
+  await channelButtons.getByRole('button',{name:'Hotels & rooms',exact:true}).click();
+  await page.getByLabel('Message your trip group',{exact:true}).waitFor();
+  assert.equal(await page.getByText('See you by the entrance',{exact:true}).count(),0);
+  await page.getByLabel('Message your trip group',{exact:true}).fill('Rooms on the same floor please');
+  await channelButtons.getByRole('button',{name:'Flights',exact:true}).click();
+  await page.getByLabel('Message your trip group',{exact:true}).waitFor();
+  assert.equal(await page.getByLabel('Message your trip group',{exact:true}).inputValue(),'');
+  await channelButtons.getByRole('button',{name:'Hotels & rooms',exact:true}).click();
+  await page.getByLabel('Message your trip group',{exact:true}).waitFor();
+  assert.equal(await page.getByLabel('Message your trip group',{exact:true}).inputValue(),'Rooms on the same floor please');
+  await page.getByRole('button',{name:'Send',exact:true}).click();
+  await page.getByText('Rooms on the same floor please',{exact:true}).waitFor();
+  const hotels=await (await post(two,'read',{channel:'hotels'})).json();
+  assert.equal(hotels.messages.length,1);assert.equal(hotels.messages[0].channel,'hotels');
+  const idle=await post(two,'read',{channel:'hotels',after:hotels.messages[0].id});
+  assert.deepEqual((await idle.json()).unchanged,true);assert.equal((await (await post(two,'read',{channel:'hotels',after:hotels.messages[0].id})).json()).messages,undefined);
+  assert.equal((await post(two,'read',{channel:'../another-trip'})).status(),400);
+  assert.equal((await post(two,'read',{channel:'hotels',after:'invalid'})).status(),400);
+  assert.equal((await post(two,'read',{code:otherCode,channel:'hotels'})).status(),401);
+  const flights=await (await post(two,'read',{channel:'flights'})).json();assert.deepEqual(flights.messages,[]);
+  await post(two,'send',{channel:'flights',text:'Flight at 10:30'});
+  const general=await (await post(two,'read')).json();assert(general.messages.some(m=>m.text==='See you by the entrance'));assert(!general.messages.some(m=>m.text==='Flight at 10:30'));
+  const hotelRefresh=await (await post(two,'read',{channel:'hotels',after:hotels.messages[0].id})).json();assert.equal(hotelRefresh.unchanged,true);
+  console.log('PASS: private chat channels, legacy General history, draft retention and unchanged-poll payload avoidance');
+  await page.screenshot({path:'companion-results/chat-channels-mobile.png',fullPage:true});
+  await page.reload();await page.getByRole('button',{name:'Chat',exact:true}).click();
+  await page.getByRole('group',{name:'Chat channels'}).getByRole('button',{name:'Hotels & rooms',exact:true}).click();
+  await page.getByText('Rooms on the same floor please',{exact:true}).waitFor();
   await page.getByRole('button', { name: 'Wallet', exact: true }).click();
   await page.getByLabel('Add a PDF or photo').setInputFiles({ name: 'boarding-pass.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf) });
   await page.getByRole('button', { name: 'boarding-pass.pdf' }).waitFor();
@@ -131,6 +159,8 @@ try {
     const searchContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     await searchContext.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true }; localStorage.setItem('whiteGloveBetaNotice', '6'); localStorage.setItem('whiteGloveBetaNoticeShown', '6'); });
     const searchPage = await searchContext.newPage();
+    const searchAffiliateRequests = [];
+    searchPage.on('request', (request) => { if (new URL(request.url()).hostname.endsWith('emrldco.com')) searchAffiliateRequests.push(request.url()); });
     searchPage.on('pageerror', (error) => errors.push(error.message));
     await searchPage.goto(base);
     await searchPage.waitForURL('**/travel');
@@ -148,6 +178,7 @@ try {
       await searchPage.getByRole('link', { name: 'AI companion', exact: true }).click();
       await searchPage.getByRole('heading', { name: 'AI travel companion', exact: true }).waitFor();
     }
+    assert.deepEqual(searchAffiliateRequests, [], 'Installed search must not load affiliate verification');
     await searchContext.close();
     console.log('PASS: installed Kosher Travel search home, app navigation and AI screen');
   }
@@ -175,6 +206,7 @@ try {
   assert.deepEqual(errors, [], 'Browser errors');
 } catch (error) {
   await mkdir('companion-results', { recursive: true });
-  for (const [index, page] of one.pages().entries()) await page.screenshot({ path: `companion-results/failure-${index}.png`, fullPage: true }).catch(() => {});
+  console.error('Browser errors:', errors);
+  for (const [contextIndex, context] of browser.contexts().entries()) for (const [index, page] of context.pages().entries()) await page.screenshot({ path: `companion-results/failure-${contextIndex}-${index}.png`, fullPage: true }).catch(() => {});
   throw error;
 } finally { await browser.close(); }
