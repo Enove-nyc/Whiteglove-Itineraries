@@ -5,9 +5,9 @@ import { useFocusTrap } from "@/components/useFocusTrap";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/icons/Icon";
 import { IconButton } from "@/components/icons/IconAction";
-import type { Promotion } from "@/lib/admin-content";
+import type { PublicPromotion } from "@/lib/admin-content";
 
-type PromoSet = { topBanner: Promotion | null; popup: Promotion | null; bottomBanner: Promotion | null };
+type PromoSet = { topBanner: PublicPromotion | null; popup: PublicPromotion | null; bottomBanner: PublicPromotion | null };
 
 // The popup used to open on top of the first paint, before the visitor had
 // seen a single destination. Now it waits for a sign they have settled in:
@@ -27,7 +27,7 @@ function track(type: "promotion_view" | "promotion_click", id: string, placement
 
 // A visitor may only see a promotion up to maxViewsPerVisitor times per day
 // (0 = unlimited). Returns true if it may still be shown.
-function underDailyCap(promo: Promotion): boolean {
+function underDailyCap(promo: PublicPromotion): boolean {
   if (!promo.maxViewsPerVisitor || promo.maxViewsPerVisitor <= 0) return true;
   try {
     const key = `wg-promo:${promo.id}:${new Date().toISOString().slice(0, 10)}`;
@@ -37,7 +37,7 @@ function underDailyCap(promo: Promotion): boolean {
   }
 }
 
-function recordView(promo: Promotion) {
+function recordView(promo: PublicPromotion) {
   if (!promo.maxViewsPerVisitor || promo.maxViewsPerVisitor <= 0) return;
   try {
     const key = `wg-promo:${promo.id}:${new Date().toISOString().slice(0, 10)}`;
@@ -55,7 +55,7 @@ export default function SitePromotions() {
   // A qualifying popup (once per session, under its daily cap) is armed here
   // and only shown once the gate below opens. Arming is not showing: nothing
   // is marked seen or counted until the visitor actually sees it.
-  const [armedPopup, setArmedPopup] = useState<Promotion | null>(null);
+  const [armedPopup, setArmedPopup] = useState<PublicPromotion | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   // The sponsored popup covers the page, so it has to behave like a dialog:
   // the keyboard stays inside it, Escape dismisses it, and focus goes back to
