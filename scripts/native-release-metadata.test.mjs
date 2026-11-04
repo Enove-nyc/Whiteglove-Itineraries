@@ -5,6 +5,10 @@ const cert = 'e9d5dcfaefe96ea39fca11eede0233cc3db2c41a592df56e6fd28129db7dda09';
 test('reads the actual apksigner output format without confusing file hashes', () => {
   assert.equal(apkCertificateFingerprint(`Signer #1 certificate DN: CN=White Glove\nSigner #1 certificate SHA-256 digest: ${cert}\nSigner #1 certificate SHA-1 digest: not-the-certificate\n`), cert);
   assert.equal(apkCertificateFingerprint(`Signer #1 certificate SHA-256 digest: ${cert.toUpperCase()}`), cert);
+  assert.equal(apkCertificateFingerprint(`Verifies\nV2 Signer: certificate DN: CN=White Glove Admin\nV2 Signer: certificate SHA-256 digest: ${cert}\nV2 Signer: public key SHA-256 digest: ${'0'.repeat(64)}\n`), cert);
+  assert.equal(apkCertificateFingerprint(`V2 Signer: public key SHA-256 digest: ${cert}`), undefined);
+  assert.equal(apkCertificateFingerprint(`Signer #2 certificate SHA-256 digest: ${cert}`), undefined);
+  assert.equal(apkCertificateFingerprint(`V2 Signer: certificate SHA-256 digest: ${cert}aa`), undefined);
   assert.equal(apkCertificateFingerprint(`APK SHA-256: ${cert}`), undefined);
   assert.equal(apkCertificateFingerprint(''), undefined);
 });

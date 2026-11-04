@@ -1,5 +1,5 @@
 export function apkCertificateFingerprint(output) {
-  return /Signer #1 certificate SHA-256 digest:\s*([a-f0-9]{64})/i.exec(output)?.[1]?.toLowerCase();
+  return /^(?:Signer #1|V2 Signer:) certificate SHA-256 digest:[ \t]*([a-f0-9]{64})[ \t]*$/im.exec(output)?.[1]?.toLowerCase();
 }
 export function jarSignatureIsVerified(output) {
   return /jar verified\./i.test(output);
