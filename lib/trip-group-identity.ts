@@ -14,7 +14,7 @@ export function signMember(member: TripGroupMember, secret: string): string {
 export function readMember(value: string | undefined, code: string, secret: string): TripGroupMember | null {
   if (!value || value.length > 1024 || !secret) return null;
   const [payload, signature, extra] = value.split(".");
-  if (!payload || !signature || extra) return null;
+  if (!payload || !signature || extra || !/^[A-Za-z0-9_-]{43}$/.test(signature)) return null;
   const expected = createHmac("sha256", secret).update(payload).digest("base64url");
   if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try {

@@ -15,6 +15,7 @@ test('a signed participant identity is limited to its own trip', () => {
   assert.equal(readMember(cookie, code, 'wrong-secret'), null);
   assert.equal(readMember(cookie + '.extra', code, secret), null);
   assert.equal(readMember(undefined, code, secret), null);
+  assert.equal(readMember(`${cookie.split('.')[0]}.${'é'.repeat(43)}`, code, secret), null);
 });
 test('changing a participant name or id invalidates the signature', () => {
   const cookie = signMember(member, secret);
