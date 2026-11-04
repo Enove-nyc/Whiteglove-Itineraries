@@ -41,4 +41,5 @@
          and client apps carry those; this one has no use for them, and asking
          for what it never uses is exactly what a store review flags. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 </manifest>

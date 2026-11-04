@@ -1,9 +1,16 @@
 package com.whitegloveadmin.app;
 
+import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
 
-// The admin console is a plain WebView shell over the dashboard — no getUserMedia
-// (voice notes and the camera live in the advisor and client apps), so it needs
-// none of the runtime-permission plumbing those carry. Capacitor's own file
-// chooser handles content-image uploads.
-public class MainActivity extends BridgeActivity {}
+public class MainActivity extends BridgeActivity {
+    AppStartupGuard startup;
+    @Override public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        startup = AppStartupGuard.attach(this, "https://whitegloveitineraries.com/admin", "White Glove Admin");
+    }
+    @Override public void onDestroy() {
+        if (startup != null) startup.destroy();
+        super.onDestroy();
+    }
+}

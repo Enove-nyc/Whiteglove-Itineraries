@@ -1,0 +1,8 @@
+<resources>
+    <item name="startup_guard" type="id" />
+    <item name="startup_title" type="id" />
+    <item name="startup_message" type="id" />
+    <item name="startup_retry" type="id" />
+    <item name="startup_update" type="id" />
+    <item name="startup_website" type="id" />
+</resources>
