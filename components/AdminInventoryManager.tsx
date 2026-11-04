@@ -121,7 +121,7 @@ export default function AdminInventoryManager({ initialItems, configured }: { in
                 </div>
                 <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">{item.title}</h2>
                 <p className="mt-1 font-mono text-sm text-stone-500">{item.route}</p>
-                <p className="mt-4 text-sm leading-6 text-stone-700"><strong>Missing:</strong> {item.missing}</p>
+                {item.missing ? <p className="mt-4 text-sm leading-6 text-stone-700"><strong>Remaining:</strong> {item.missing}</p> : null}
                 <p className="mt-2 text-sm leading-6 text-stone-700"><strong>Next:</strong> {item.nextAction}</p>
               </div>
               <div className="space-y-3">
