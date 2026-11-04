@@ -55,6 +55,17 @@ jobs:
           openssl req -x509 -newkey rsa:2048 -nodes -keyout scripts/ws.key -out scripts/ws.crt -days 2 -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
           sudo env AUDIT_ISOLATED=1 COST_TRUST_AUTH_BRIDGE=1 node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
           node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            bridge_status=$(curl --cacert scripts/ws.crt --max-time 2 -s -o /dev/null -w '%{http_code}' https://127.0.0.1:443 || true)
+            if [ "$bridge_status" = "426" ] && curl -fsS --max-time 2 -H 'Authorization: Bearer fixture-only' http://127.0.0.1:6380/ping > /dev/null; then
+              break
+            fi
+            if [ "$attempt" = "30" ]; then
+              cat /tmp/pg-bridge.log /tmp/redis-rest.log
+              exit 1
+            fi
+            sleep 1
+          done
           npx prisma migrate deploy
           npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - name: Verify actual Prisma SQL over disposable transport before building
@@ -64,7 +75,7 @@ jobs:
           NODE_OPTIONS: --import=${{ github.workspace }}/scripts/cost-neon-fixture.mjs
       - run: npx next typegen
       - run: npx tsc --noEmit
-      - run: npx eslint next.config.ts lib/admin-content.ts lib/promotion-rules.ts lib/public-promotions.ts components/SitePromotions.tsx components/PromotionBanner.tsx app/api/promotions/route.ts tests/public-promotion-cost.test.ts
+      - run: npx eslint next.config.ts lib/admin-content.ts lib/promotion-rules.ts lib/public-promotions.ts components/SitePromotions.tsx components/PromotionBanner.tsx components/ItineraryFooter.tsx app/api/promotions/route.ts tests/public-promotion-cost.test.ts
       - name: Production build against disposable stores
         run: npm run build
         env:
