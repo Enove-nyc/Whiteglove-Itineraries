@@ -2449,7 +2449,7 @@ export default function CompanionApp({
         <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12, padding: "17px 30px", borderBottom: "1px solid rgba(16, 47, 53,.09)", background: "#FAF8F3" }}>
           {canBack && <button onClick={back} aria-label="Back" className="wg-fade" style={{ border: "1px solid rgba(16, 47, 53,.16)", background: "#fff", width: 34, height: 34, borderRadius: 12, cursor: "pointer", fontSize: 15, color: INK, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>←</button>}
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#C6A15B" }}>{kickers[st.screen]}</div>
+            <div style={{ font: "600 9.5px/1 Inter,sans-serif", letterSpacing: ".14em", textTransform: "uppercase", color: "#6B4A1C" }}>{kickers[st.screen]}</div>
             <div style={{ font: `400 20px/1.1 ${serif}`, letterSpacing: "-.01em" }}>{titles[st.screen]}</div>
           </div>
         </div>
