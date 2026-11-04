@@ -3,7 +3,7 @@
   "appName": "White Glove Admin",
   "webDir": "www",
   "server": {
-    "url": "https://whitegloveitineraries.com/admin",
+    "url": "https://www.whiteglovekoshertravel.com/admin",
     "androidScheme": "https"
   },
   "android": {

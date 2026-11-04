@@ -27,7 +27,7 @@ import org.junit.runner.RunWith;
 /** Real Android WebView + native screen checks, with no account or trip mutations. */
 @RunWith(AndroidJUnit4.class)
 public class StartupSmokeTest {
-    private static final String ORIGIN = "https://whitegloveitineraries.com/admin";
+    private static final String ORIGIN = "https://www.whiteglovekoshertravel.com/admin";
 
     private void capture(String name) {
         SystemClock.sleep(200);

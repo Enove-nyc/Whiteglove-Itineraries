@@ -68,7 +68,7 @@ jobs:
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" --verbose create avd --force --name wg-tablet --path "$ANDROID_AVD_HOME/wg-tablet.avd" --package 'system-images;android-35;google_apis;x86_64' --device pixel_c
           test -f "$ANDROID_AVD_HOME/wg-tablet.avd/config.ini"
           "$ANDROID_HOME/emulator/emulator" -list-avds | tee native-results/avds.txt
-          rg '^wg-tablet$' native-results/avds.txt
+          grep -Fx wg-tablet native-results/avds.txt
           sudo chmod 666 /dev/kvm
       - name: Start Android tablet
         run: |
@@ -91,7 +91,7 @@ jobs:
       - name: Native diagnostics
         if: always()
         run: |
-          adb logcat -d -s AndroidRuntime chromium Capacitor > native-results/logcat.txt || true
+          timeout 10 adb logcat -d -s AndroidRuntime chromium Capacitor > native-results/logcat.txt || true
           if [ -f native-results/emulator.log ]; then tail -n 60 native-results/emulator.log; fi
           if [ -f native-results/logcat.txt ]; then tail -n 60 native-results/logcat.txt; fi
           for project in kosher/native/kosher itineraries/native/itineraries itineraries/native/advisor itineraries/native/admin; do
