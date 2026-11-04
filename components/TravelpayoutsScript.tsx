@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 /** Affiliate domain verification belongs on public discovery pages. */
 export default function TravelpayoutsScript() {
   const pathname = usePathname();
-  // Invitation credentials stay within the account flow.
-  if (/^\/join(?:\/|$)/.test(pathname)) return null;
+  // Trip codes and account flows are private, not affiliate discovery pages.
+  if (/^\/(?:join|app|i|t|account|advisor|admin)(?:\/|$)/.test(pathname)) return null;
   return (
     <Script
       src="https://emrldco.com/NTU5Nzcx.js?t=559771"

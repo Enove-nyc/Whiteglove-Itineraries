@@ -8,7 +8,7 @@ const base = process.env.COMPANION_TEST_URL || 'http://127.0.0.1:3002';
 const redis = process.env.COMPANION_TEST_REDIS_URL || 'http://127.0.0.1:6380';
 for (const target of [base, redis]) assert.equal(new URL(target).hostname, '127.0.0.1', 'Tests must use disposable local services');
 const secret = 'isolated-companion-test-secret';
-const email = 'traveler-companion@example.test';
+const email = `traveler-companion-${randomBytes(8).toString('hex')}@example.test`;
 const code = `CI${randomBytes(12).toString('base64url')}`;
 const otherCode = `CI${randomBytes(12).toString('base64url')}`;
 const pdfObjects = [
@@ -68,9 +68,15 @@ try {
   for (const context of [one, two]) await context.addInitScript(() => { localStorage.setItem('whiteGloveBetaNotice', '6'); localStorage.setItem('whiteGloveBetaNoticeShown', '6'); });
   const page = await one.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
+  let documentLoads = 0;
+  page.on('request', (request) => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documentLoads++; });
   await page.goto(`${base}/i/${code}/app`);
-  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) await new Promise((resolve) => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+  });
   await page.waitForLoadState('networkidle');
+  assert.equal(documentLoads, 1, 'First worker installation must not reload the active page');
   await page.getByRole('button', { name: 'Chat', exact: true }).click();
   await page.getByText('Meet by the entrance', { exact: true }).waitFor();
   await page.getByLabel('Message your trip group', { exact: true }).fill('See you by the entrance');
@@ -134,9 +140,38 @@ try {
     await searchPage.screenshot({ path: 'companion-results/kosher-search-mobile.png', fullPage: true });
     await searchPage.getByRole('link', { name: 'AI companion', exact: true }).click();
     await searchPage.getByRole('heading', { name: 'AI travel companion', exact: true }).waitFor();
+    for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
+      await searchPage.setViewportSize(viewport);
+      await searchPage.getByRole('navigation', { name: 'Travel app', exact: true }).getByRole('link', { name: 'Search', exact: true }).click();
+      await searchPage.getByRole('heading', { name: 'Find what you need.' }).waitFor();
+      assert.ok(await searchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+      await searchPage.getByRole('link', { name: 'AI companion', exact: true }).click();
+      await searchPage.getByRole('heading', { name: 'AI travel companion', exact: true }).waitFor();
+    }
     await searchContext.close();
     console.log('PASS: installed Kosher Travel search home, app navigation and AI screen');
   }
+  const tablet = await browser.newContext({ viewport: { width: 768, height: 1024 }, hasTouch: true });
+  await tablet.addInitScript((native) => { if (native) window.Capacitor = { isNativePlatform: () => true }; }, process.env.COMPANION_TEST_SEARCH !== '1');
+  const tabletPage = await tablet.newPage();
+  tabletPage.on('pageerror', (error) => errors.push(error.message));
+  const affiliateRequests = [];
+  tabletPage.on('request', (request) => { if (new URL(request.url()).hostname.endsWith('emrldco.com')) affiliateRequests.push(request.url()); });
+  await tabletPage.goto(`${base}/app/preview`);
+  for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
+    await tabletPage.setViewportSize(viewport);
+    for (const tab of ['Chat', 'Wallet', 'You', 'Trip']) {
+      await tabletPage.getByRole('button', { name: tab, exact: true }).click();
+      if (tab === 'Chat') await tabletPage.getByRole('region', { name: 'Sample trip group chat' }).waitFor();
+    }
+    assert.ok(await tabletPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await tabletPage.screenshot({ path: `companion-results/tablet-${viewport.width}.png`, fullPage: true });
+  }
+  await tabletPage.goto(`${base}/app?enter=1`);
+  await tabletPage.getByRole('textbox', { name: 'Trip code', exact: true }).waitFor();
+  assert.deepEqual(affiliateRequests, [], 'Private companion routes must not load affiliate scripts');
+  await tablet.close();
+  console.log('PASS: installed tablet portrait/landscape tabs, code entry and private route scripts');
   assert.deepEqual(errors, [], 'Browser errors');
 } catch (error) {
   await mkdir('companion-results', { recursive: true });

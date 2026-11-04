@@ -7,18 +7,16 @@ export default function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
 
-    // When a newly installed worker takes control — sw.js calls skipWaiting on
-    // install and clients.claim on activate — reload once so the page is drawn
-    // by the NEW worker instead of left as whatever the old one put up. This is
-    // what lets a device stuck on an old worker (e.g. one showing a stale
-    // offline shell) heal itself the moment the fix reaches it, with nobody
-    // clearing site data by hand. Guarded so it fires at most once per load, so
-    // a claim can never turn into a reload loop.
+    // A replacement worker must reload an already-controlled page to replace
+    // stale cached code. The first installation has no old code to replace:
+    // reloading then can interrupt the first tap, a draft or a wallet upload.
+    let hadController = navigator.serviceWorker.controller !== null;
     let refreshing = false;
     const onControllerChange = () => {
+      const replacingController = hadController;
+      hadController = navigator.serviceWorker.controller !== null;
       // Joining has already removed its private fragment; a reload loses it.
-      // Let the new worker take control without interrupting account creation.
-      if (refreshing || /^\/join(?:\/|$)/.test(window.location.pathname)) return;
+      if (!replacingController || refreshing || /^\/join(?:\/|$)/.test(window.location.pathname)) return;
       refreshing = true;
       window.location.reload();
     };
