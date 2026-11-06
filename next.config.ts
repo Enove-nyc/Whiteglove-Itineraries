@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { contentSecurityPolicy, reportingEndpointsHeader } from "./lib/csp-policy";
+import { MAINSTREAM_CSP, MAINSTREAM_PATH } from "./lib/mainstream-property-check";
 
 const nextConfig: NextConfig = {
   // Reuse the filesystem cache instead of retaining another 50 MiB per process.
@@ -87,7 +88,18 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: contentSecurityPolicy(CSP_REPORT_PATH) },
         ],
       },
+      {
+        source: `${MAINSTREAM_PATH}/:path*`,
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Content-Security-Policy", value: MAINSTREAM_CSP },
+        ],
+      },
     ];
+  },
+
+  async rewrites() {
+    return [{ source: MAINSTREAM_PATH, destination: `${MAINSTREAM_PATH}/index.html` }];
   },
 
   async redirects() {

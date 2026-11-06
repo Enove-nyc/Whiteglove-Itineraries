@@ -1,0 +1,22 @@
+{
+  "sourceDate": "2026-07-27",
+  "retrievedDate": "2026-11-06",
+  "count": 279810,
+  "examples": [
+    {
+      "bin": "1012252",
+      "address": "1 PIER 63",
+      "borough": "Manhattan"
+    },
+    {
+      "bin": "1012253",
+      "address": "29 11 AVENUE",
+      "borough": "Manhattan"
+    },
+    {
+      "bin": "1012254",
+      "address": "163 12 AVENUE",
+      "borough": "Manhattan"
+    }
+  ]
+}
