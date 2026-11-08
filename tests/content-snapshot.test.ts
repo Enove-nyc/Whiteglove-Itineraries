@@ -190,11 +190,25 @@ describe("the directory listings are backed up at last", () => {
     assert.ok(before < dbBlock, "the store read is inside the database block");
   });
 
-  it("the scheduled run is given the credentials to reach it", () => {
-    const flow = readFileSync(".github/workflows/content-snapshot.yml", "utf8");
-    assert.match(flow, /UPSTASH_REDIS_REST_URL: \$\{\{ secrets\.UPSTASH_REDIS_REST_URL \}\}/);
-    assert.match(flow, /UPSTASH_REDIS_REST_TOKEN: \$\{\{ secrets\.UPSTASH_REDIS_REST_TOKEN \}\}/);
-  });
+  /*
+   * THE SCHEDULED RUN IS NOT IN THIS REPOSITORY, so the test that checked it
+   * was given the Redis credentials is not either — it lives beside the
+   * workflow, in White Glove Kosher Travel.
+   *
+   * Both sites read one Postgres and one Redis, and the content in them is the
+   * guide: batei hachaim, tzaddikim, shomer numbers, directory listings. Those
+   * pages answer 410 on this domain. A second nightly job here would have
+   * written the same file from the same two stores into the repository it does
+   * not belong to — and never did, because the secret it needed was never set,
+   * so it failed every night from the day the repositories were split.
+   *
+   * What it would have recorded is recorded: the kosher run reaches both
+   * halves and says so in the file it commits.
+   *
+   * The library below is still this repository's — `npm run snapshot` takes a
+   * snapshot by hand, and lib/content-export.ts is the private backup — which
+   * is why every other test here stays.
+   */
 });
 
 describe("BOTH PLACES A LISTING CAN LIVE", () => {

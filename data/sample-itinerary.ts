@@ -49,6 +49,24 @@ import type { Itinerary } from "@/data/itinerary";
 export const SAMPLE_NOTICE =
   "A sample, not a booking. The places are real; the flights and the hotel are left unnamed because nothing here is reserved.";
 
+/**
+ * THE TEST CODE, so the app can be opened without an adviser sending one.
+ *
+ * Every other way into the White Glove app needs a real trip behind it: an
+ * adviser creates a per-trip code and sends it to one client, or a Trip Pass is
+ * spent. There was no way to simply see the app work — on a phone, through the
+ * code box, the way a client meets it — without first manufacturing somebody's
+ * trip.
+ *
+ * Typing this into the code box on /app opens the sample week below as the app.
+ * It is safe to be this guessable: a real share token is twelve url-safe
+ * characters from randomBytes (shareToken in lib/account-store.ts) and can
+ * never be eight digits, so this collides with nothing and reveals nothing —
+ * the trip it opens is the same made-up Rome week already published on
+ * /sample-itinerary.
+ */
+export const SAMPLE_TRIP_CODE = "12345678";
+
 export const SAMPLE_ITINERARY: Itinerary = {
   title: "Rome — a week, family of five",
   startDate: "2026-10-25",

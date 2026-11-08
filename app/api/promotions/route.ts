@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActivePromotions } from "@/lib/admin-content";
+import { getPublicPromotionSlots } from "@/lib/public-promotions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,16 +13,7 @@ export async function GET(request: NextRequest) {
   const device = /Mobi|Android/i.test(userAgent) ? "mobile" : "desktop";
 
   try {
-    const [topBanner, popup, bottomBanner] = await Promise.all([
-      getActivePromotions("fixed-top-banner", path, device),
-      getActivePromotions("popup", path, device),
-      getActivePromotions("sticky-bottom-banner", path, device),
-    ]);
-    return NextResponse.json({
-      topBanner: topBanner[0] ?? null,
-      popup: popup[0] ?? null,
-      bottomBanner: bottomBanner[0] ?? null,
-    });
+    return NextResponse.json(await getPublicPromotionSlots(path, device));
   } catch {
     return NextResponse.json({ topBanner: null, popup: null, bottomBanner: null });
   }

@@ -1,0 +1,21 @@
+name: Shared session readiness validation
+on:
+  push:
+    branches: [codex/session-readiness]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npx eslint components/SignInGate.tsx lib/use-signed-in.ts

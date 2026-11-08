@@ -2,10 +2,12 @@
 //
 //   DATABASE_URL=... npx tsx scripts/write-snapshot.ts
 //
-// Run on a schedule by .github/workflows/content-snapshot.yml, which commits
-// the result if it changed. See lib/content-snapshot.ts for why this exists at
-// all — briefly: the content is in two places, git only holds one of them, and
-// anybody reading a checkout gets half the truth and does not know it.
+// BY HAND HERE. The nightly run belongs to White Glove Kosher Travel, whose
+// repository holds the workflow: both sites read one Postgres and one Redis,
+// and what is in them is the guide, whose pages answer 410 on this domain. See
+// lib/content-snapshot.ts for why the snapshot exists at all — briefly: the
+// content is in two places, git only holds one of them, and anybody reading a
+// checkout gets half the truth and does not know it.
 //
 // REFUSES RATHER THAN OVERWRITES. A run that reaches an empty or wrong database
 // produces an empty snapshot, and committing that would replace a true file

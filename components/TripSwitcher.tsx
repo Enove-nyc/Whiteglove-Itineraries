@@ -8,6 +8,7 @@ import { isAccountPlan } from "@/lib/account-plans";
 import { mayServeCompanionClients, mayUseTripTemplates } from "@/lib/account-limits";
 import { ShareOpenStatus } from "@/components/ShareOpenStatus";
 import type { TripLinkStatus } from "@/lib/account-store";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 // The traveler's trips, and a way to move between them.
 //
@@ -178,6 +179,15 @@ export default function TripSwitcher({
     },
     [loadTemplates, onSwitched],
   );
+
+  /**
+   * "Are you sure" is asked in the page, not by the browser — see
+   * components/ui/ConfirmDialog.tsx. window.confirm can be switched off by the
+   * person's own browser, and when it is it returns false with nothing drawn,
+   * so Delete reads as declined and does nothing at all. That was reported as
+   * "no dialog, no deletion".
+   */
+  const { dialog: confirmDialog, ask } = useConfirm();
 
   const act = useCallback(
     async (
@@ -483,11 +493,13 @@ export default function TripSwitcher({
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => {
-                      if (confirm(`Delete “${trip.name}”? Everything planned in it goes with it.`)) {
-                        void act("delete", { id: trip.id }, trip.active);
-                      }
-                    }}
+                    onClick={() =>
+                      ask({
+                        title: `Delete “${trip.name}”?`,
+                        body: "Everything planned in it goes with it.",
+                        onConfirm: () => void act("delete", { id: trip.id }, trip.active),
+                      })
+                    }
                     className="min-h-[36px] border border-[var(--gold-light)] px-3 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500 transition hover:border-red-400 hover:text-red-700 disabled:opacity-50"
                   >
                     Delete
@@ -687,11 +699,13 @@ export default function TripSwitcher({
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => {
-                        if (confirm(`Delete the template “${tpl.name}”? This does not touch any trip already started from it.`)) {
-                          void templateAct("delete", { id: tpl.id });
-                        }
-                      }}
+                      onClick={() =>
+                        ask({
+                          title: `Delete the template “${tpl.name}”?`,
+                          body: "This does not touch any trip already started from it.",
+                          onConfirm: () => void templateAct("delete", { id: tpl.id }),
+                        })
+                      }
                       className="min-h-[36px] border border-[var(--gold-light)] px-3 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-500 transition hover:border-red-400 hover:text-red-700 disabled:opacity-50"
                     >
                       Delete
@@ -705,6 +719,7 @@ export default function TripSwitcher({
       )}
 
       {error && <p className="mt-3 text-sm font-semibold text-red-700">{error}</p>}
+      {confirmDialog}
     </section>
   );
 }

@@ -67,7 +67,7 @@ describe("live partner search wiring", () => {
   it("keeps cash flights on one form with trip type, live fares when real, and Aviasales/Kayak hand-offs — no embedded flight widget", () => {
     const ui = readFileSync("components/BookPartners.tsx", "utf8");
     const flights = ui.slice(ui.indexOf("function FlightsForm"), ui.indexOf("function HotelsForm"));
-    const cars = ui.slice(ui.indexOf("function CarsForm"), ui.indexOf("function BookedPrompt"));
+    const cars = ui.slice(ui.indexOf("function CarsForm"), ui.indexOf("function BookedPointer"));
     assert.doesNotMatch(flights, /PartnerSearchWidget/);
     // Both buttons hand off through /go by naming their partner. No second
     // search form, and no partner address written in the browser.

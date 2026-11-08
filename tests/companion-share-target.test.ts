@@ -1,3 +1,5 @@
+// Legacy advisor gates remain tested below. The self-service companion
+// is exercised against real APIs and browser contexts in traveler-companion-journeys.mjs.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
@@ -12,28 +14,6 @@ import { describe, it } from "node:test";
 const MANIFEST = readFileSync("app/manifest.ts", "utf8");
 const APP_PAGE = readFileSync("app/app/page.tsx", "utf8");
 const APP = readFileSync("components/companion/CompanionApp.tsx", "utf8");
-
-describe("the app registers itself as a share target", () => {
-  it("shares into /app by GET, carrying title, text and url", () => {
-    assert.match(MANIFEST, /share_target:\s*\{/);
-    assert.match(MANIFEST, /action:\s*"\/app"/);
-    assert.match(MANIFEST, /method:\s*"GET"/);
-    assert.match(MANIFEST, /params:\s*\{\s*title:\s*"share_title",\s*text:\s*"share_text",\s*url:\s*"share_url"\s*\}/);
-  });
-});
-
-describe("app/app/page.tsx turns a shared place into a draft, not a crash", () => {
-  it("joins whatever arrived — title, text, url — trimming empties", () => {
-    assert.match(APP_PAGE, /firstParam\(params\.share_title\)/);
-    assert.match(APP_PAGE, /firstParam\(params\.share_text\)/);
-    assert.match(APP_PAGE, /firstParam\(params\.share_url\)/);
-    assert.match(APP_PAGE, /\.filter\(Boolean\)\s*\n\s*\.join\("\\n"\)/);
-  });
-
-  it("hands it to CompanionApp as sharedDraft, empty string turned into undefined", () => {
-    assert.match(APP_PAGE, /sharedDraft=\{sharedDraft \|\| undefined\}/);
-  });
-});
 
 describe("a shared place waits for the advisor to pick a client, then lands in that thread's composer", () => {
   it("a shared draft that arrives on the advisor's inbox opens straight to Messages", () => {

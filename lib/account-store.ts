@@ -1,3 +1,4 @@
+import { createInvitedAccount } from "@/lib/account-invitations";
 import type { AdvisorWelcome } from "@/data/advisor-welcome";
 import { recentActivity, withActivity, type ActivityEntry } from "@/data/trip-activity";
 import { tripSignature, type PackingList } from "@/data/packing-list";
@@ -519,7 +520,7 @@ export async function listAllAccounts(): Promise<AdminAccountSummary[]> {
  *   an email and gives a number has given us a way to ring them about a trip,
  *   not a second account.
  */
-export async function createAccount(identifier: string, password: string, name?: string, contactPhone?: string) {
+export async function createAccount(identifier: string, password: string, name?: string, contactPhone?: string, invitationToken?: string) {
   if (!hasAccountStorage()) return { ok: false as const, error: "Connect the private database first." };
   const identity = normalizeIdentity(identifier ?? "");
   if (!identity) {
@@ -557,6 +558,16 @@ export async function createAccount(identifier: string, password: string, name?:
   const code = verificationCode();
   record.verificationCodeHash = hashVerificationCode(normalized, code);
   record.verificationCodeExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  if (invitationToken) {
+    try {
+      const outcome = await createInvitedAccount(invitationToken, normalized, JSON.stringify(record), JSON.stringify({ route: [], favorites: [], updatedAt: new Date().toISOString() } satisfies AccountData));
+      if (outcome === "invalid") return { ok: false as const, error: "This invitation is no longer available.", code: "invitation" as const };
+      if (outcome === "exists") return { ok: false as const, error: "An account already exists. Log in to continue.", code: "exists" as const };
+      return { ok: true as const, email: normalized, verificationCode: code };
+    } catch {
+      return { ok: false as const, error: "Account registration is temporarily unavailable. Please try again.", code: "unavailable" as const };
+    }
+  }
   const saved = await writeJson(accountKey(normalized), record);
   if (!saved) return { ok: false as const, error: "The account could not be created." };
   await writeJson(dataKey(normalized), { route: [], favorites: [], updatedAt: new Date().toISOString() } satisfies AccountData);
@@ -580,10 +591,8 @@ export async function createAccount(identifier: string, password: string, name?:
  * checking the address is the same evidence the code was asking for and better
  * evidence than a code sitting unread in the same inbox.
  *
- * A NEW ACCOUNT GETS NO PASSWORD, rather than one nobody chose. The hash is
- * random bytes — the hash of nothing, so no password anyone types can match —
- * and `noPasswordYet` records why. "Forgotten password" sets a real one, which
- * is the same path as any other account and needs nothing new.
+ * Google is login-only. New accounts are created through an owner-issued
+ * invitation and retain the existing verification and recovery paths.
  */
 export async function signInWithGoogle(input: { email: string; name?: string; googleId: string }) {
   if (!hasAccountStorage()) return { ok: false as const, error: "Connect the private database first." };
@@ -612,25 +621,8 @@ export async function signInWithGoogle(input: { email: string; name?: string; go
     return { ok: true as const, email: normalized, created: false };
   }
 
-  const salt = randomBytes(16).toString("hex");
-  const record: AccountRecord = {
-    email: normalized,
-    identityKind: "email",
-    name: input.name?.trim() || undefined,
-    salt,
-    // The hash of nothing. Random bytes of the same shape hashPassword makes,
-    // so verifyAccount runs exactly as it always does and never matches.
-    passwordHash: randomBytes(64).toString("hex"),
-    noPasswordYet: true,
-    createdAt: now,
-    googleLinkedAt: now,
-    verifiedAt: now,
-  };
-  if (!(await writeJson(accountKey(normalized), record))) {
-    return { ok: false as const, error: "The account could not be created." };
-  }
-  await writeJson(dataKey(normalized), { route: [], favorites: [], updatedAt: now } satisfies AccountData);
-  return { ok: true as const, email: normalized, created: true };
+  // New accounts require the owner's invitation; OAuth is login-only.
+  return { ok: false as const, error: "New accounts require an invitation. Use your invitation link to create an account, then log in with Google." };
 }
 
 export async function verifyAccount(email: string, password: string) {
@@ -1911,14 +1903,26 @@ export async function ensureProposalShare(email: string, tripId: string): Promis
 }
 
 /** A proposal by its public token — marks it "viewed" the first time a client opens a "sent" one. */
-export async function getSharedProposal(shareId: string) {
+/**
+ * A proposal by its client link.
+ *
+ * `viewer` is the email of whoever is signed in, when anybody is. It exists
+ * for one reason: THE ADVISOR'S OWN PREVIEW IS NOT THE CLIENT READING IT.
+ * "Preview as client" opens this very page, and opening it flipped a sent
+ * proposal to "viewed" and stamped viewedAt — so the pipeline told the
+ * advisor their client had read it the moment the advisor looked at their own
+ * work. Checked against the owner rather than a flag in the address, because a
+ * flag is something the client's browser can carry too.
+ */
+export async function getSharedProposal(shareId: string, viewer?: string | null) {
   const rec = await readJson<{ ownerEmail: string; tripId: string }>(proposalShareKey(shareId));
   if (!rec) return null;
   const data = await getAccountData(rec.ownerEmail);
   const trip = withTrips(data).trips.find((t) => t.id === rec.tripId);
   if (!trip?.proposal) return null;
   let proposal = trip.proposal;
-  if (proposal.status === "sent") {
+  const isOwner = Boolean(viewer) && normalizeId(viewer!) === normalizeId(rec.ownerEmail);
+  if (proposal.status === "sent" && !isOwner) {
     proposal = { ...proposal, status: "viewed", viewedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     await saveProposal(rec.ownerEmail, rec.tripId, proposal);
   }
@@ -3467,3 +3471,4 @@ export async function markAlertsPushed(email: string, tripId: string, keys: read
   const nextTrips = trips.map((t) => (t.id === tripId ? { ...t, alertsPushed: pushed } : t));
   return Boolean(await writeTrips(normalized, nextTrips, activeId));
 }
+

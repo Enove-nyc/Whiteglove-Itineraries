@@ -188,10 +188,15 @@ html[data-app-shell] footer#contact {
   display: none !important;
 }
 
-/* The site header around an app page (/app, /advisor) is for the WEB: on the
- * website the app sits inside the ordinary header and footer like any other
- * page. Inside the installed app the app has its own header and tabs, so the
- * site's header is hidden there the same way its footer is above. */
+/* The site header is for the WEB: on the website every page — the app pages
+ * (/app, /advisor) included — sits inside the ordinary header and footer like
+ * any other page. Inside the installed app there is no website around it, so
+ * the header is hidden there the same way the footer is above. Navbar wraps
+ * itself in .wg-web-chrome on every page it renders (components/Navbar.tsx) —
+ * this used to be a wrapper each app page had to remember to add, and pages
+ * reached from inside the app that never got the wrapper (account, agency,
+ * payments, the pipeline, and others) kept showing the website's header
+ * inside the installed app. */
 @media (display-mode: standalone) {
   .wg-web-chrome {
     display: none !important;
@@ -747,7 +752,7 @@ p {
     scroll-margin-top: 8rem;
   }
 
-  :where(button, input, select, textarea, summary, a[class*="bg-"], a[class*="border"]) {
+  :where(button, input, select, textarea, summary, a[class*="bg-"], a[class*="border"]):not(:where(.wg-app-root *)) {
     min-height: 3rem;
   }
 
@@ -768,7 +773,128 @@ p {
   /* Room for the fixed mobile bottom bar (Search/Route/Itinerary/Account).
    * The class is set only while Navbar is mounted — never on /admin, which
    * has its own shell — so this never adds dead space there. */
+  /* Keep focused and scrolled controls clear of the fixed navigation. */
+  html:has(body.wg-has-mobile-bar) {
+    scroll-padding-top: 6rem;
+    scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+  body.wg-has-mobile-bar :where(label, button, input, select, textarea, summary, a) {
+    scroll-margin-top: 6rem;
+    scroll-margin-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
   body.wg-has-mobile-bar {
     padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* THE HEADER STOPS BELOW THE CLOCK, INSIDE THE APP.
+ *
+ * Android 15 forces an app edge to edge, so the web view draws behind the
+ * status bar and the header sat under the time and the battery. The inset that
+ * answers this is `env(safe-area-inset-top)`, which reads zero until the
+ * viewport is declared `viewport-fit=cover` — set by AppShellFlag inside the
+ * app only, never on the open website, where `cover` would put a page under an
+ * iPhone's notch in landscape for no gain.
+ *
+ * The strip the header is pushed down by is painted NAVY rather than left as
+ * the header's own colour, because it is the status bar's background now: navy
+ * is the site's declared theme-color, which is the colour the phone picks its
+ * white clock against.
+ *
+ * The inset is named --wg-safe-top rather than written twice, because an env()
+ * with a fallback still reads zero when the browser HAS the inset and it IS
+ * zero — so a machine with no cutout cannot exercise these rules at all unless
+ * the number has a name something can set. */
+html[data-app-shell] {
+  --wg-safe-top: env(safe-area-inset-top);
+}
+
+html[data-app-shell] nav[aria-label="Main"] {
+  padding-top: var(--wg-safe-top);
+}
+
+html[data-app-shell] nav[aria-label="Main"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--wg-safe-top);
+  background: var(--navy);
+}
+
+
+
+/* Travel-facing homepage colour: soft daylight, sea tones and warm sand.
+   Scoped to marketing homes so planning forms and app surfaces retain their layout. */
+.wg-travel-home,
+.wg-itineraries-home {
+  --cream: #f8faf7;
+  --surface: #fffefb;
+  background: radial-gradient(ellipse at 100% 35%, rgba(189, 224, 222, .28), transparent 48%),
+    linear-gradient(180deg, #f4faf8 0%, #fffaf0 65%, #f4f8fb 100%);
+}
+.wg-travel-hero {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .24);
+}
+.wg-travel-hero form {
+  box-shadow: 0 18px 45px rgba(13, 48, 60, .18);
+}
+.wg-travel-hero form button[type="submit"] {
+  background: linear-gradient(120deg, #173f50, #276963);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 4px 12px rgba(20,66,70,.12);
+}
+.wg-travel-hero form button[type="submit"]:hover {
+  background: linear-gradient(120deg, #205367, #307b72);
+}
+.wg-travel-categories > li { --card-wash: #edf6f7; }
+.wg-travel-categories > li:nth-child(2) { --card-wash: #fff6e8; }
+.wg-travel-categories > li:nth-child(3) { --card-wash: #f0f7e9; }
+.wg-travel-categories > li:nth-child(4) { --card-wash: #faf0eb; }
+.wg-travel-categories > li:nth-child(5) { --card-wash: #edf2fc; }
+.wg-travel-categories > li:nth-child(6) { --card-wash: #eaf6f0; }
+.wg-travel-card {
+  border-color: #dce8e2;
+  box-shadow: 0 8px 26px rgba(31, 83, 82, .07);
+}
+.wg-travel-card-copy {
+  background: linear-gradient(145deg, #fffefb 35%, var(--card-wash));
+}
+.wg-travel-card:hover {
+  border-color: #93bcb5;
+  box-shadow: 0 14px 32px rgba(31, 83, 82, .13);
+}
+.wg-travel-start {
+  background: linear-gradient(145deg, #fffefb, #f1f7f4);
+  border-color: #d5e4dd;
+}
+.wg-travel-start-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: #dceef0;
+}
+.wg-travel-start:nth-child(2) .wg-travel-start-icon { background: #fae9cb; }
+.wg-travel-start:nth-child(3) .wg-travel-start-icon { background: #e5eaf7; }
+.wg-travel-assistant {
+  background: linear-gradient(120deg, #fffefb 25%, #eaf5f2);
+  border-color: #d3e5dc;
+}
+.wg-itineraries-hero {
+  background: radial-gradient(ellipse at 90% 10%, rgba(111,185,175,.25), transparent 55%),
+    linear-gradient(125deg, #153a48, #205e63);
+}
+.wg-itineraries-home article {
+  border-color: #d8e6df;
+  background: linear-gradient(145deg, white 45%, #edf7f3);
+  box-shadow: 0 8px 26px rgba(31, 83, 82, .06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wg-travel-home .wg-travel-card,
+  .wg-travel-home .wg-travel-start,
+  .wg-travel-home .wg-travel-card img {
+    transition: none;
+    transform: none;
   }
 }

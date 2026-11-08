@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import NewSiteNotice from "@/components/NewSiteNotice";
+import DevelopmentNotice from "@/components/DevelopmentNotice";
+import { ITINERARIES_IN_DEVELOPMENT } from "@/lib/launch-status";
 import SiteAssistant from "@/components/SiteAssistant";
 import AppShellFlag from "@/components/AppShellFlag";
 import { BookingLinkProvider } from "@/components/BookingLinkProvider";
@@ -36,7 +38,7 @@ import { BRAND_NAME, configuredBrand, type SiteBrand } from "@/lib/site-brand-co
 const BRAND = configuredBrand() ?? "kosher";
 const BRAND_DESCRIPTION: Record<SiteBrand, string> = {
   kosher: "Thoughtfully planned kosher travel and Jewish heritage journeys.",
-  itineraries: "Day-by-day itineraries you build once and hand to your client as an app on their phone.",
+  itineraries: "Build, organise and carry your travel itinerary with White Glove Itineraries.",
 };
 
 export const metadata: Metadata = {
@@ -117,6 +119,7 @@ export default async function RootLayout({
         {/* "Check anything you are going to rely on." Once per visitor, never
             over the admin or a sign-in box. A dismissible popup rather than a
             strip that pushes the brand and the proposition down the page. */}
+        {ITINERARIES_IN_DEVELOPMENT && <DevelopmentNotice />}
         <NewSiteNotice notice={betaNotice} />
         <SiteTracker />
         <TravelpayoutsScript />
@@ -160,3 +163,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

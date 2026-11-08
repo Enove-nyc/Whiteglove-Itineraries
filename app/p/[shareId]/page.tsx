@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import ProposalClientView from "@/components/ProposalClientView";
-import { getSharedProposal } from "@/lib/account-store";
+import { accountCookieName, getCurrentAccountSummary, getSharedProposal, readSessionEmail } from "@/lib/account-store";
 import { PROPOSAL_STATUS_LABEL, proposalExpired } from "@/data/proposal";
 import { pageMetadata } from "@/lib/seo";
 import { currentBrand } from "@/lib/site-brand";
@@ -24,7 +25,12 @@ export const dynamic = "force-dynamic";
 
 export default async function ProposalPage({ params }: { params: Promise<{ shareId: string }> }) {
   const { shareId } = await params;
-  const shared = await getSharedProposal(shareId);
+  // Who is looking, if anybody is signed in. The advisor previewing their own
+  // proposal must not be recorded as the client reading it — see
+  // getSharedProposal. A client has no account and this is simply empty.
+  const cookie = (await cookies()).get(accountCookieName())?.value;
+  const viewer = (await getCurrentAccountSummary(cookie))?.email || readSessionEmail(cookie) || null;
+  const shared = await getSharedProposal(shareId, viewer);
 
   if (!shared) {
     return (

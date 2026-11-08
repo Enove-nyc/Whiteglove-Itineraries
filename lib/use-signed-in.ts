@@ -38,6 +38,9 @@ function ask(): Promise<Viewer> {
   return cached;
 }
 
+/** Await the existing session lookup when an action is pressed before hydration settles. */
+export function currentViewer(): Promise<Viewer> { return ask(); }
+
 /** Ask again — after signing in or out, so the buttons catch up. */
 export function forgetSignedIn() {
   cached = null;

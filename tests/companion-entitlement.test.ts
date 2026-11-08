@@ -1,3 +1,5 @@
+// Legacy advisor gates remain tested below. The self-service companion
+// is exercised against real APIs and browser contexts in traveler-companion-journeys.mjs.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
@@ -104,46 +106,6 @@ describe("the words on the account page line up with the gates", () => {
 });
 
 describe("the gates in the pages and routes are the right ones", () => {
-  it("asks about the TRIP at /app, not only about the plan", () => {
-    const page = readFileSync("app/app/page.tsx", "utf8");
-    // The outer door: is there an app on this account at all.
-    assert.match(page, /mayReachTheApp\(who, plan\)/);
-    // The one that matters: may THIS trip open. Reading only the plan is what
-    // let one purchase open every trip.
-    assert.match(page, /mayOpenTripInApp\(who, plan, selected\.id\)/);
-    assert.ok(!/mayUseCompanionApp\(plan\)/.test(page), "/app is back to gating on the plan alone");
-    // The inbox tab is only handed on to somebody who serves clients.
-    assert.match(page, /mayServeCompanionClients\(plan\)/);
-    assert.match(page, /advisorInbox=\{servesClients\}/);
-  });
-
-  it("does not offer a trip as ready to open when it would not open", () => {
-    // The list under the empty state was every dated trip, which was true when
-    // the app came with the account and is a list of locked doors now.
-    const page = readFileSync("app/app/page.tsx", "utf8");
-    assert.match(page, /const openable = appCoversEveryTrip\(plan\) \? dated : dated\.filter/);
-    assert.match(page, /\{openable\.map\(/);
-  });
-
-  it("opens a client's shared link only for an advisor who serves clients", () => {
-    const shared = readFileSync("app/i/[shareId]/app/page.tsx", "utf8");
-    assert.match(shared, /mayServeCompanionClients\(plan\)/);
-    assert.doesNotMatch(shared, /mayUseCompanionApp/);
-  });
-
-  it("opens somebody's OWN code on the trip's pass, and hands it no chat", () => {
-    const shared = readFileSync("app/i/[shareId]/app/page.tsx", "utf8");
-    // A self code is gated on the trip, not on serving clients — that is the
-    // whole point of it: a Trip Pass holder has no clients.
-    assert.match(shared, /kind === "self"/);
-    assert.match(shared, /mayOpenTripInApp\(shared\.ownerEmail, plan, shared\.tripId\)/);
-    // AND IT IS HANDED NO CHAT. CompanionApp draws the Messages tab, the
-    // badge, the polling and the home-screen card from this one prop, so
-    // passing nothing removes all of them; a `chat` object built
-    // unconditionally would put a thread on a trip with nobody on the other
-    // end of it.
-    assert.match(shared, /kind === "self"\s*\?\s*undefined/);
-  });
 
   it("gates the advisor inbox on serving clients, before it reads any thread", () => {
     const route = readFileSync("app/api/companion/chats/route.ts", "utf8");

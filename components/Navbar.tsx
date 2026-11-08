@@ -267,6 +267,18 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
 
   return (
     <>
+      {/* HIDDEN INSIDE THE INSTALLED APP, ON EVERY PAGE — baked in here rather
+          than left for each page to wrap in .wg-web-chrome itself. That was
+          the rule from 7 September (app/page.tsx, app/advisor/page.tsx) and it
+          only covered those two: every other page that renders this Navbar —
+          the account pages, the agency screen, payments, the pipeline, forms,
+          the plain website's own /itinerary and /login — still showed the
+          website's own header inside the app, because hiding it was an
+          opt-in a page had to remember. It is not optional any more: nobody
+          running the installed app should ever see this site's own header,
+          on any page, so the component hides itself rather than asking to be
+          asked. See the in-app rules in globals.css (.wg-web-chrome). */}
+      <div className="wg-web-chrome">
       <nav
         ref={navRef}
         aria-label="Main"
@@ -290,7 +302,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
             {/* Shown from 360px: a 390px phone is the common case, and hiding
                 the site's own name there left the header as a bare mark. */}
             <span className="hidden flex-col leading-none min-[360px]:flex">
-              <span className="font-[family-name:var(--font-display)] text-lg text-[var(--navy)]">White Glove</span>
+              <span className="font-[family-name:var(--font-display)] text-lg text-[var(--navy)]">White Glove{" "}</span>
               <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">{isItineraries ? "Itineraries" : "Kosher Travel"}</span>
             </span>
           </Link>
@@ -375,7 +387,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
                             role="menuitem"
                             href={link.href}
                             aria-current={linkCurrent ? "page" : undefined}
-                            aria-label={link.description}
+                            aria-description={link.description}
                             title={link.description}
                             onClick={closeAll}
                             className={`flex min-h-11 items-center px-4 py-2 text-sm transition ${
@@ -532,6 +544,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
         )}
       </nav>
       <SitePromotions />
+      </div>
       {bottomBar && <MobileBottomBar signedIn={signedIn} brand={brand} />}
     </>
   );

@@ -1,8 +1,16 @@
 # The database, written down
 
-`content.json` in this folder is what the White Glove database currently holds.
-It is written by `.github/workflows/content-snapshot.yml`, which runs nightly,
-and by `npm run snapshot` with a `DATABASE_URL` in the environment.
+`content.json` in this folder is a copy of what the White Glove database held
+when it was last written here, on 18 August 2026 — before this repository was
+separated from White Glove Kosher Travel. It is not refreshed on a schedule any
+more, and `npm run snapshot` with a `DATABASE_URL` in the environment is what
+writes it.
+
+**The nightly snapshot lives in the kosher repository.** Both sites read one
+Postgres and one Redis, and everything in them is guide content — batei
+hachaim, tzaddikim, shomer numbers, directory listings — whose pages answer 410
+on this domain. One nightly run covers both stores, and it is that one. Nothing
+in the application reads this file; it is a record for people, not a fallback.
 
 **Do not edit it by hand.** It is generated, and the next run will overwrite
 anything typed into it. To change what it says, change the content in the admin

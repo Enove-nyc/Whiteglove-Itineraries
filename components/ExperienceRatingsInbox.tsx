@@ -8,6 +8,7 @@ import {
   type ExperienceRating,
 } from "@/lib/experience-ratings";
 import { REVIEW_SCORE_LABELS, type PlaceReview } from "@/lib/place-reviews";
+import PendingSubmit from "@/components/ui/PendingSubmit";
 
 export default function ExperienceRatingsInbox({
   ratings,
@@ -141,12 +142,11 @@ export default function ExperienceRatingsInbox({
                     }}
                   >
                     <input type="hidden" name="id" value={review.id} />
-                    <button
-                      type="submit"
+                    <PendingSubmit
                       className="min-h-11 rounded-full border border-[var(--navy)] px-5 text-sm font-semibold text-[var(--navy)] transition hover:bg-[var(--navy)] hover:text-[var(--cream)]"
                     >
                       Remove
-                    </button>
+                    </PendingSubmit>
                   </form>
                 </div>
               </li>

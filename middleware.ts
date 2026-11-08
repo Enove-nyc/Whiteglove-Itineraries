@@ -18,6 +18,7 @@ import { MIGRATION_LISTS, movedTo } from "@/lib/route-migration";
 import { guideAnswer } from "@/lib/guide-paths";
 import { BRAND_ORIGIN, brandFromRequestHeaders, configuredBrand } from "@/lib/site-brand-core";
 import { isAndroidAppHeaders } from "@/lib/android-app";
+import { isMainstreamPath } from "@/lib/mainstream-property-check";
 
 /*
  * The guide lives on the kosher site; the itineraries site is strictly the
@@ -267,6 +268,10 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/api/")) return NextResponse.next();
   if (/\.[a-z0-9]+$/i.test(pathname)) return NextResponse.next();
+
+  // Expo visitors open this independent tool by QR code, without a travel
+  // account or site-access cookie. Keep the exception within this path only.
+  if (isMainstreamPath(pathname) && !isAdminHost(request)) return NextResponse.next();
 
   // The Android app opens on the bare domain; the owner wants it to land on the
   // planner app instead. Only the home page, and only when the request comes

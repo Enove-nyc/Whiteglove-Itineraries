@@ -43,7 +43,7 @@ describe("the page describes what this site can actually do", () => {
     // This repository's pageMetadata settles the site name from the title and
     // takes no brand; the other one takes one because it serves both domains.
     assert.doesNotMatch(PAGE, /\bbrand,\s*$/m);
-    assert.match(PAGE, /BRAND_NAME/);
+    assert.match(PAGE, /White Glove Itineraries/);
   });
 });
 
@@ -84,12 +84,14 @@ describe("the introduction does not promise what the table takes back", () => {
     );
   });
 
-  it("still says what genuinely is the same on every plan", () => {
+  it("describes invitation access and keeps client entitlements separate", () => {
     // The claim is worth making — it is true of the planner, and it is why
     // One Trip is not a crippled tier. It just has to be the true version.
-    assert.match(PAGE, /same on every plan/);
+    assert.match(PAGE, /New accounts are available by invitation/);
+    assert.doesNotMatch(PAGE, /not open for business|in development/i);
     const limits = readFileSync("lib/account-limits.ts", "utf8");
     assert.match(limits, /one_trip: \{[^}]*companionClients: false/);
     assert.match(limits, /starter: \{[^}]*companionClients: true/);
   });
 });
+

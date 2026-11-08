@@ -1,72 +1,35 @@
-# White Glove Itineraries Page Inventory
+# Current implementation and release inventory
 
-Date: 2026-07-24
-Branch reviewed: `staging`
+Reconciled 4 November 2026 against the current main branch. This replaces the July inventory that incorrectly described accounts as browser-only and legal pages as absent.
 
-Status labels:
+`data/page-inventory.ts` supplies Admin → Checklist. The rows below use its current base status; existing owner overrides and notes in the shared store are preserved. A complete implementation is not a claim that every destination fact, payment provider, physical device or store release has been independently accepted.
 
-- `Complete`: page exists and appears usable for its current purpose.
-- `Partially complete`: page exists but depends on preview/local behavior, missing content, or later backend work.
-- `Empty`: route exists but has little or no useful content.
-- `Broken risk`: route may render, but code or copy shows a likely user-facing problem.
-- `Needs factual verification`: content should not be treated as confirmed until sources and dates are checked.
-- `Needs translation`: Yiddish/Hebrew text or display language needs review.
-- `Needs mobile repair`: route needs small-screen layout testing before promotion.
+The active company is Kosher Travel. Its installed app is for information search and optional AI; planning and booking remain web-based. The existing Itineraries app is the traveler companion. The separate Itineraries business remains paused, and Advisor/Admin remain separate applications. Purchases and public signup stay closed.
 
-## Public Pages
-
-| Route | Purpose | Current Status | Notes |
-| --- | --- | --- | --- |
-| `/` | Homepage and destination search entry | Partially complete | Strong brand layout exists. Needs encoding/Yiddish repair in hard-coded destination names and source copy. Search exists, but needs full route logging and verification in Step 3. |
-| `/stops` | Full destination directory/search results | Partially complete | Useful directory exists across guide, cemetery, and research-queue data. Needs encoding cleanup, factual verification, mobile testing, and better distinction between complete guides and research placeholders. |
-| `/[city]` | Full city guide template for verified guide cities | Partially complete | Has kever navigation, beis hachaim link, shomer/access section, practical sections, saving buttons. Needs factual verification for each guide, encoding cleanup, and completion of missing practical sections. |
-| `/lizensk` | Legacy Lizhensk guide route | Broken risk | Separate from the main dynamic guide system. Needs review because `/lizhensk` spelling is commonly searched, while this route is `/lizensk`. Should redirect or consolidate in navigation/search. |
-| `/destinations/[place]` | Research-queue destination page | Partially complete | Good placeholder pattern exists. Needs complete guide content, cemeteries, burials, addresses, shomer numbers, accommodations, and last-verified status per destination. |
-| `/cemeteries` | Beis hachaim directory | Partially complete | Lists cemetery records and known burial count. Needs encoding cleanup and data verification. |
-| `/cemeteries/[cemetery]` | Individual beis hachaim page | Partially complete | Has address, navigation, arrival notes, shomer/access section, and burials. Needs verified shomer numbers, proper Yiddish display, and richer burial details per cemetery. |
-| `/book` | The booking page: flights, hotels and cars, with cash or with miles | Partially complete | The one booking experience — `/booking` was a second one and now redirects here. Duffel flight search exists; hotels go to the partner search because Duffel Stays is not approved yet (`DUFFEL_STAYS=1` switches to the in-site one). Needs booking completion workflow and stronger error handling. |
-| `/book/review` | Flight selection/review and payment component | Partially complete | Review page exists (was `/booking/review`). Needs real booking confirmation flow, payment/account handling, validation cleanup, and final Duffel production testing. |
-| `/login` | User sign-up/login preview | Partially complete | Uses browser storage, not real authentication. Needs real register/login/reset/logout/email verification and redirect protection after sign-in. |
-| `/account` | Account dashboard | Partially complete | Shows saved route preview from browser storage. Needs database-backed account data available across devices. |
-| `/my-route` | Route and favorites dashboard | Partially complete | Local route/favorites exists and supports fixed dates. Needs cloud saving, real route optimization preferences, itinerary integration, and mobile testing. |
-| `/access` | Site-lock password gate | Complete for current development lock | Depends on private analytics/access configuration. Needs final security review and clearer owner workflow before public launch. |
-
-## Admin Pages
-
-| Route | Purpose | Current Status | Notes |
-| --- | --- | --- | --- |
-| `/admin/login` | Private owner login | Partially complete | Password gate exists. Needs real administrator accounts/roles later. |
-| `/admin` | Owner dashboard | Partially complete | Shows visits/searches/site lock when Upstash is connected. Needs role-based security, content-management forms, missing-content reports, and removal from public navigation in the proper roadmap phase. |
-
-## API Routes
-
-| Route | Purpose | Current Status | Notes |
-| --- | --- | --- | --- |
-| `/api/access` | Site/admin password cookie handling | Partially complete | Works for current password-gate model. Needs migration to proper auth/roles. |
-| `/api/analytics` | Visitor/search tracking | Partially complete | Depends on Upstash. Needs privacy review, bot filtering, and dashboard reporting rules. |
-| `/api/admin/site-lock` | Owner site lock control | Partially complete | Depends on Upstash. Needs admin-role protection when auth is built. |
-| `/api/flights/search` | Duffel flight search | Partially complete | Token-gated live search exists. Needs city/metropolitan airport handling, filtering, result details, and production booking checks. |
-| `/api/flights/book` | Duffel flight booking | Partially complete | Booking route exists but needs complete payment/passenger validation and production confirmation testing. |
-| `/api/duffel/component-key` | Duffel payment component key | Partially complete | Needs production account/payment confirmation testing. |
-| `/api/hotels/search` | Duffel hotel search | Broken/blocked | Current code returns blocked/error state unless Duffel Stays is enabled. Needs alternate hotel API decision if Duffel Stays is unavailable. |
-
-## Current Cross-Site Issues
-
-| Issue | Status | Notes |
+| Item | Status | Remaining work or implementation evidence |
 | --- | --- | --- |
-| Encoding artifacts | Not started | Source contains visible mojibake and misencoded Yiddish/Hebrew in multiple files. This must be repaired before serious content expansion. |
-| Factual verification | Not started | Existing destination, burial, yahrzeit, access, and shomer data needs source/date verification. Do not mark as confirmed until checked. |
-| Shomer completeness | Not started | Some records have access contacts; many do not. Needs structured shomer database and verification status. |
-| Accommodations completeness | Not started | Most destination practical sections currently show the clean unavailable message. Needs verified accommodation records. |
-| Real user accounts | Not started | Login/account/My Route are local preview features, not cross-device accounts. |
-| Public admin links | Not started | Admin links exist in navigation/footer from earlier development. Roadmap says remove from public navigation and expose only to authorized admins later. |
-| Mobile responsiveness | Measured | `npm run audit:ui` loads nine key pages at 320, 375, 390, 430, 768, 1024, 1280 and 1440 in a real browser and reports horizontal overflow, duplicated site search, doubled navigation, touch targets under 44px, tab order and unlabeled inputs. No page overflows sideways at any of those widths. Chromium only — Safari's date and form controls still need a real device. |
-| Legal/trust pages | Empty | No privacy, terms, advertising disclosure, affiliate disclosure, or travel-booking disclaimer pages found. |
+| Homepage | verify | Final acceptance on the reported Android tablet; browser search, licensed section photographs and responsive layouts are already implemented. |
+| Destination directory | verify | Ongoing factual and last-checked-date review of destination content, rather than a missing directory implementation. |
+| City guide template | verify | Record-level checking of access details, shomer contacts, food, minyanim and other time-sensitive information. |
+| Lizhensk town guide | complete | Lizhensk is an ordinary city guide now: /lizensk redirects permanently, its listings are seeded and editable at /admin/destinations. |
+| Destination content coverage | verify | Factual content coverage for individual destinations; the shared page template and editing workflow exist. |
+| Beis hachaim directory | verify | Record-level checking of cemetery names, contacts, coordinates and access details. |
+| Individual beis hachaim page | verify | Source/date checks of individual burial, yahrzeit, shomer and access records. |
+| Book flights, hotels and cars | verify | Provider hand-off acceptance with the current partner configuration; the website booking experience is implemented. |
+| Admin Duffel flight review and payment | verify | Live operator/payment acceptance is not performed as part of this app release; purchases remain closed. |
+| Login and invitation-only account access | complete | Server-backed login, expiring single-use invitations, verification, recovery and logout are implemented and regression-tested. Preserve existing-account-only Google sign-in; public signup stays closed. |
+| Account dashboard | complete | Accounts, trips, favorites and preferences use the existing shared backend. Preserve the same credentials and data across the two domains; cookies remain domain-scoped. |
+| Saved route and itinerary integration | complete | Saved routes and trips are server-backed and integrated with the itinerary planner. Keep the web planner separate from the installed information app. |
+| Site access gate | complete | The existing access controls and invitation-only registration are implemented. Keep current access decisions and closed purchases intact. |
+| Named administrator login and permissions | complete | Named admin accounts, signed sessions and server-side area permissions are implemented. Preserve existing owner access and the deliberately retained shared-password fallback. |
+| Owner dashboard | complete | Content, media, suggestions, review queues, advertisements, reporting and settings are implemented in the shared dashboard. Future roadmap features are distinct from missing dashboard implementation. |
+| Hotel search API | verify | Current partner/provider configuration needs operator acceptance; the admin/public endpoint separation is implemented. |
+| Encoding and Yiddish text | verify | Editorial review of individual Hebrew/Yiddish names and incoming content; this is not evidence that authentication or the whole website is broken. |
+| Mobile responsiveness | mobile | All four corrected native builds pass tablet emulator checks after the owner reported blank Android launches; affected-device confirmation remains open. |
+| Legal and trust pages | complete | Privacy, terms, travel verification and source/attribution pages exist. The booking and terms pages carry the applicable partner disclosures; this completion describes implementation, not a legal certification. |
+| Kosher Travel information app | complete | Search, map navigation, optional AI and website hand-off are live. Native Android startup acceptance is tracked separately below. |
+| Traveler companion: itinerary, wallet and group chat | complete | Trip-code access, itinerary viewing, a device-only PDF/photo wallet and shared trip chat are live. Preserve the latest shared chat features, existing accounts and private attachments; no advisor or travel-date cutoff is required. |
+| Android startup on all four installed apps | verify | All four apps pass Android tablet emulator checks and have verified signed updates. Confirmation on the affected tablet remains open. |
+| Signed app updates and distribution | partial | Google Play upload/publication and installed-device confirmation remain open; all four signed APK/AAB updates and verification reports are ready. |
 
-## Inventory Summary
-
-- Public page routes found: 13
-- Admin page routes found: 2
-- API routes found: 7
-- Fully empty routes found: 0
-- Main blockers before content scale-up: encoding repair, real accounts/storage, shomer data structure, factual verification workflow, and mobile audit.
+See [the active app release checklist](app-release-checklist.md) for current test, signed-build and distribution evidence. Existing owner overrides and notes remain authoritative in Admin.

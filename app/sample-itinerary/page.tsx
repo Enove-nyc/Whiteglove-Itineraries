@@ -23,8 +23,8 @@ export async function generateMetadata() {
   return pageMetadata({
     title:
       brand === "itineraries"
-        ? `A sample itinerary — what your client opens | ${BRAND_NAME.itineraries}`
-        : `A sample itinerary — what you actually receive | ${BRAND_NAME.kosher}`,
+        ? `A sample itinerary — a week in Rome | ${BRAND_NAME.itineraries}`
+        : `A sample itinerary — a week in Rome | ${BRAND_NAME.kosher}`,
     description:
       brand === "itineraries"
         ? "A whole week in Rome for a family of five, as the itinerary is handed over: a day per page, real walking and driving times, and what is filled in on a live trip that is left blank here."
@@ -101,19 +101,19 @@ export default async function SampleItineraryPage() {
       ) : (
         <section className="wg-page-hero border-b border-[var(--gold-light)] px-5 py-12 sm:px-8 sm:py-16">
           <div className="mx-auto max-w-7xl">
-            <p className="text-xs font-bold uppercase tracking-[0.26em] text-[var(--gold-ink)]">What you receive</p>
+            <p className="text-xs font-bold uppercase tracking-[0.26em] text-[var(--gold-ink)]">Sample itinerary</p>
             <h1 className="mt-5 max-w-4xl font-[family-name:var(--font-display)] text-[clamp(2.25rem,6vw,3.75rem)] leading-[1.08] text-[var(--navy)]">
-              A week in Rome, as it arrives.
+              A week in Rome.
             </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-600">
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-stone-700">
               {/* NOT "THE DOCUMENT" ANY MORE. The page shows the same week
                   three ways now — on the site, in the app, printed — and the
                   document is the last of them. It read as though the printable
                   file were the whole deliverable, which is the impression this
                   page existed to correct. */}
               {itineraries
-                ? "A family of five, seven nights — the trip your client is actually handed, in all three of the places it lives."
-                : "A family of five, seven nights, and a Shabbos in the middle of it — the trip you are actually handed, in all three of the places it lives."}
+                ? "An illustrative family itinerary, with a day-by-day schedule, companion app and printable travel plan."
+                : "A self-service family itinerary for seven nights in Rome, including Shabbos, with site, app and print views."}
             </p>
             <p className="mt-4 max-w-3xl rounded-lg border-l-4 border-[var(--gold)] bg-[#FAF8F3] px-5 py-3 leading-7 text-stone-700">
               <span className="font-semibold text-[var(--navy)]">{SAMPLE_NOTICE}</span>
@@ -130,7 +130,7 @@ export default async function SampleItineraryPage() {
           <h2 className="font-[family-name:var(--font-display)] text-3xl leading-tight text-[var(--navy)] sm:text-4xl">
             The same week, three ways
           </h2>
-          <p className="mt-3 max-w-3xl leading-7 text-stone-600">
+          <p className="mt-3 max-w-3xl leading-7 text-stone-700">
             {itineraries
               ? "Read on the site, opened as an app on your client's phone, or printed as a cover and a page per day. One trip behind all three — it stays in your account, where you can move a day and hand it over again."
               : "Read on the site, opened as an app on your phone, or printed as a cover and a page per day. One trip behind all three — it arrives in your account too, where you can move a day and print it again."}
@@ -165,7 +165,7 @@ export default async function SampleItineraryPage() {
           {WHAT_IS_IN_IT.map(([term, detail]) => (
             <div key={term} className="border-t border-[var(--gold-light)] pt-4">
               <dt className="font-[family-name:var(--font-display)] text-xl leading-tight text-[var(--navy)]">{term}</dt>
-              <dd className="mt-2 leading-7 text-stone-600">{detail}</dd>
+              <dd className="mt-2 leading-7 text-stone-700">{detail}</dd>
             </div>
           ))}
         </dl>
@@ -203,7 +203,7 @@ export default async function SampleItineraryPage() {
                       "Neither carries opening hours — they change by season, and a stale one sends a family to a locked door.",
                     ]
               }
-              className="mt-8 space-y-3 leading-7 text-stone-600"
+              className="mt-8 space-y-3 leading-7 text-stone-700"
             />
             {/* /verification is guide-only: on this domain the button would
                 throw the reader onto the other company's site, which is the
@@ -236,7 +236,7 @@ export default async function SampleItineraryPage() {
                 {itineraries ? "Build one of these" : "Free, either way"}
               </p>
             </div>
-            <p className="mt-4 leading-7 text-stone-600">
+            <p className="mt-4 leading-7 text-stone-700">
               {itineraries
                 ? "The planner builds this document from the days you enter, and the same trip opens as an app on a phone. Planning your own trips is free; a Trip Pass upgrades one trip to the app, and an adviser plan runs your clients’ trips."
                 : "Build the same document yourself, for your own dates — or answer three short steps for destination ideas first. Sign in to start; it’s free."}
@@ -263,3 +263,4 @@ export default async function SampleItineraryPage() {
     </main>
   );
 }
+

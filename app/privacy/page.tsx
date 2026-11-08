@@ -3,6 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import PageBlocks from "@/components/PageBlocks";
+import AppPrivacyNotice from "@/components/AppPrivacyNotice";
 import { resolvePage } from "@/lib/pages";
 import { contactEmailFor } from "@/lib/site-words";
 import { BRAND_DOMAIN, BRAND_NAME } from "@/lib/site-brand-core";
@@ -42,6 +43,7 @@ export default async function PrivacyPolicyPage() {
       <main className="min-h-screen bg-[var(--cream)]">
         <Navbar />
         <PageBlocks blocks={page.blocks} />
+        <AppPrivacyNotice />
         <Footer />
       </main>
     );
@@ -125,6 +127,7 @@ export default async function PrivacyPolicyPage() {
           </p>
         </Section>
       </article>
+      <AppPrivacyNotice />
       <Footer />
     </main>
   );

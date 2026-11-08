@@ -32,9 +32,9 @@ import type { SiteBrand } from "@/lib/site-brand-core";
 type View = "site" | "app" | "print";
 
 const TABS: ReadonlyArray<{ value: View; label: string; blurb: string }> = [
-  { value: "site", label: "On the site", blurb: "The trip as the planner lays it out." },
-  { value: "app", label: "In the app", blurb: "What the traveller opens on their phone." },
-  { value: "print", label: "Printed", blurb: "The document, as it comes out of a printer." },
+  { value: "site", label: "On the site", blurb: "Day-by-day itinerary." },
+  { value: "app", label: "In the app", blurb: "Companion app." },
+  { value: "print", label: "Printed", blurb: "Print layout." },
 ];
 
 export default function SampleItineraryViews({
@@ -82,7 +82,7 @@ export default function SampleItineraryViews({
             );
           })}
         </div>
-        <p className="mt-3 text-sm leading-6 text-stone-600">{chosen.blurb}</p>
+        <p className="mt-3 text-sm leading-6 text-stone-700">{chosen.blurb}</p>
       </fieldset>
 
       <div className="mt-8">
@@ -92,7 +92,7 @@ export default function SampleItineraryViews({
              three controls no client will ever have, the same way
              /app/preview does — and advisorInbox is left off. What is drawn is
              what a traveller opens. */
-          <div className="overflow-hidden rounded-2xl border border-[var(--gold-light)]">
+          <div className="wg-sample-app overflow-hidden rounded-2xl border border-[var(--gold-light)]">
             <CompanionApp trip={{ ...companion, previewAsClient: true }} />
           </div>
         )}
@@ -128,13 +128,13 @@ function SiteView({ itin }: { itin: Itinerary }) {
             </div>
 
             {day.lodging?.name && (
-              <p className="mt-2 text-sm leading-6 text-stone-600">Sleeping: {day.lodging.name}</p>
+              <p className="mt-2 text-sm leading-6 text-stone-700">Sleeping: {day.lodging.name}</p>
             )}
 
             {entries.length === 0 ? (
               /* A day with nothing on it is a decision, not a gap — the
                  Shabbos in this week is deliberately empty. */
-              <p className="mt-4 text-sm leading-6 text-stone-600">Nothing scheduled.</p>
+              <p className="mt-4 text-sm leading-6 text-stone-700">Nothing scheduled.</p>
             ) : (
               <ol className="mt-5 space-y-4">
                 {entries.map((entry, i) => (
@@ -146,9 +146,9 @@ function SiteView({ itin }: { itin: Itinerary }) {
                       </p>
                       <p className="mt-0.5 font-semibold leading-6 text-[var(--navy)]">{entry.title}</p>
                       {entry.secondaryTitle && (
-                        <p className="text-sm leading-6 text-stone-600">{entry.secondaryTitle}</p>
+                        <p className="text-sm leading-6 text-stone-700">{entry.secondaryTitle}</p>
                       )}
-                      {entry.detail && <p className="mt-0.5 text-sm leading-6 text-stone-600">{entry.detail}</p>}
+                      {entry.detail && <p className="mt-0.5 text-sm leading-6 text-stone-700">{entry.detail}</p>}
                     </div>
                   </li>
                 ))}
@@ -160,3 +160,4 @@ function SiteView({ itin }: { itin: Itinerary }) {
     </div>
   );
 }
+

@@ -22,7 +22,18 @@ export function useHechsherim(placeIds: string[]): { statuses: Record<string, He
     let live = true;
     (async () => {
       try {
-        const res = await fetch(`/api/kosher/hechsherim?ids=${encodeURIComponent(key)}`);
+        // POST, WITH THE IDS IN THE BODY. They used to go in the query string,
+        // and a page with a few hundred kosher places nearby built a URL longer
+        // than Node's request-line limit — the server answered 431 and no
+        // hechsher badge on that page ever loaded, silently, because a failed
+        // lookup is treated as "nothing confirmed". Found on /admin/hechsherim
+        // with the full directory seeded; the same hook serves KosherNearby on
+        // the public destination pages.
+        const res = await fetch("/api/kosher/hechsherim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: key.split(",") }),
+        });
         if (!res.ok) return;
         const data = await res.json();
         if (live && data?.hechsherim) setLoaded({ key, map: data.hechsherim, agencies: allHechsherim(data.agencies) });

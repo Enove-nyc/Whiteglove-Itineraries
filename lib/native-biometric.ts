@@ -21,7 +21,16 @@
 
 type NativeBiometricPlugin = {
   isAvailable: () => Promise<{ isAvailable: boolean; biometryType?: number }>;
-  verifyIdentity: (options?: { reason?: string; title?: string; subtitle?: string }) => Promise<void>;
+  verifyIdentity: (options?: {
+    reason?: string;
+    title?: string;
+    subtitle?: string;
+    /** How many misreads before the prompt gives up. The plugin's default is ONE. */
+    maxAttempts?: number;
+    /** Offer the phone's PIN / pattern when the finger or face is not recognised. */
+    useFallback?: boolean;
+    negativeButtonText?: string;
+  }) => Promise<void>;
   setCredentials: (options: { username: string; password: string; server: string }) => Promise<void>;
   getCredentials: (options: { server: string }) => Promise<{ username: string; password: string }>;
   deleteCredentials: (options: { server: string }) => Promise<void>;
@@ -34,6 +43,17 @@ function plugin(): NativeBiometricPlugin | null {
   }).Capacitor;
   if (!cap?.isNativePlatform?.()) return null;
   return cap.Plugins?.NativeBiometric ?? null;
+}
+
+/**
+ * How the system prompt behaves. THE PLUGIN'S DEFAULT IS ONE ATTEMPT: a single
+ * misread finished the prompt with an error, so a finger placed slightly off
+ * once looked like "it does not work with my fingerprints". The phone's own
+ * lock screen allows several tries and then offers the PIN; this asks for the
+ * same, so the prompt behaves the way the rest of the phone does.
+ */
+function promptOptions(reason: string) {
+  return { reason, title: "White Glove", subtitle: reason, maxAttempts: 5, useFallback: true, negativeButtonText: "Use the password" };
 }
 
 /** True only inside the native app, with the plugin present and a sensor enrolled. */
@@ -90,7 +110,7 @@ export async function unlockSecret(server: string, reason: string): Promise<stri
   const p = plugin();
   if (!p) return null;
   try {
-    await p.verifyIdentity({ reason, title: "White Glove", subtitle: reason });
+    await p.verifyIdentity(promptOptions(reason));
     const creds = await p.getCredentials({ server });
     return creds?.password || null;
   } catch {
@@ -106,7 +126,7 @@ export async function unlockCredential(server: string, reason: string): Promise<
   const p = plugin();
   if (!p) return null;
   try {
-    await p.verifyIdentity({ reason, title: "White Glove", subtitle: reason });
+    await p.verifyIdentity(promptOptions(reason));
     const creds = await p.getCredentials({ server });
     if (!creds?.password) return null;
     return { username: creds.username, password: creds.password };

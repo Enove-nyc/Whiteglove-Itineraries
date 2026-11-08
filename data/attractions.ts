@@ -1,3 +1,5 @@
+import { expandedAttractions } from "@/data/expanded-attractions";
+
 // What to actually do on a kosher vacation, in the places people take one.
 //
 // The site knows a great deal about kevarim and almost nothing about the rest
@@ -5079,7 +5081,7 @@ export const attractions: Attraction[] = [
     summary:
       "The rift valley where the Atlantic plates pull apart, and where Iceland's parliament first met in 930 — a UNESCO site, and the start of the Golden Circle.",
     address: "Þingvellir National Park, 806 Iceland",
-    coordinates: "64.2554, 21.0378",
+    coordinates: "64.2554, -21.0378",
     website: "https://www.thingvellir.is/en/",
     notes: [
       "The park is free to walk; there is a charge for parking. You can walk between the continental plates in the Almannagjá gorge.",
@@ -5096,7 +5098,7 @@ export const attractions: Attraction[] = [
     summary:
       "The geothermal field that gave the world the word 'geyser' — the old Geysir is mostly quiet now, but Strokkur beside it shoots water 30 metres up every few minutes.",
     address: "Haukadalur, 806 Iceland",
-    coordinates: "64.3136, 20.2994",
+    coordinates: "64.3136, -20.2994",
     notes: [
       "Free; keep behind the ropes — the water is boiling.",
       "The middle stop of the Golden Circle, between Þingvellir and Gullfoss.",
@@ -5112,7 +5114,7 @@ export const attractions: Attraction[] = [
     summary:
       "The 'golden falls' — the Hvítá river dropping in two great steps into a canyon, the third of the Golden Circle sights.",
     address: "Gullfoss, 801 Iceland",
-    coordinates: "64.3261, 20.1211",
+    coordinates: "64.3261, -20.1211",
     notes: [
       "Free; paths and viewing platforms above and beside the falls, slippery with spray and ice.",
       "An hour and a half from Reykjavík, so the three Golden Circle stops are a day out and back.",
@@ -5128,7 +5130,7 @@ export const attractions: Attraction[] = [
     summary:
       "A broad 60-metre waterfall on the south-coast Ring Road, throwing up so much spray that a rainbow stands in it on a sunny day.",
     address: "Skógafoss, 861 Iceland",
-    coordinates: "63.5321, 19.5111",
+    coordinates: "63.5321, -19.5111",
     notes: [
       "Free; you can walk right up to the base, and a long stair climbs to a viewpoint at the top.",
       "On the south coast about two hours from Reykjavík, near the Seljalandsfoss waterfall you can walk behind.",
@@ -12640,4 +12642,5 @@ export const attractions: Attraction[] = [
     ],
     sourceUrl: "https://en.wikipedia.org/wiki/Shanghai_Jewish_Refugees_Museum",
   },
+  ...expandedAttractions,
 ];

@@ -1,3 +1,5 @@
+> Historical launch notes. Current traveler-app release status is in [app-release-checklist.md](app-release-checklist.md). Superseded service/pricing and personal About questions below are not current requests to the owner.
+
 # White Glove Itineraries — what is left
 
 Checked against the live site and the current main branch.

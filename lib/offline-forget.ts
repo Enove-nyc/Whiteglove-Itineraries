@@ -1,3 +1,4 @@
+import { forgetPersonalWallet } from "@/lib/personal-travel-wallet";
 import { forgetAllOffline } from "@/lib/offline-trip-store";
 
 /**
@@ -29,6 +30,7 @@ import { forgetAllOffline } from "@/lib/offline-trip-store";
  * with.
  */
 export async function forgetOfflineData(): Promise<void> {
+  await forgetPersonalWallet().catch(() => {});
   // The on-device database first — it holds the boarding-pass bytes, and it
   // does not depend on a worker being awake.
   await forgetAllOffline();
@@ -118,3 +120,4 @@ async function sweepPrivatePages(): Promise<void> {
       }),
   );
 }
+

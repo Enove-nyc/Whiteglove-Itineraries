@@ -1,0 +1,100 @@
+name: Database cost and cache validation
+on:
+  push:
+    branches: [codex/root-cause-costs]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: database-cost-validation
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wg
+          POSTGRES_PASSWORD: wg
+          POSTGRES_DB: whiteglove
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5433:5432']
+        options: --health-cmd "pg_isready -U wg -d whiteglove" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgresql://wg:wg@127.0.0.1:5433/whiteglove?options=-c%20log_statement%3Dall
+      UPSTASH_REDIS_REST_URL: http://127.0.0.1:6380
+      UPSTASH_REDIS_REST_TOKEN: fixture-only
+      OWNER_EMAIL: owner@audit.local
+      ADMIN_PASSWORD: audit-only-password
+      WHITE_GLOVE_SESSION_SECRET: audit-only-session-secret-01234567890123456789
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3002
+      NEXT_PUBLIC_SITE_BRAND: itineraries
+      AUDIT_ISOLATED: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+      CONTENT_CACHE_FIXTURE_ORIGINS: http://127.0.0.1:3002,http://127.0.0.1:3003
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: sudo apt-get update -qq && sudo apt-get install -y redis-tools
+      - run: npm ci
+      - name: Full regression suite without live credentials
+        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npm test
+      - name: Prepare disposable database transport and schema
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout scripts/ws.key -out scripts/ws.crt -days 2 -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
+          sudo env AUDIT_ISOLATED=1 COST_TRUST_AUTH_BRIDGE=1 node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
+          node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
+          npx prisma migrate deploy
+          npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - name: Verify actual Prisma SQL over disposable transport before building
+        run: node --import tsx scripts/cost-cache-fixture.ts probe
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/cost-neon-fixture.mjs
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npx eslint lib/cache-tags.ts lib/content-cache-invalidation.ts lib/prisma.ts lib/pages.ts lib/content.ts lib/cemeteries-view.ts lib/place-review-store.ts app/api/internal/content-cache/route.ts scripts/cost-cache-fixture.ts
+      - name: Production build against disposable stores
+        run: npm run build
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/cost-neon-fixture.mjs
+      - name: Start independent production builds sharing the same stores
+        run: |
+          mkdir -p /tmp/wg-second
+          tar --exclude='./node_modules' --exclude='./.git' --exclude='./.env*' -cf - . | tar -xf - -C /tmp/wg-second
+          ln -s "$PWD/node_modules" /tmp/wg-second/node_modules
+          NODE_EXTRA_CA_CERTS="$PWD/scripts/ws.crt" NODE_OPTIONS="--import=$PWD/scripts/cost-neon-fixture.mjs" RAILWAY_SERVICE_ID=cost-fixture-a npx next start -p 3002 > /tmp/cost-app-a.log 2>&1 &
+          cd /tmp/wg-second
+          NODE_EXTRA_CA_CERTS="$PWD/scripts/ws.crt" NODE_OPTIONS="--import=$PWD/scripts/cost-neon-fixture.mjs" RAILWAY_SERVICE_ID=cost-fixture-b NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3003 npx next start -p 3003 > /tmp/cost-app-b.log 2>&1 &
+          for n in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3002/login > /dev/null && curl -fsS http://127.0.0.1:3003/login > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Measure SQL reuse and verify committed changes across both caches
+        run: node scripts/cost-cache-verification.mjs
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/cost-neon-fixture.mjs
+          COST_PG_CONTAINER: ${{ job.services.postgres.id }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: database-cost-verification
+          path: cost-results/
+          retention-days: 7
+      - name: Disposable service diagnostics
+        if: failure()
+        run: |
+          for log in /tmp/cost-app-a.log /tmp/cost-app-b.log /tmp/pg-bridge.log /tmp/redis-rest.log; do
+            if [ -f "$log" ]; then tail -n 50 "$log"; fi
+          done

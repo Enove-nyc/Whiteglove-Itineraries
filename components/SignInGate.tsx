@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import LoginForm from "@/components/LoginForm";
 import { useFocusTrap } from "@/components/useFocusTrap";
-import { useSignedIn } from "@/lib/use-signed-in";
+import { currentViewer, useSignedIn } from "@/lib/use-signed-in";
 
 /**
  * The small sign-in dialog that stands between a signed-out visitor and a
@@ -45,19 +45,30 @@ const DEFAULT_REASON = "Sign in to save";
 export function useRequireSignIn(): (onSuccess: () => void, reason?: string) => void {
   const ctx = useContext(GateContext);
   const signedIn = useSignedIn();
+  const checking = useRef(false);
   return useCallback(
     (onSuccess: () => void, reason?: string) => {
       if (signedIn) {
         onSuccess();
         return;
       }
-      if (!ctx) {
-        // No provider in the tree (e.g. an isolated test render) — fail open
-        // to the real sign-in page rather than doing nothing.
-        window.location.href = "/login";
+      const prompt = () => {
+        if (!ctx) { window.location.href = "/login"; return; }
+        ctx.requireSignIn(onSuccess, reason);
+      };
+      if (signedIn === null) {
+        // Unknown is not signed out. Keep the user's first click while the
+        // already-running session request completes, and ignore duplicate taps.
+        if (checking.current) return;
+        checking.current = true;
+        void currentViewer().then(viewer => {
+          checking.current = false;
+          if (viewer.signedIn) onSuccess();
+          else prompt();
+        });
         return;
       }
-      ctx.requireSignIn(onSuccess, reason);
+      prompt();
     },
     [ctx, signedIn],
   );
@@ -135,6 +146,7 @@ export function SignInGateProvider({
               </button>
             </div>
             <LoginForm
+              initialMode="login"
               phoneSignupAvailable={phoneSignupAvailable}
               googleAvailable={googleAvailable}
               onSuccess={() => {
@@ -149,3 +161,4 @@ export function SignInGateProvider({
     </GateContext.Provider>
   );
 }
+

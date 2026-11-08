@@ -1,0 +1,122 @@
+name: Visitor journeys
+on:
+  push:
+    branches: [codex/invitation-only]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: invitation-only
+  cancel-in-progress: true
+jobs:
+  isolated:
+    if: contains(github.event.head_commit.message, '[validate invitations]') || contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wg
+          POSTGRES_PASSWORD: wg
+          POSTGRES_DB: whiteglove
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5433:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgresql://wg:wg@127.0.0.1:5433/whiteglove
+      UPSTASH_REDIS_REST_URL: http://127.0.0.1:6380
+      UPSTASH_REDIS_REST_TOKEN: fixture-only
+      OWNER_EMAIL: owner@audit.local
+      ADMIN_PASSWORD: audit-only-password
+      WHITE_GLOVE_SESSION_SECRET: audit-only-session-secret-01234567890123456789
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3002
+      NEXT_PUBLIC_SITE_BRAND: itineraries
+      AUDIT_BRAND: itineraries
+      AUDIT_ISOLATED: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: sudo apt-get update -qq && sudo apt-get install -y redis-tools
+      - run: npm ci
+      - name: Complete regression suite
+        run: env -u DATABASE_URL -u UPSTASH_REDIS_REST_URL -u UPSTASH_REDIS_REST_TOKEN -u WHITE_GLOVE_SESSION_SECRET -u ADMIN_PASSWORD -u OWNER_EMAIL npm test
+      - run: npm install --ignore-scripts --no-save --package-lock=false @axe-core/playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Start disposable stores and install schema
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout scripts/ws.key -out scripts/ws.crt -days 2 -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
+          sudo node scripts/ws-pg-bridge.mjs > /tmp/pg-bridge.log 2>&1 &
+          node scripts/visitor-redis.mjs > /tmp/redis-rest.log 2>&1 &
+          npx prisma migrate deploy
+      - name: Invitation acceptance against real Redis
+        run: npx tsx --test tests/account-invitations.test.ts
+        env:
+          INVITE_INTEGRATION: '1'
+      - run: npx tsc --noEmit
+      - run: npx eslint components/ServiceWorkerRegister.tsx components/TravelpayoutsScript.tsx lib/account-invitations.ts lib/account-store.ts app/api/account/register/route.ts app/api/account/invitation/route.ts app/join/page.tsx components/InvitationJoin.tsx components/LoginForm.tsx components/SignInGate.tsx app/login/page.tsx app/pricing/page.tsx lib/beta-notice.ts components/HomeAudience.tsx components/ItinerariesHome.tsx data/about-itineraries.ts data/about-profile.ts app/page.tsx app/layout.tsx lib/site-assistant.ts
+      - run: npm run build
+        if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/scripts/ws.crt
+      - name: Start actual production build
+        if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
+        run: |
+          NODE_EXTRA_CA_CERTS="$PWD/scripts/ws.crt" npx next start -p 3002 > /tmp/visitor-app.log 2>&1 &
+          for n in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3002/login > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/visitor-app.log
+          exit 1
+      - name: Exercise isolated visitor and account journeys
+        if: contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch'
+        run: node scripts/visitor-journeys.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && (contains(github.event.head_commit.message, '[validate visitors]') || github.event_name == 'workflow_dispatch')
+        with:
+          name: isolated-visitor-journeys
+          path: journey-results/
+          retention-days: 7
+      - name: Local service diagnostics
+        if: failure()
+        run: |
+          for log in /tmp/visitor-app.log /tmp/pg-bridge.log /tmp/redis-rest.log; do
+            if [ -f "$log" ]; then tail -n 60 "$log"; fi
+          done
+  live:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        brand: [itineraries, travel]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false @axe-core/playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/visitor-journeys.mjs
+        env:
+          AUDIT_BRAND: ${{ matrix.brand }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-visitor-journeys-${{ matrix.brand }}
+          path: journey-results/
+          retention-days: 7
+
+
+

@@ -8,7 +8,7 @@
 // styles are therefore network-first: the newest version always wins when
 // online, and the cache is only a fallback when offline. Only truly static
 // media (images, fonts) is cache-first.
-const CACHE = "wg-cache-v8";
+const CACHE = "wg-cache-v9";
 
 /**
  * The day's documents, kept on purpose.
@@ -128,8 +128,21 @@ function networkFirst(req) {
   // a year-old copy of its own code. A navigation Request also cannot be rebuilt
   // through `new Request(req, init)` (the constructor rejects a navigate-mode
   // request with a non-empty init), which is the other reason the two split.
+  //
+  // AND NAVIGATIONS DO NOT FOLLOW REDIRECTS HERE — `redirect: "manual"`.
+  //
+  // fetch() follows redirects by default, so a navigation to a path that 307s
+  // arrived back here as the FINAL page carrying `redirected: true`. A service
+  // worker may not answer a navigation with a redirected response — a
+  // navigation's own redirect mode is "manual" — so the browser throws the
+  // answer away and the tab shows a network error with the server having
+  // returned 200 twice. Signed in, this site's "/" redirects to /app or
+  // /advisor, so the home page failed for exactly the people who have the app
+  // installed. Asking for the redirect unfollowed hands back an opaque
+  // redirect, which the browser is allowed to follow itself, and the page
+  // loads.
   const fresh = isNav
-    ? fetch(req.url, { credentials: "same-origin" })
+    ? fetch(req.url, { credentials: "same-origin", redirect: "manual" })
     : fetch(new Request(req, { cache: "reload" }));
   return fresh
     .then(store)

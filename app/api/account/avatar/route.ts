@@ -15,7 +15,7 @@ const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 // the real one — checked below so an oversized picture is refused here with
 // the true limit in the message, not accepted and then lost to a blank
 // "could not save" when the store refuses the write.
-export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 async function whoAsked() {
   const cookieStore = await cookies();

@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { IconButton } from "@/components/icons/IconAction";
-import type { Promotion } from "@/lib/admin-content";
+import type { PublicPromotion } from "@/lib/admin-content";
 
 export default function PromotionBanner({
   promotion,
   placement,
   compact = false,
 }: {
-  promotion: Promotion | null;
+  promotion: PublicPromotion | null;
   placement: string;
   compact?: boolean;
 }) {

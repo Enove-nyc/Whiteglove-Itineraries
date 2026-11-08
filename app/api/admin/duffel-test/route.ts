@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readApiKey } from "@/lib/api-key";
-import { explainDuffelError } from "@/app/api/flights/search/route";
+import { explainDuffelError } from "@/lib/duffel-error";
 import { inspectDuffelToken, duffelTokenHelp } from "@/lib/duffel-token";
 import { redact } from "@/lib/redact";
 import { isValidAccessToken } from "@/lib/secure-access";

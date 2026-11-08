@@ -3,7 +3,7 @@
 import Link from "next/link";
 import GloveMark from "@/components/GloveMark";
 import PromotionBanner from "@/components/PromotionBanner";
-import type { Promotion } from "@/lib/admin-content";
+import type { PublicPromotion } from "@/lib/admin-content";
 import { useIsItineraries } from "@/components/useSiteBrand";
 
 // The band at the bottom of an itinerary.
@@ -22,7 +22,7 @@ import { useIsItineraries } from "@/components/useSiteBrand";
 // out of an installed itineraries app entirely (Android drops a Trusted Web
 // Activity to an ordinary browser tab, address bar and all, the moment
 // navigation leaves the verified domain).
-export default function ItineraryFooter({ promotion }: { promotion: Promotion | null }) {
+export default function ItineraryFooter({ promotion }: { promotion: PublicPromotion | null }) {
   // Start from the build's own brand so the itineraries deployment renders the
   // itineraries button at SSR — no pre-hydration flash of the /cemeteries link
   // (which would 307 to the kosher domain if tapped in that window). The effect
