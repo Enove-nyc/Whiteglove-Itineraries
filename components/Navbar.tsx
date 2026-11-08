@@ -282,7 +282,7 @@ export default function Navbar({ brand: brandProp, minimal = false, homeHref, bo
       <nav
         ref={navRef}
         aria-label="Main"
-        className={`relative sticky top-0 z-[var(--wg-z-header)] border-b border-[var(--gold-light)] bg-[rgba(252,250,246,0.97)] shadow-[0_1px_12px_rgba(16, 47, 53,.05)] backdrop-blur-md transition-[min-height] ${
+        className={`wg-site-header relative sticky top-0 z-[var(--wg-z-header)] border-b border-[var(--gold-light)] bg-[var(--header-background)] shadow-[0_1px_12px_rgba(16, 47, 53,.05)] backdrop-blur-md transition-[min-height] ${
           scrolled ? "min-h-16" : "min-h-20"
         }`}
       >

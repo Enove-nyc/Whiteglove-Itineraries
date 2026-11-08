@@ -25,7 +25,8 @@ export default function AdminSearch({ areas, pathname }: { areas: AdminArea[] | 
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const [hits, setHits] = useState<{ query: string; response: AdminSearchResponse } | null>(null);
+  const [hits, setHits] = useState<{ query: string; response: AdminSearchResponse; failed?: boolean } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = "admin-search-results";
@@ -85,17 +86,22 @@ export default function AdminSearch({ areas, pathname }: { areas: AdminArea[] | 
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       fetch(`/api/admin/search?q=${encodeURIComponent(trimmed)}&limit=24`, { signal: controller.signal })
-        .then((res) => (res.ok ? res.json() : { query: trimmed, results: [] }))
-        .then((payload: AdminSearchResponse) => setHits({ query: trimmed, response: payload }))
+        .then((res) => {
+          if (!res.ok) throw new Error("Admin search failed");
+          return res.json();
+        })
+        .then((payload: AdminSearchResponse) => {
+          if (!controller.signal.aborted) setHits({ query: trimmed, response: payload });
+        })
         .catch(() => {
-          if (!controller.signal.aborted) setHits({ query: trimmed, response: { query: trimmed, results: [] } });
+          if (!controller.signal.aborted) setHits({ query: trimmed, response: { query: trimmed, results: [] }, failed: true });
         });
     }, 160);
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [trimmed]);
+  }, [trimmed, attempt]);
 
   function go(hit: AdminHit) {
     window.location.href = to(hit.href);
@@ -147,6 +153,11 @@ export default function AdminSearch({ areas, pathname }: { areas: AdminArea[] | 
         >
           {searching ? (
             <p className="px-3 py-3 text-sm text-stone-600">Searching…</p>
+          ) : hits?.query === trimmed && hits.failed ? (
+            <div role="alert" className="px-3 py-3 text-sm text-red-900">
+              <p>Search is unavailable. Please try again.</p>
+              <button type="button" className="mt-2 min-h-11 rounded-md border border-red-800 px-3 font-semibold" onClick={() => { setHits(null); setAttempt(value => value + 1); }}>Retry search</button>
+            </div>
           ) : flat.length === 0 ? (
             <p className="px-3 py-3 text-sm text-stone-600">
               {trimmed ? "Nothing matches that." : "Type a page name. Press / from anywhere."}

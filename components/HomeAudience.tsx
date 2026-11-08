@@ -24,9 +24,9 @@ export default function HomeAudience() {
     <>
       <fieldset className="mt-7">
         <legend className="sr-only">Who are you planning for?</legend>
-        <div className="mx-auto inline-flex flex-wrap justify-center gap-1 rounded-full border border-white/30 p-1">
+        <div className="mx-auto inline-flex flex-wrap justify-center gap-1 rounded-full border border-[var(--header-border)] p-1">
           {([["clients", "Planning trips for clients"], ["own", "Planning my own trip"]] as const).map(([value, label]) => (
-            <label key={value} className={`inline-flex min-h-11 cursor-pointer items-center rounded-full px-4 text-sm font-semibold focus-within:ring-2 focus-within:ring-white ${who === value ? "bg-white text-[var(--navy)]" : "text-[#e0e7e7]"}`}>
+            <label key={value} className={`inline-flex min-h-11 cursor-pointer items-center rounded-full px-4 text-sm font-semibold focus-within:ring-2 focus-within:ring-[var(--gold-ink)] ${who === value ? "bg-[var(--header-ink)] text-white" : "text-[var(--header-muted)]"}`}>
               <input type="radio" name="audience" value={value} checked={who === value} onChange={() => setWho(value)} className="sr-only" />
               {label}
             </label>
@@ -34,10 +34,10 @@ export default function HomeAudience() {
         </div>
       </fieldset>
       <h1 className="mt-7 font-[family-name:var(--font-display)] text-4xl leading-tight sm:text-6xl">{copy.heading}</h1>
-      <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-[#e0e7e7] sm:text-lg">{copy.body}</p>
+      <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-[var(--header-muted)] sm:text-lg">{copy.body}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Link href="/sample-itinerary" className={`${CTA} bg-white text-[var(--navy)]`}>Explore a sample itinerary</Link>
-        <Link href="/about" className={`${CTA} border border-white/50 text-white`}>Explore the platform</Link>
+        <Link href="/sample-itinerary" className={`${CTA} bg-[var(--header-ink)] text-white`}>Explore a sample itinerary</Link>
+        <Link href="/about" className={`${CTA} border border-[var(--header-border)] text-[var(--header-ink)]`}>Explore the platform</Link>
       </div>
     </>
   );

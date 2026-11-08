@@ -123,6 +123,8 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // Which flight the top form is editing, if any. Null means adding a new one.
   const [editingFlightId, setEditingFlightId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [loadedKey, setLoadedKey] = useState(-1);
+  const [loadError, setLoadError] = useState<{ key: number; message: string } | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveQueue] = useState(() => createItinerarySaveQueue<{ itinerary: Itinerary; tripId?: string }>(async (value) => {
     const response = await fetch("/api/account/itinerary", {
@@ -217,16 +219,15 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           setItin(data?.itinerary ? { ...emptyItinerary(), ...data.itinerary } : emptyItinerary());
           setTripId(data?.tripId ?? null);
           setLoaded(true);
+          setLoadedKey(reloadKey);
           return;
         }
       } catch {
         /* signed out, or offline */
       }
-      // Signed out: an empty planner they can look around. The first thing
-      // they try to change opens the sign-in dialog (see persist).
+      // A failed read must never turn an existing trip into an editable blank.
       if (active) {
-        setItin(emptyItinerary());
-        setLoaded(true);
+        setLoadError({ key: reloadKey, message: "Could not load your trip. Check your connection or sign in again, then retry." });
       }
     })();
     return () => {
@@ -240,6 +241,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // sign-in dialog instead of writing a change nowhere it can be got back
   // from; once signed in, this and every later call go straight through.
   function persist(next: Itinerary): Promise<boolean> {
+    if (loadedKey !== reloadKey) return Promise.resolve(false);
     let completion = Promise.resolve(false);
     requireSignIn(() => {
       setItin(next);
@@ -464,6 +466,15 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
     );
   }
 
+  if (loadedKey !== reloadKey) {
+    return loadError?.key === reloadKey ? (
+      <div role="alert" className="rounded-xl border border-red-200 bg-white p-5 text-sm text-red-900">
+        <p>{loadError.message}</p>
+        <button type="button" onClick={() => setReloadKey(k => k + 1)} className="mt-3 min-h-11 rounded-md border border-red-800 px-4 font-semibold">Retry loading trip</button>
+      </div>
+    ) : <p role="status" className="py-10 text-sm text-stone-600">Loading your trip…</p>;
+  }
+
   return (
     <div className="space-y-5">
       {/* Back to the index — the planner is a CRM now, one itinerary at a time.
@@ -510,7 +521,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
         itin={itin}
         onNext={(step) => {
           if (step === "dates" || step === "travelers") {
-            const details = document.getElementById("trip-details") as HTMLDetailsElement | null;
+            const details = document.getElementById(step === "travelers" ? "trip-travelers" : "trip-details") as HTMLDetailsElement | null;
             if (details) { details.open = true; details.scrollIntoView({ behavior: "smooth", block: "center" }); }
           } else {
             setTab(step === "stay" ? "hotel" : step === "flights" ? "flight" : "activity");
@@ -760,7 +771,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
 
       {hasDates && (
       <div className="grid gap-3 md:grid-cols-2">
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
+        <details id="trip-travelers" className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
             <span className="text-sm font-semibold text-[var(--navy)]">Travelers <span className="font-normal text-stone-400">({travelersOf(itin).length})</span></span>
             <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>

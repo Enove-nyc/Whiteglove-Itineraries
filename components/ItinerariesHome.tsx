@@ -28,9 +28,9 @@ export default function ItinerariesHome() {
   return (
     <main className="wg-itineraries-home min-h-screen bg-[var(--cream)] text-[var(--ink)]">
       <Navbar brand="itineraries" />
-      <section className="wg-itineraries-hero bg-[var(--navy)] px-5 py-16 text-white sm:px-8 sm:py-24">
+      <section className="wg-itineraries-hero px-5 py-16 text-[var(--header-ink)] sm:px-8 sm:py-24">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D8BC7A]">For travellers and travel advisers</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--gold-ink)]">For travellers and travel advisers</p>
           <HomeAudience />
 
         </div>
