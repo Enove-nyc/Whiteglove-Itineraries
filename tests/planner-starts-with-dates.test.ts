@@ -19,7 +19,7 @@ import { describe, it } from "node:test";
  */
 
 function code(path: string): string {
-  return readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  return readFileSync(path, "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
 describe("the setup panel asks for the dates itself", () => {

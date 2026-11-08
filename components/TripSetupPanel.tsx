@@ -95,7 +95,7 @@ export default function TripSetupPanel({
   const [draft, setDraft] = useState({ title: itin.title ?? "", startDate: itin.startDate ?? "", endDate: itin.endDate ?? "" });
 
   const steps = setupSteps(itin);
-  const progress = setupProgress([...steps].sort((a, b) => ["dates", "stay", "stops", "flights", "travelers"].indexOf(a.id) - ["dates", "stay", "stops", "flights", "travelers"].indexOf(b.id)));
+  const progress = setupProgress(steps);
   const datesDone = steps.find((step) => step.id === "dates")?.done ?? false;
   const untouched = tripIsUntouched(itin);
   const suggested = destinationForTrip(itin, vacationDestinations);
@@ -120,7 +120,7 @@ export default function TripSetupPanel({
             </p>
           )}
         </div>
-        {progress.next && <button type="button" onClick={() => onNext(progress.next!.id)} className="min-h-11 rounded-md bg-[var(--navy)] px-4 text-sm font-semibold text-white">{progress.next.id === "dates" ? "Set dates" : progress.next.id === "stay" ? "Add stay" : progress.next.id === "stops" ? "Add activity" : progress.next.id === "flights" ? "Add flight" : "Add travelers"}</button>}
+        {datesDone && progress.next && <button type="button" onClick={() => onNext(progress.next!.id)} className="min-h-11 rounded-md bg-[var(--navy)] px-4 text-sm font-semibold text-white">{progress.next.id === "dates" ? "Set dates" : progress.next.id === "stay" ? "Add stay" : progress.next.id === "stops" ? "Add activity" : progress.next.id === "flights" ? "Add flight" : "Add travelers"}</button>}
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
