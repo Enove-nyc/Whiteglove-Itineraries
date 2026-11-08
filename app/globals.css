@@ -644,10 +644,10 @@ nav :where(svg, .glove-mark),
 
   /* Semantic aliases (approved names) — same values, so nothing competes.
    * --color-background/--color-foreground are owned by the @theme block above. */
-  --header-background: #F3EBDD;
-  --header-ink: #342E27;
-  --header-muted: #62574A;
-  --header-border: #D9CCB9;
+  --header-background: #E1EED8;
+  --header-ink: #263D2D;
+  --header-muted: #49604E;
+  --header-border: #BDD0B1;
   --color-canvas: var(--cream);
   --color-surface-muted: var(--cream-deep);
   --color-surface: var(--surface);
@@ -847,7 +847,7 @@ html[data-app-shell] nav[aria-label="Main"]::before {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 4px 12px rgba(20,66,70,.12);
 }
 .wg-travel-hero form button[type="submit"]:hover {
-  background: #514536;
+  background: #344F39;
 }
 .wg-travel-categories > li { --card-wash: #edf6f7; }
 .wg-travel-categories > li:nth-child(2) { --card-wash: #fff6e8; }
@@ -893,7 +893,7 @@ html[data-app-shell] nav[aria-label="Main"]::before {
 }
 .wg-site-header {
   --navy: var(--header-ink);
-  --cream-deep: #EAE0D2;
+  --cream-deep: #D0E2C5;
   background: var(--header-background);
   border-color: var(--header-border);
 }
