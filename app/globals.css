@@ -122,7 +122,7 @@
 @theme inline {
   /* Repointed from dead Geist template vars (--background/--foreground were
    * never defined) to the palette, so the few bg-background/text-foreground
-   * utilities in the tree adopt Mushroom ground and teal ink like everything else. */
+   * utilities in the tree adopt warm ivory ground and teal ink like everything else. */
   --color-background: var(--cream);
   --color-foreground: var(--ink);
   --font-sans: var(--font-geist-sans);
@@ -608,7 +608,7 @@ nav :where(svg, .glove-mark),
 
 /* 2026 interface system: quiet, touch-first, and shared by every route.
  *
- * THE PALETTE LIVES HERE, ONCE. Mushroom ground, Deep Heritage Teal brand,
+ * THE PALETTE LIVES HERE, ONCE. warm ivory ground, Deep Heritage Teal brand,
  * Antique Brass accent — the same block, values and semantic aliases as the
  * kosher deployment, so the two products read one palette. */
 :root {
@@ -628,18 +628,19 @@ nav :where(svg, .glove-mark),
    */
   --gold-ink: #6B4A1C;
   --gold-light: #D8BC7A;
-  --cream: #D5CEC3;
-  /* Deeper mushroom for subtle layering; documented shade, not a new brand hue. */
-  --cream-deep: #C7BFB1;
-  /* Lifted a shade brighter than a flat warm white, so cards separate more
-   * clearly from the Mushroom ground — the "more pop" tweak. Still warm. */
-  --surface: #FEFDFB;
+  --cream: #F7F4EE;
+  /* Warm secondary surface for fields and alternate rows. */
+  --cream-deep: #EFE9DF;
+  /* Warm white cards and forms. */
+  --surface: #FFFDFC;
   --ink: #102F35;
   --wg-radius: 1rem;
   --wg-shadow: 0 14px 40px rgba(16, 47, 53, 0.14);
 
   /* Semantic aliases (approved names) — same values, so nothing competes.
    * --color-background/--color-foreground are owned by the @theme block above. */
+  --color-canvas: var(--cream);
+  --color-surface-muted: var(--cream-deep);
   --color-surface: var(--surface);
   --color-surface-strong: #FFFFFF;
   --color-primary: var(--navy);
@@ -699,7 +700,7 @@ p {
 .wg-page-hero {
   background:
     radial-gradient(circle at 90% 5%, rgba(198, 161, 91, 0.18), transparent 28rem),
-    linear-gradient(180deg, #fff, rgba(213, 206, 195, 0.72));
+    linear-gradient(180deg, var(--surface), var(--cream));
 }
 
 .wg-card,

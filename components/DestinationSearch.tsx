@@ -395,7 +395,7 @@ export default function DestinationSearch({
             <>
               {groups.map((group) => (
                 <div key={group.key} role="group" aria-label={group.heading}>
-                  <p className="sticky top-0 border-b border-[var(--gold-light)] bg-[#D5CEC3] px-5 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">
+                  <p className="sticky top-0 border-b border-[var(--gold-light)] bg-[var(--color-surface-muted)] px-5 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold-ink)]">
                     {group.heading}
                   </p>
                   {group.hits.map((match) => {

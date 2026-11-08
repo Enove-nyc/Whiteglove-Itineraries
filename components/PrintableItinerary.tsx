@@ -309,7 +309,7 @@ const css = `
 
   .wg-toolbar {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 12px; padding: 14px 22px; background: #D5CEC3; border-bottom: 1px solid ${GOLD_RULE};
+    gap: 12px; padding: 14px 22px; background: #F7F4EE; border-bottom: 1px solid ${GOLD_RULE};
     font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: ${BODY};
   }
   .wg-toolbar button {

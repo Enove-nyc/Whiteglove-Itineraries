@@ -29,7 +29,7 @@ describe("the admin trail", () => {
   });
 
   it("links every crumb except the last", () => {
-    assert.deepEqual(links("/admin/kevarim"), ["/admin", null]);
+    assert.deepEqual(links("/admin/kevarim"), ["/admin", "/admin/directory", null]);
   });
 
   it("names a screen the nav does not list, rather than pretending you are on the section front page", () => {

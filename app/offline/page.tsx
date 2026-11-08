@@ -8,7 +8,7 @@ export const metadata = { title: "You're offline — White Glove", robots: { ind
 
 export default function OfflinePage() {
   return (
-    <main style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#D5CEC3", padding: "0 20px", fontFamily: "Inter,system-ui,sans-serif" }}>
+    <main style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-canvas)", padding: "0 20px", fontFamily: "Inter,system-ui,sans-serif" }}>
       <div style={{ width: "100%", maxWidth: 440, textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ font: "600 11px/1 Inter,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: "#C6A15B" }}>No connection</div>
         <h1 style={{ font: "400 26px/1.2 Georgia,'Times New Roman',serif", color: "#102F35", margin: 0 }}>You&rsquo;re offline</h1>

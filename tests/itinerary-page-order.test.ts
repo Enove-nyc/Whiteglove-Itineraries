@@ -66,7 +66,7 @@ describe("what is set once does not sit open for ever", () => {
   it("still says which trip it is with the disclosure shut", () => {
     // A collapsed header that hides the trip's own name would be worse than
     // the open form it replaced.
-    const summary = SRC.slice(line("<details className=\"group -mx-1"), line("Add to trip"));
+    const summary = SRC.slice(line('<details id="trip-details"'), line("Add to trip"));
     assert.match(summary, /itin\.title\?\.trim\(\) \|\| "This trip"/);
     assert.match(summary, /tripBarDates\(\{ startDate: itin\.startDate, endDate: itin\.endDate \}\)/);
   });
@@ -92,7 +92,7 @@ describe("the same things are not shown three times over", () => {
      *
      * They travel with the days, which is what they describe.
      */
-    for (const stat of ["Nights", "Missing lodging", "Empty days", "Driving"]) {
+    for (const stat of ["Nights", "Missing lodging", "Open days", "Driving"]) {
       assert.ok(SRC.includes(`label="${stat}"`), `the ${stat} figure went missing`);
     }
     const days = line("{/* Analysis + day-by-day */}");

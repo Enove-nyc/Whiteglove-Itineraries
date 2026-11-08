@@ -270,9 +270,16 @@ describe("every static admin page is reachable from nav or a hub", () => {
     }
   });
 
-  test("left nav lists every screen without waiting for you to open its section", () => {
+  test("left nav keeps screens reachable inside expandable groups", () => {
     const shell = readFileSync(join(process.cwd(), "components", "AdminShell.tsx"), "utf8");
     assert.doesNotMatch(shell, /current && s\.children/);
-    assert.match(shell, /s\.children\.length > 1/);
+    assert.match(shell, /s\.children\.length > 0/);
   });
+});
+
+
+test("six primary destinations retain specialized screens in their groups", () => {
+  assert.deepEqual(ADMIN_SECTIONS.map(s => s.label), ["Dashboard", "Needs Review", "Pages", "Directory", "Advertisements", "Settings"]);
+  for (const href of ["/admin/imports", "/admin/destinations", "/admin/vacation-destinations", "/admin/kevarim", "/admin/directory/businesses"]) assert.equal(activeSection(href).label, "Directory");
+  for (const href of ["/admin/accounts", "/admin/history", "/admin/finances"]) assert.equal(activeSection(href).label, "Settings");
 });

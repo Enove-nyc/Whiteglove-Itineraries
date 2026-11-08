@@ -46,7 +46,7 @@ type Tab = "trips" | "messages" | "wallet" | "account";
 
 // The same palette the client app uses, so the two match exactly.
 const NAVY = "#102F35";
-const CREAM = "#D5CEC3";
+const CREAM = "var(--color-canvas)";
 const GOLD = "#C6A15B";
 const GOLD_ON_DARK = "#C6A15B";
 const ON_GOLD = NAVY;
@@ -214,7 +214,7 @@ export default function AdvisorApp({
           the active one, the same bottom bar the client app carries. Hidden
           while the message composer holds the keyboard. */}
       {!(composerUp && tab === "messages") && (
-        <div style={{ flexShrink: 0, position: "relative", padding: "8px 10px", background: "#C7BFB1", borderTop: "1px solid rgba(16, 47, 53,.08)", display: "flex", paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}>
+        <div style={{ flexShrink: 0, position: "relative", padding: "8px 10px", background: "var(--color-surface-muted)", borderTop: "1px solid rgba(16, 47, 53,.08)", display: "flex", paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}>
           <span
             aria-hidden="true"
             style={{

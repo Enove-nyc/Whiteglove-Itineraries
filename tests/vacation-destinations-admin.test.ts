@@ -48,8 +48,8 @@ describe("the holiday destinations screen exists and is reachable", () => {
     // questions, but the first names given to the screens could be read either
     // way, and were. The names now carry the distinction on their own.
     const NAV = readFileSync("lib/admin-nav.ts", "utf8");
-    assert.match(NAV, /href: "\/admin\/destinations",\s*\n\s*label: "Heritage towns"/);
-    assert.match(NAV, /href: "\/admin\/vacation-destinations",\s*\n\s*label: "Vacation destinations"/);
+    assert.match(NAV, /href: "\/admin\/destinations",\s*label: "Heritage towns"/);
+    assert.match(NAV, /href: "\/admin\/vacation-destinations",\s*label: "Vacation destinations"/);
     assert.match(PAGE, /Vacation destinations/);
 
     // And each screen points at the other, so neither is a dead end for

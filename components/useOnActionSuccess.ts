@@ -47,6 +47,6 @@ export function useOnActionSuccess(results: readonly ActionLike[], onSuccess: ()
   const [seen, setSeen] = useState(results);
   if (hasNewResult(results, seen)) {
     setSeen(results);
-    if (results.some((result) => result?.ok)) onSuccess();
+    if (results.some((result, index) => result !== seen[index] && result?.ok)) onSuccess();
   }
 }

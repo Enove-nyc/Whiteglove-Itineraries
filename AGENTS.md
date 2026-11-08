@@ -100,3 +100,7 @@ The site had several names for each of its own features, so four front doors loo
 | Listing (White Glove’s curated listing, with a source) | record, entry, our data |
 
 The three ways into the site are named once in `lib/starting-points.ts` — get recommendations (`/plan`), build the trip yourself (`/itinerary`), search booking partners (`/book`). Link to one of them through that list rather than inventing a label at the call site.
+
+## Working surface palette
+
+Use warm ivory #F7F4EE for the site-wide canvas, warm white #FFFDFC for cards and forms, and #EFE9DF for secondary surfaces on both products. Preserve teal #193F46 / #102F35 and brass #C6A15B. Mushroom is only an occasional accent or disabled state, never a large working surface. Use semantic tokens for web surfaces; standalone email, print and manifests use matching literal values.

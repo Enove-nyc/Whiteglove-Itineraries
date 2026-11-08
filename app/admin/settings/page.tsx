@@ -47,6 +47,7 @@ export default async function AdminSettingsPage() {
       <section className="mt-8">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--navy)]">The website itself</h2>
         <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Card href="/admin/history" title="Audit log" detail="Review changes and restore earlier versions." />
           <Card
             href="/admin/settings/words"
             title="Words"

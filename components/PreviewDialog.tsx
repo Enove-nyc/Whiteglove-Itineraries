@@ -33,6 +33,7 @@ export function PreviewDialog({
   title,
   children,
   className = "",
+  showLabel = false,
 }: {
   /** What is being previewed — "Preview day 3", "Preview this photo". */
   label: string;
@@ -40,6 +41,7 @@ export function PreviewDialog({
   title?: string;
   children: ReactNode;
   className?: string;
+  showLabel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -55,13 +57,13 @@ export function PreviewDialog({
 
   return (
     <>
-      <IconButton
+      {showLabel ? <button ref={triggerRef} type="button" onClick={() => setOpen(true)} className={`min-h-11 rounded-md border border-[var(--navy)] px-4 font-semibold text-[var(--navy)] ${className}`}>Preview</button> : <IconButton
         ref={triggerRef}
         icon="eye"
         label={label}
         onClick={() => setOpen(true)}
         className={className}
-      />
+      />}
 
       {open && (
         <div

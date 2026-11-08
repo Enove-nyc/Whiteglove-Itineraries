@@ -4,7 +4,7 @@ import Link from "next/link";
 import { tripBarDates } from "@/lib/trip-bar";
 import { useBookingLink } from "@/components/BookingLinkProvider";
 import { bookingHref } from "@/lib/booking-access";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Children, isValidElement, useEffect, useMemo, useRef, useState } from "react";
 import { useOnValueChange } from "@/components/useOnValueChange";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import AirportAutocomplete from "@/components/AirportAutocomplete";
@@ -18,6 +18,7 @@ import SendToClientPanel from "@/components/SendToClientPanel";
 import ShareItineraryPanel from "@/components/ShareItineraryPanel";
 import { placeFromStay, placeFromStop, usePlaceOffer } from "@/components/usePlaceOffer";
 import TripProgressStrip, { useDeviceClock } from "@/components/TripProgressStrip";
+import { createItinerarySaveQueue, type SaveState } from "@/lib/itinerary-save-queue";
 import TripSetupPanel from "@/components/TripSetupPanel";
 import type { Crossing } from "@/lib/border-crossings";
 import DayProgress from "@/components/DayProgress";
@@ -122,7 +123,30 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // Which flight the top form is editing, if any. Null means adding a new one.
   const [editingFlightId, setEditingFlightId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [savedNote, setSavedNote] = useState("");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveQueue] = useState(() => createItinerarySaveQueue<{ itinerary: Itinerary; tripId?: string }>(async (value) => {
+    const response = await fetch("/api/account/itinerary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    });
+    if (!response.ok) throw new Error("Could not save itinerary");
+  }, setSaveState));
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (saveQueue.hasUnsaved()) { event.preventDefault(); event.returnValue = ""; }
+    };
+    const beforeNavigate = (event: MouseEvent) => {
+      const link = (event.target as Element)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (saveQueue.hasUnsaved() && link && link.target !== "_blank" && !link.getAttribute("href")?.startsWith("#")) {
+        event.preventDefault(); event.stopPropagation();
+        document.getElementById("itinerary-save-status")?.scrollIntoView({ block: "center" });
+      }
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", beforeNavigate, true);
+    return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", beforeNavigate, true); };
+  }, [saveQueue]);
   const [planning, setPlanning] = useState(false);
   const [planNote, setPlanNote] = useState("");
   // Bumped when the traveler opens a different trip, so the loader runs again.
@@ -215,41 +239,34 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // call it: the first attempt to change anything, signed out, opens the
   // sign-in dialog instead of writing a change nowhere it can be got back
   // from; once signed in, this and every later call go straight through.
-  function persist(next: Itinerary) {
+  function persist(next: Itinerary): Promise<boolean> {
+    let completion = Promise.resolve(false);
     requireSignIn(() => {
       setItin(next);
-      void fetch("/api/account/itinerary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itinerary: next }),
-      })
-        .then((r) => {
-          if (r.ok) {
-            setSavedNote("Saved to your account.");
-            setTimeout(() => setSavedNote(""), 1500);
-          }
-        })
-        .catch(() => undefined);
+      completion = saveQueue.enqueue({ itinerary: next, tripId: tripId ?? undefined });
     }, "Sign in to save");
+    return completion;
   }
 
   const set = (patch: Partial<Itinerary>) => persist({ ...itin, ...patch });
-  const addFlight = (f: ItinFlight) => persist({ ...itin, flights: [...itin.flights, f] });
+  const addFlight = (f: ItinFlight) => persist({ ...itin, flights: [...itin.flights.filter(x => x.id !== f.id), f] });
   // Adds a stay, or replaces the one with the same id. Editing keeps the id, so
   // changing a hotel changes it rather than leaving two on the same night.
   const saveLodging = (l: ItinLodging) => {
     const isNew = !itin.lodging.some((x) => x.id === l.id);
-    persist({
+    const completion = persist({
       ...itin,
       lodging: isNew ? [...itin.lodging, l] : itin.lodging.map((x) => (x.id === l.id ? l : x)),
     });
     // Only a new one. Editing a hotel that is already here is not the moment
     // to ask about it — they came to change a date, not to answer a question.
     if (isNew) void considerPlace(placeFromStay(l));
+    return completion;
   };
   const addActivity = (a: ItinActivity) => {
-    persist({ ...itin, activities: [...itin.activities, a] });
+    const completion = persist({ ...itin, activities: [...itin.activities.filter(x => x.id !== a.id), a] });
     void considerPlace(placeFromStop(a));
+    return completion;
   };
   const removeFlight = (id: string) => persist({ ...itin, flights: itin.flights.filter((x) => x.id !== id) });
   // Editing keeps the id, so the flight is changed rather than swapped for a
@@ -446,11 +463,21 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           to the list, where a new one is started and the others are managed. */}
       <button
         type="button"
+        disabled={saveState === "saving" || saveState === "error"}
         onClick={() => setMode("list")}
         className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
       >
         ← Back to all itineraries
       </button>
+      <div id="itinerary-save-status" role="status" aria-live="polite" className="sticky top-16 z-30 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--surface)] px-4 py-3 text-sm">
+        <span className="mr-auto font-semibold text-[var(--navy)]">{itin.title?.trim() || "Your trip"}{itin.startDate ? " · " + tripBarDates({ startDate: itin.startDate, endDate: itin.endDate }) : ""} · Editing</span>
+        {saveState === "saving" && <span>Saving…</span>}
+        {saveState === "saved" && <span className="text-emerald-800">Saved to your account</span>}
+        {saveState === "error" && <><span className="text-red-800">Could not save. Your changes are still here.</span><button type="button" onClick={() => saveQueue.retry()} className="min-h-11 rounded-md border border-red-800 px-3 font-semibold text-red-800">Try again</button></>}
+        <PreviewDialog showLabel label="Preview the whole itinerary" title={itin.title?.trim() || "This trip"}>
+          <PrintableItinerary itin={itin} burials={burials} siteBrand={itineraries ? "itineraries" : "kosher"} embedded />
+        </PreviewDialog>
+      </div>
       {/* How long until it, and once it starts, where in it you are. Above
           everything else, because on the third morning in Kraków it is the
           only part of this page anybody needs. */}
@@ -471,6 +498,17 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
       <TripSetupPanel
         itineraries={itineraries}
         itin={itin}
+        onNext={(step) => {
+          if (step === "dates" || step === "travelers") {
+            const details = document.getElementById("trip-details") as HTMLDetailsElement | null;
+            if (details) { details.open = true; details.scrollIntoView({ behavior: "smooth", block: "center" }); }
+          } else {
+            setTab(step === "stay" ? "hotel" : step === "flights" ? "flight" : "activity");
+            setEditingFlightId(null);
+            setEditingLodgingId(null);
+            editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }}
         templates={templates}
         signedIn={viewer === null ? null : Boolean(viewer.signedIn)}
         onApply={(patch, template) => {
@@ -487,7 +525,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
             top of this page for months. Behind a disclosure they are one line
             until somebody wants them; the summary carries the trip's name and
             dates so the page still says which trip this is with it shut. */}
-        <details className="group -mx-1 rounded-xl px-1">
+        <details id="trip-details" open={!hasDates || undefined} className="group -mx-1 rounded-xl px-1">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1 marker:content-none">
             <span className="text-sm font-semibold text-[var(--navy)]">
               {itin.title?.trim() || "This trip"}
@@ -543,7 +581,6 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           <button type="button" onClick={importSavedRoute} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Saved route</button>
           <button type="button" onClick={() => setTab(tab === "import" ? null : "import")} className="rounded-full border border-[var(--gold-light)] bg-white px-3.5 py-2 text-xs font-bold text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]">Smart Import</button>
           <button type="button" onClick={planMyRoute} disabled={planning} className="ml-auto rounded-full border border-[var(--navy)] bg-[var(--navy)] px-5 py-2.5 text-xs font-bold text-white transition hover:border-[var(--gold)] hover:bg-[var(--gold)] disabled:opacity-60">{planning ? "Planning…" : "Plan my route"}</button>
-          {savedNote && <span className="text-xs font-semibold text-emerald-700">{savedNote}</span>}
           {planNote && <span className="text-xs font-semibold text-[var(--navy)]">{planNote}</span>}
         </div>
         {!hasDates && <p className="mt-3 text-xs font-semibold text-[var(--gold-ink)]">Choose start and end dates to begin.</p>}
@@ -556,9 +593,9 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
               key={editing?.id ?? "new"}
               startDate={itin.startDate}
               initial={editing}
-              onAdd={(f) => {
-                if (editing) updateFlight(f);
-                else addFlight(f);
+              onAdd={async (f) => {
+                const saved = await (editing ? updateFlight(f) : addFlight(f));
+                if (!saved) return false;
                 setEditingFlightId(null);
                 setTab(null);
               }}
@@ -572,12 +609,12 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
             key={editingLodgingId ?? "new"}
             startDate={itin.startDate}
             initial={itin.lodging.find((l) => l.id === editingLodgingId)}
-            onAdd={(l) => { saveLodging(l); setTab(null); setEditingLodgingId(null); }}
+            onAdd={async (l) => { if (!await saveLodging(l)) return false; setTab(null); setEditingLodgingId(null); }}
             onRemove={editingLodgingId ? () => { removeLodging(editingLodgingId); setTab(null); setEditingLodgingId(null); } : undefined}
             onCancel={() => { setTab(null); setEditingLodgingId(null); }}
           />
         )}
-        {tab === "activity" && <ActivityForm startDate={itin.startDate} onAdd={(a) => { addActivity(a); setTab(null); }} itineraries={itineraries} />}
+        {tab === "activity" && <ActivityForm startDate={itin.startDate} onAdd={async (a) => { if (!await addActivity(a)) return false; setTab(null); }} itineraries={itineraries} />}
         {tab === "import" && <SmartImportPanel onImport={importSmartImportItems} onCancel={() => setTab(null)} />}
         </div>
       </section>
@@ -588,7 +625,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-[var(--gold-light)] bg-[var(--cream-deep)] px-4 py-3">
             <Stat label="Nights" value={summary.nights} />
             <Stat label="Missing lodging" value={summary.nightsWithoutLodging} warn={summary.nightsWithoutLodging > 0} />
-            <Stat label="Empty days" value={summary.emptyDays} warn={summary.emptyDays > 0} />
+            <Stat label="Open days" value={summary.emptyDays} />
             <Stat label="Driving" value={`${summary.travelHours} h`} />
             {summary.overpackedDays > 0 && <Stat label="Over-packed days" value={summary.overpackedDays} warn />}
             <div className="ml-auto flex flex-wrap items-center gap-3">
@@ -871,7 +908,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
   /** True on the White Glove Itineraries brand — no kosher tools here. */
   itineraries?: boolean;
   onMove: (id: string, direction: -1 | 1) => void;
-  onUpdate: (a: ItinActivity) => void;
+  onUpdate: (a: ItinActivity) => Promise<boolean | void> | void;
   /**
    * Only the attachments, by id.
    *
@@ -883,11 +920,11 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
   onSetAttachments: (id: string, attachments: ItinAttachment[]) => void;
   onRemove: (id: string) => void;
   /** Add straight onto this day, so a gap is filled where it is noticed. */
-  onAddStop: (a: ItinActivity) => void;
-  onSaveLodging: (l: ItinLodging) => void;
+  onAddStop: (a: ItinActivity) => Promise<boolean | void> | void;
+  onSaveLodging: (l: ItinLodging) => Promise<boolean | void> | void;
   onRemoveLodging: (id: string) => void;
-  onAddFlight: (f: ItinFlight) => void;
-  onUpdateFlight: (f: ItinFlight) => void;
+  onAddFlight: (f: ItinFlight) => Promise<boolean | void> | void;
+  onUpdateFlight: (f: ItinFlight) => Promise<boolean | void> | void;
   onRemoveFlight: (id: string) => void;
   allDates: Array<{ date: string; label: string }>;
 }) {
@@ -978,7 +1015,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
             key={openLeg.id}
             startDate={day.date}
             initial={openLeg}
-            onAdd={(next) => { onUpdateFlight(next); setEditingFlight(null); }}
+            onAdd={async (next) => { if (await onUpdateFlight(next) === false) return false; setEditingFlight(null); }}
             onRemove={() => { onRemoveFlight(openLeg.id); setEditingFlight(null); }}
             onCancel={() => setEditingFlight(null)}
           />
@@ -1076,7 +1113,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
           <EditStopForm
             activity={a}
             allDates={allDates}
-            onSave={(updated) => { onUpdate(updated); setEditingId(null); }}
+            onSave={async (updated) => { if (await onUpdate(updated) === false) return false; setEditingId(null); }}
             onRemove={() => { onRemove(a.id); setEditingId(null); }}
             onCancel={() => setEditingId(null)}
           />
@@ -1277,7 +1314,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
         <LodgingForm
           startDate={day.date}
           initial={day.lodging}
-          onAdd={(l) => { onSaveLodging(l); setEditingLodging(false); }}
+          onAdd={async (l) => { if (await onSaveLodging(l) === false) return false; setEditingLodging(false); }}
           onRemove={() => { onRemoveLodging(day.lodging!.id); setEditingLodging(false); }}
           onCancel={() => setEditingLodging(false)}
         />
@@ -1286,7 +1323,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
       {/* Filling the day in, on the day. Both forms open with this date
           already set, so nothing has to be chosen twice. */}
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--gold-light)] pt-3">
-        <span className={caption}>Add to this day</span>
+        <details className="w-full"><summary className="min-h-11 cursor-pointer py-2 font-semibold text-[var(--navy)]">+ Add something</summary><div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => setAdding(adding === "stop" ? null : "stop")} className="border border-[var(--gold-light)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]">
           {adding === "stop" ? "Close" : "+ Stop"}
         </button>
@@ -1296,13 +1333,14 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
         <button type="button" onClick={() => setAdding(adding === "flight" ? null : "flight")} className="border border-[var(--gold-light)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]">
           {adding === "flight" ? "Close" : "+ Flight"}
         </button>
+        </div></details>
       </div>
 
       {adding === "stop" && (
         <ActivityForm
           startDate={day.date}
-          onAdd={(a) => {
-            onAddStop({ ...a, date: a.date || day.date });
+          onAdd={async (a) => {
+            if (await onAddStop({ ...a, date: a.date || day.date }) === false) return false;
             setAdding(null);
           }}
           itineraries={itineraries}
@@ -1311,8 +1349,8 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
       {adding === "hotel" && (
         <LodgingForm
           startDate={day.date}
-          onAdd={(l) => {
-            onSaveLodging(l);
+          onAdd={async (l) => {
+            if (await onSaveLodging(l) === false) return false;
             setAdding(null);
           }}
         />
@@ -1323,8 +1361,8 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
       {adding === "flight" && (
         <FlightForm
           startDate={day.date}
-          onAdd={(f) => {
-            onAddFlight(f);
+          onAdd={async (f) => {
+            if (await onAddFlight(f) === false) return false;
             setAdding(null);
           }}
           onCancel={() => setAdding(null)}
@@ -1432,15 +1470,13 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
 function EditStopForm({ activity, allDates, onSave, onRemove, onCancel }: {
   activity: ItinActivity;
   allDates: Array<{ date: string; label: string }>;
-  onSave: (a: ItinActivity) => void;
+  onSave: (a: ItinActivity) => Promise<boolean | void> | void;
   onRemove: () => void;
   onCancel: () => void;
 }) {
   const [f, setF] = useState<ItinActivity>({ ...activity });
   return (
-    <div className="mt-3 rounded-md border border-[var(--gold)] bg-white p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--gold-ink)]">Edit this stop</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <FormShell title="Edit this stop" submitLabel="Save changes" onSubmit={() => onSave(f)} onRemove={onRemove} onCancel={onCancel}>
         <Field label="Name"><input className={inputClass} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
         <Field label="Address"><AddressAutocomplete value={f.address ?? ""} onChange={(address, coords) => setF({ ...f, address, coordinates: coords || f.coordinates })} className={inputClass} placeholder="Start typing the address…" /></Field>
         <Field label="Coordinates"><input className={inputClass} value={f.coordinates ?? ""} onChange={(e) => setF({ ...f, coordinates: e.target.value })} placeholder="lat, lng — needed for travel time" /></Field>
@@ -1450,21 +1486,10 @@ function EditStopForm({ activity, allDates, onSave, onRemove, onCancel }: {
         <Field label="Phone"><input type="tel" className={inputClass} value={f.phone ?? ""} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
         <Field label="Link"><input type="url" className={inputClass} value={f.href ?? ""} onChange={(e) => setF({ ...f, href: e.target.value })} /></Field>
         <Field label="Notes"><input className={inputClass} value={f.notes ?? ""} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => onSave(f)} className="border border-[var(--navy)] bg-[var(--navy)] px-5 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[var(--gold)] hover:border-[var(--gold)]">Save changes</button>
-        <button type="button" onClick={onCancel} className="border border-[var(--gold-light)] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)]">Cancel</button>
-        <button type="button" onClick={onRemove} className="ml-auto text-xs text-stone-400 hover:text-red-700">Remove this stop</button>
-      </div>
-    </div>
+    </FormShell>
   );
 }
 
-/**
- * Where a driving time came from. A traveler planning a day around a number
- * should be able to see whether it is Google's own answer for typical traffic,
- * an open-router figure that assumes the roads are empty, or our own estimate.
- */
 function TimeSource({ source }: { source?: "google" | "osrm" }) {
   if (source === "google") {
     return <span className="normal-case tracking-normal text-emerald-700" title="From Google Maps, for an ordinary day's traffic">· Google Maps</span>;
@@ -1544,10 +1569,11 @@ function FlightForm({ startDate, initial, onAdd, onRemove, onCancel }: {
   startDate: string;
   /** The flight being edited. Absent when adding a new one. */
   initial?: ItinFlight;
-  onAdd: (f: ItinFlight) => void;
+  onAdd: (f: ItinFlight) => Promise<boolean | void> | void;
   onRemove?: () => void;
   onCancel?: () => void;
 }) {
+  const [draftId] = useState(uid);
   const [f, setF] = useState<Partial<ItinFlight>>(initial ?? { date: startDate });
   const [lookupNo, setLookupNo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1585,10 +1611,10 @@ function FlightForm({ startDate, initial, onAdd, onRemove, onCancel }: {
       setError(`Please add the ${missing.join(", ")}.`);
       return;
     }
-    onAdd({
+    return onAdd({
       // Editing keeps the id, so the flight is changed rather than replaced —
       // its connections and its booking reference come with it.
-      id: initial?.id ?? uid(),
+      id: initial?.id ?? draftId,
       from: from!,
       to: to!,
       date: date!,
@@ -1865,10 +1891,11 @@ function LodgingForm({ startDate, initial, onAdd, onRemove, onCancel }: {
   startDate: string;
   /** The stay being changed. Absent when adding a new one. */
   initial?: ItinLodging;
-  onAdd: (l: ItinLodging) => void;
+  onAdd: (l: ItinLodging) => Promise<boolean | void> | void;
   onRemove?: () => void;
   onCancel?: () => void;
 }) {
+  const [draftId] = useState(uid);
   const [l, setL] = useState<Partial<ItinLodging>>(initial ?? { type: "hotel", checkIn: startDate });
   const overnight = l.type === "overnight-transit";
 
@@ -1899,10 +1926,10 @@ function LodgingForm({ startDate, initial, onAdd, onRemove, onCancel }: {
       onSubmit={() => {
         if (checkOutTooEarly) return;
         if ((overnight || l.name) && checkIn) {
-          onAdd({
+          return onAdd({
             // Editing keeps the id, so the stay is changed rather than replaced
             // and a second hotel does not appear on the same night.
-            id: initial?.id ?? uid(),
+            id: initial?.id ?? draftId,
             type: (l.type as LodgingType) || "hotel",
             name: l.name || (overnight ? "bus/flight" : ""),
             address: l.address,
@@ -2098,7 +2125,8 @@ function HotelPlacePicker({ onPick }: { onPick: (p: PlaceLodgingResult) => void 
   );
 }
 
-function ActivityForm({ startDate, onAdd, itineraries = false }: { startDate: string; onAdd: (a: ItinActivity) => void; itineraries?: boolean }) {
+function ActivityForm({ startDate, onAdd, itineraries = false }: { startDate: string; onAdd: (a: ItinActivity) => Promise<boolean | void> | void; itineraries?: boolean }) {
+  const [draftId] = useState(uid);
   const [a, setA] = useState<Partial<ItinActivity>>({ date: startDate });
 
   function pickKever(k: KeverResult) {
@@ -2136,7 +2164,7 @@ function ActivityForm({ startDate, onAdd, itineraries = false }: { startDate: st
   }
 
   return (
-    <FormShell title="Add an activity / stop" onSubmit={() => { if (a.name) onAdd({ id: uid(), name: a.name, yiddishName: a.yiddishName, address: a.address, coordinates: a.coordinates, date: a.date ?? "", startTime: a.startTime, durationMins: a.durationMins, href: a.href, phone: a.phone, keverSlug: a.keverSlug, country: a.country, notes: a.notes, bookedOnSite: false }); }}>
+    <FormShell title="Add an activity / stop" onSubmit={() => { if (a.name) return onAdd({ id: draftId, name: a.name, yiddishName: a.yiddishName, address: a.address, coordinates: a.coordinates, date: a.date ?? "", startTime: a.startTime, durationMins: a.durationMins, href: a.href, phone: a.phone, keverSlug: a.keverSlug, country: a.country, notes: a.notes, bookedOnSite: false }); }}>
       <div className="sm:col-span-2 lg:col-span-3 rounded-md border border-[var(--gold-light)] bg-[#FAF8F3] p-3">
         {!itineraries && (
           <>
@@ -2147,7 +2175,7 @@ function ActivityForm({ startDate, onAdd, itineraries = false }: { startDate: st
         <span className={`${caption} mt-3 block`}>
           {itineraries ? "Search a place — a sight, a restaurant, a museum…" : "…or any place: a sight, a kosher restaurant, a shul, a mikvah"}
         </span>
-        <AttractionPicker onPick={pickAttraction} />
+        <AttractionPicker onPick={pickAttraction} itineraries={itineraries} />
         {a.keverSlug && <p className="mt-2 text-xs font-semibold text-emerald-700">Filled from our directory: {a.name}.</p>}
       </div>
       <Field label="Name *"><input required className={inputClass} value={a.name ?? ""} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder={itineraries ? "Museum, meal, activity…" : "Kever, museum, meal…"} /></Field>
@@ -2241,7 +2269,7 @@ function KeverPicker({ onPick }: { onPick: (k: KeverResult) => void }) {
 // Search-and-pick something to do from the site's own listings. Same shape as
 // KeverPicker; kept separate because the two answer different questions and a
 // single box searching both would bury one under the other.
-function AttractionPicker({ onPick }: { onPick: (x: AttractionResult) => void }) {
+function AttractionPicker({ onPick, itineraries = false }: { onPick: (x: AttractionResult) => void; itineraries?: boolean }) {
   const [q, setQ] = useState("");
   /**
    * The rows, kept with the query they answer — see LibraryManager for the
@@ -2290,7 +2318,7 @@ function AttractionPicker({ onPick }: { onPick: (x: AttractionResult) => void })
         value={q}
         onChange={(e) => { setQ(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        placeholder="Search a place — a sight, a kosher restaurant, a shul, a mikvah…"
+        placeholder={itineraries ? "Search a place — a sight, a restaurant, a museum…" : "Search a place — a sight, a kosher restaurant, a shul, a mikvah…"}
         autoComplete="off"
       />
       {open && results.length > 0 && (
@@ -2324,25 +2352,40 @@ function AttractionPicker({ onPick }: { onPick: (x: AttractionResult) => void })
 function FormShell({ title, children, onSubmit, error, submitLabel = "Add", onRemove, onCancel }: {
   title: string;
   children: React.ReactNode;
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<boolean | void>;
   error?: string;
   submitLabel?: string;
   /** Editing an existing entry: delete it, or back out without saving. */
   onRemove?: () => void;
   onCancel?: () => void;
-}) {  return (
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
+  const [saveError, setSaveError] = useState("");
+  const fields = Children.toArray(children);
+  const isOptionalDetail = (field: React.ReactNode) => isValidElement<{ label?: string }>(field) && typeof field.props.label === "string" && /^(Coordinates|Phone|Link|Duration|Notes|Booking reference|Room|Confirmation|Contact|Price|Cost|Terminal|Seat)/i.test(field.props.label);
+  const basics = fields.filter(field => !isOptionalDetail(field));
+  const details = fields.filter(isOptionalDetail);
+  return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        onSubmit();
+        if (submitLock.current) return;
+        submitLock.current = true; setSubmitting(true); setSaveError("");
+        try {
+          if (await onSubmit() === false) setSaveError("Could not save. Your details are still here; try again.");
+        } catch { setSaveError("Could not save. Please try again."); }
+        finally { submitLock.current = false; setSubmitting(false); }
       }}
       className="mt-5 border-t border-[var(--gold-light)] pt-5"
     >
-      <p className="text-sm font-bold text-[var(--navy)]">{title}</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
-      {error && <p className="mt-3 text-sm font-semibold text-red-700">{error}</p>}
+      <fieldset disabled={submitting}>
+      <legend className="text-sm font-bold text-[var(--navy)]">{title}</legend>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{basics}</div>
+      {details.length > 0 && <details className="mt-4 rounded-md border border-[var(--color-border-subtle)] p-3"><summary className="cursor-pointer text-sm font-semibold text-[var(--navy)]">More details (optional)</summary><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{details}</div></details>}
+      {(error || saveError) && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{error || saveError}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="submit" disabled={Boolean(error)} className="border border-[var(--navy)] bg-[var(--navy)] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[var(--gold)] hover:border-[var(--gold)] disabled:opacity-50">{submitLabel}</button>
+        <button type="submit" disabled={Boolean(error) || submitting} className="border border-[var(--navy)] bg-[var(--navy)] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-[var(--gold)] hover:border-[var(--gold)] disabled:opacity-50">{submitting ? "Saving…" : submitLabel}</button>
         {onCancel && (
           <button type="button" onClick={onCancel} className="border border-[var(--gold-light)] px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]">Cancel</button>
         )}
@@ -2350,6 +2393,7 @@ function FormShell({ title, children, onSubmit, error, submitLabel = "Add", onRe
           <button type="button" onClick={onRemove} className="ml-auto px-3 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-stone-400 transition hover:text-red-700">Remove</button>
         )}
       </div>
+      </fieldset>
     </form>  );
 }
 

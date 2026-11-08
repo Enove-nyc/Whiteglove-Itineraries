@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
  */
 
 const NAVY = "#102F35";
-const CREAM = "#D5CEC3";
+const CREAM = "var(--color-canvas)";
 
 // A standard, stable Web-Push helper — the same one the client control uses;
 // duplicated here (ten pure lines) rather than reaching into the 4,000-line

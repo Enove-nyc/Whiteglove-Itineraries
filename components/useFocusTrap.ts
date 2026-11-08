@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+const dialogStack: HTMLElement[] = [];
+
 const FOCUSABLE = [
   "a[href]",
   "button:not([disabled])",
@@ -55,6 +57,20 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean, onEscape?: 
   useEffect(() => {
     if (!active) return;
     const box = ref.current;
+    if (!box) return;
+    dialogStack.push(box);
+    const isTop = () => dialogStack[dialogStack.length - 1] === box;
+    let pointerStartedInside = false;
+    const onPointer = (event: PointerEvent) => { pointerStartedInside = box.contains(event.target as Node); };
+    const onClick = (event: MouseEvent) => {
+      if (isTop() && pointerStartedInside && !box.contains(event.target as Node)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+      pointerStartedInside = false;
+    };
+    document.addEventListener("pointerdown", onPointer, true);
+    document.addEventListener("click", onClick, true);
     returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     const focusable = () => Array.from(box?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter((el) => el.offsetParent !== null || el === document.activeElement);
@@ -66,8 +82,10 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean, onEscape?: 
     else box?.focus();
 
     const onKey = (event: KeyboardEvent) => {
+      if (!isTop()) return;
       if (event.key === "Escape") {
-        event.stopPropagation();
+        event.preventDefault();
+        event.stopImmediatePropagation();
         escape.current?.();
         return;
       }
@@ -94,6 +112,10 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean, onEscape?: 
     document.addEventListener("keydown", onKey, true);
     return () => {
       document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("pointerdown", onPointer, true);
+      document.removeEventListener("click", onClick, true);
+      const index = dialogStack.lastIndexOf(box);
+      if (index >= 0) dialogStack.splice(index, 1);
       returnTo.current?.focus();
     };
     // `active` only. See the note on `escape` above: anything else here is a

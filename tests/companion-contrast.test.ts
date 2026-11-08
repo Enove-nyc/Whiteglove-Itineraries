@@ -25,6 +25,12 @@ const SRC = readFileSync("components/companion/CompanionApp.tsx", "utf8");
 
 /** Reads `const NAME = "#rrggbb";` out of the component. */
 function colour(name: string): string {
+  if (name === "CREAM" && SRC.includes('const CREAM = "var(--color-canvas)"')) {
+    const css = readFileSync("app/globals.css", "utf8");
+    const canvas = css.match(/--cream:\s*(#[0-9a-f]{6})/i);
+    assert.ok(canvas);
+    return canvas[1];
+  }
   const m = SRC.match(new RegExp(`const ${name} = "(#[0-9a-f]{6})";`, "i"));
   assert.ok(m, `${name} is gone from CompanionApp.tsx, or is no longer a plain hex literal`);
   return m![1];

@@ -62,9 +62,11 @@ export default function TripSetupPanel({
   templates,
   signedIn,
   onApply,
+  onNext,
   itineraries = false,
 }: {
   itin: Itinerary;
+  onNext: (step: "dates" | "travelers" | "stay" | "stops" | "flights") => void;
   /** True on White Glove Itineraries, which has no destination pages. */
   itineraries?: boolean;
   /** Built on the server from the destinations that have an outline. */
@@ -73,11 +75,11 @@ export default function TripSetupPanel({
   signedIn: boolean | null;
   onApply: (patch: Partial<Itinerary>, template?: TripTemplate) => void;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const answers = useSyncExternalStore(subscribe, storedAnswers, () => null);
 
   const steps = setupSteps(itin);
-  const progress = setupProgress(steps);
+  const progress = setupProgress([...steps].sort((a, b) => ["dates", "stay", "stops", "flights", "travelers"].indexOf(a.id) - ["dates", "stay", "stops", "flights", "travelers"].indexOf(b.id)));
   const untouched = tripIsUntouched(itin);
   const suggested = destinationForTrip(itin, vacationDestinations);
   // A DAY, NOT FOREVER. These answers exist to carry somebody from /plan into
@@ -87,20 +89,21 @@ export default function TripSetupPanel({
   const canSeed = hasAnswers(answers) && answersAreFresh(answers) && untouched;
 
   return (
-    <section aria-labelledby="trip-setup-heading" className="rounded-2xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p-6">
+    <section aria-labelledby="trip-setup-heading" className="rounded-2xl border border-[var(--gold-light)] bg-[var(--surface)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 id="trip-setup-heading" className="font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--navy)]">
-            {progress.done === progress.total ? "This trip has everything the planner needs." : "Getting this trip started"}
+            {progress.next ? "Plan your trip" : "Ready to preview"}
           </h2>
           {/* No "N of 5 basics done" counter: the checklist below already says
               what is done and what is next, one card at a time. */}
           {progress.next && (
             <p aria-live="polite" className="mt-1 text-sm leading-6 text-stone-600">
-              Next: {progress.next.label.toLowerCase()}
+              Suggested next step: {progress.next.label.toLowerCase()}. You can add other details later.
             </p>
           )}
         </div>
+        {progress.next && <button type="button" onClick={() => onNext(progress.next!.id)} className="min-h-11 rounded-md bg-[var(--navy)] px-4 text-sm font-semibold text-white">{progress.next.id === "dates" ? "Set dates" : progress.next.id === "stay" ? "Add stay" : progress.next.id === "stops" ? "Add activity" : progress.next.id === "flights" ? "Add flight" : "Add travelers"}</button>}
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
@@ -108,7 +111,7 @@ export default function TripSetupPanel({
           aria-controls="trip-setup-body"
           className="inline-flex min-h-11 items-center rounded-md border border-[var(--gold-light)] px-4 text-xs font-bold uppercase tracking-[0.1em] text-[var(--navy)] transition hover:border-[var(--gold)] hover:bg-[var(--cream-deep)]"
         >
-          {open ? "Hide the setup help" : "Show the setup help"}
+          {open ? "Hide trip setup" : "View trip setup"}
         </button>
       </div>
 

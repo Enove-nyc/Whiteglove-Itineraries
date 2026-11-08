@@ -46,7 +46,7 @@ const GOLD = "#C6A15B";
 /** The one that carries words. --gold is a rule; --gold-ink clears 4.5:1. */
 const GOLD_INK = "#6B4A1C";
 const GOLD_RULE = "#D8BC7A";
-const CREAM = "#D5CEC3";
+const CREAM = "#F7F4EE";
 const SURFACE = "#FAF8F3";
 
 const SANS = "Arial, Helvetica, sans-serif";

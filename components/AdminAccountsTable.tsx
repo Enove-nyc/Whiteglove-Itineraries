@@ -63,8 +63,10 @@ export default function AdminAccountsTable({ accounts }: { accounts: AdminAccoun
   }
 
   async function save(originalEmail: string) {
+    if (busy) return;
     setBusy(true);
     setError(null);
+    try {
     const res = await fetch("/api/admin/accounts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -78,6 +80,11 @@ export default function AdminAccountsTable({ accounts }: { accounts: AdminAccoun
     }
     setEditing(null);
     router.refresh();
+    } catch {
+      setError("Could not save. Your changes are still here. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

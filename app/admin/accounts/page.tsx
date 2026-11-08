@@ -6,7 +6,8 @@ import { hasAccountStorage, listAllAccounts } from "@/lib/account-store";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminAccountsPage() {
+export default async function AdminAccountsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const query = (await searchParams).q?.trim().toLowerCase() || "";
   const available = hasAccountStorage();
   const [accounts, requests] = available
     ? await Promise.all([listAllAccounts(), listPlanRequests()])
@@ -48,7 +49,7 @@ export default async function AdminAccountsPage() {
                 <p className="mt-2 text-sm text-stone-600">Registered travelers will appear here.</p>
               </div>
             ) : (
-              <AdminAccountsTable accounts={accounts} />
+              <><form className="mb-4 flex gap-2"><input name="q" aria-label="Find an account" defaultValue={query} placeholder="Name or email" className="min-h-11 rounded-md border px-3" /><button className="rounded-md bg-[var(--navy)] px-4 text-white">Search</button></form><AdminAccountsTable accounts={accounts.filter(a => !query || a.email.toLowerCase().includes(query) || a.name?.toLowerCase().includes(query))} /></>
             )}
             <p className="mt-4 text-xs leading-5 text-stone-400">
               This list is private to the owner. Only handle travelers&apos; details in line with your privacy policy — they entrusted their name, email, and phone to book with you.

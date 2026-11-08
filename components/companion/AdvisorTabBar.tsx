@@ -38,7 +38,7 @@ export default function AdvisorTabBar() {
   return (
     <nav
       aria-label="Advisor app"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[rgba(16, 47, 53,.1)] bg-[#C7BFB1] px-2.5 pt-2 sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-[rgba(16, 47, 53,.1)] bg-[var(--color-surface-muted)] px-2.5 pt-2 sm:hidden"
       style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
     >
       {TABS.map((t) => (

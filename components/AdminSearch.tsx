@@ -155,7 +155,7 @@ export default function AdminSearch({ areas, pathname }: { areas: AdminArea[] | 
             <div className="max-h-80 overflow-auto">
               {groups.map((group) => (
                 <div key={group.section} role="group" aria-label={group.section}>
-                  <p className="sticky top-0 border-b border-[var(--gold-light)] bg-[#D5CEC3] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
+                  <p className="sticky top-0 border-b border-[var(--gold-light)] bg-[var(--color-surface-muted)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
                     {group.section}
                   </p>
                   <ul>

@@ -1,12 +1,6 @@
 import { toCanonicalAdminPath } from "@/lib/admin-host";
 
-// Operational screens sit at the top. Pages, Directory, Advertisements and
-// Settings still hold everything else, so a screen is never only reachable
-// from memory.
-//
-// Five is the whole navigation. Anything that used to be its own tile is now a
-// screen inside one of these, so the question is never "which of twelve buttons
-// holds this" but "is this a page, a listing, an advert, or a setting".
+// Six primary destinations. Specialized screens remain in their groups and search.
 
 export type AdminSection = {
   /** The nav item's own path. */
@@ -17,7 +11,7 @@ export type AdminSection = {
   /** Simple inline mark — no icon font, no dependency. */
   icon: string;
   /** Screens that belong to this section, shown when you are inside it. */
-  children?: Array<{ href: string; label: string; blurb: string }>;
+  children?: Array<{ href: string; label: string; blurb: string; keywords?: string }>;
   /** Extra words the "go to" search should match. */
   keywords?: string;
 };
@@ -38,66 +32,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     keywords: "queue verify approve reject duplicate import candidate",
   },
   {
-    href: "/admin/imports",
-    label: "Imports",
-    blurb: "Source-backed listing candidates.",
-    icon: "▣",
-    keywords: "bulk import batch source pack trello",
-  },
-  {
-    // RENAMED FROM "Destinations". Two lists were both called that: towns with
-    // kevarim in them, and places to go on holiday. Only the first had a
-    // screen, so Rome could not be found in the admin at all — the name said
-    // it should be here and it never was.
-    href: "/admin/destinations",
-    label: "Heritage towns",
-    blurb: "Towns with kevarim. Shomrim, minyanim, food, lodging.",
-    icon: "◉",
-    keywords: "town city heritage kever kevarim shomer lizhensk kerestir uman",
-  },
-  {
-    href: "/admin/vacation-destinations",
-    label: "Vacation destinations",
-    blurb: "Where to go on holiday. Rome, the Dolomites.",
-    icon: "◈",
-    keywords: "destination holiday vacation rome venice florence paris dolomites getaway trip beach mountains photos pictures",
-  },
-  {
-    href: "/admin/kevarim",
-    label: "Tzaddikim",
-    blurb: "Who is buried where.",
-    icon: "✦",
-    keywords: "kever kevarim tzadik cemetery beis hachaim",
-  },
-  {
-    href: "/admin/directory/businesses",
-    label: "Providers and Contacts",
-    blurb: "Operators, planners, guides.",
-    icon: "☎",
-    keywords: "provider contact business operator guide",
-  },
-  {
-    href: "/admin/ratings",
-    label: "Ratings",
-    blurb: "Reviews and private ratings.",
-    icon: "★",
-    keywords: "rating review report flag moderate",
-  },
-  {
-    href: "/admin/accounts",
-    label: "Users",
-    blurb: "People who signed up.",
-    icon: "☺",
-    keywords: "account user visitor signup",
-  },
-  {
-    href: "/admin/history",
-    label: "Audit Log",
-    blurb: "Edits, and how to undo them.",
-    icon: "☰",
-    keywords: "history audit change undo revision",
-  },
-  {
     href: "/admin/pages",
     label: "Pages",
     blurb: "Words, pictures and reports.",
@@ -109,10 +43,9 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       { href: "/admin/growth", label: "Growth", blurb: "Searches, clicks and conversion." },
       { href: "/admin/alerts", label: "Alerts", blurb: "Destination and seasonal signups." },
       { href: "/admin/alerts/send", label: "Send an update", blurb: "Write to the people who asked." },
-      { href: "/admin/history", label: "Audit log", blurb: "Edits, and how to undo them." },
       { href: "/admin/content", label: "Suggestions", blurb: "Corrections people sent in." },
       { href: "/admin/photos", label: "Photos", blurb: "Pictures waiting for you." },
-      { href: "/admin/ratings", label: "Ratings", blurb: "Reviews and private ratings." },
+      { href: "/admin/ratings", label: "Ratings", blurb: "Reviews and private ratings.", keywords: "rating review report flag moderate" },
       { href: "/admin/inventory", label: "Checklist", blurb: "What is still unfinished." },
     ],
   },
@@ -125,27 +58,27 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     children: [
       { href: "/admin/directory", label: "Everything", blurb: "One list of every entry." },
       { href: "/admin/add", label: "Add", blurb: "A cemetery, a tzadik, or a new page." },
-      { href: "/admin/kevarim", label: "Tzaddikim", blurb: "Who is buried where." },
+      { href: "/admin/kevarim", label: "Tzaddikim", blurb: "Who is buried where.", keywords: "kever kevarim tzadik cemetery beis hachaim" },
       { href: "/admin/shomrim", label: "Shomrim", blurb: "Getting into a cemetery." },
-      { href: "/admin/destinations", label: "Heritage towns", blurb: "Towns with kevarim in them." },
-      { href: "/admin/vacation-destinations", label: "Vacation destinations", blurb: "Where to go on holiday." },
+      { href: "/admin/destinations", label: "Heritage towns", blurb: "Towns with kevarim in them.", keywords: "town city heritage kever kevarim shomer lizhensk kerestir uman" },
+      { href: "/admin/vacation-destinations", label: "Vacation destinations", blurb: "Where to go on holiday.", keywords: "destination holiday vacation rome venice florence paris dolomites getaway trip beach mountains photos pictures" },
       { href: "/admin/directory/attractions", label: "Things to do", blurb: "Attractions already listed." },
-      { href: "/admin/directory/stays", label: "Where to stay", blurb: "Lodging already listed." },
+      { href: "/admin/directory/stays", label: "Where to stay", blurb: "Lodging already listed.", keywords: "hotel hotels lodging accommodation" },
       { href: "/admin/kosher-apartments", label: "Kosher apartments", blurb: "Sites and hosts renting kosher apartments." },
       { href: "/admin/directory/food", label: "Kosher food", blurb: "Food listings on the site." },
       { href: "/admin/countries", label: "Countries", blurb: "Country notes." },
       { href: "/admin/airports", label: "Airports", blurb: "Flight search and the planner." },
       { href: "/admin/planner", label: "Planner", blurb: "How a day is judged packed." },
-      { href: "/admin/imports", label: "Bulk imports", blurb: "Source-backed listing candidates." },
+      { href: "/admin/imports", label: "Bulk imports", blurb: "Source-backed listing candidates.", keywords: "bulk import batch source pack trello" },
       { href: "/admin/imports/needs-review", label: "Needs review", blurb: "Candidates awaiting verification." },
       { href: "/admin/imports/trello", label: "Trello cards", blurb: "Editorial candidates on the board." },
       { href: "/admin/borders", label: "Borders", blurb: "Crossings, hours and notes." },
       { href: "/admin/hechsherim", label: "Hechsherim", blurb: "Who certifies each kosher place." },
-      { href: "/admin/mikvaos", label: "Mikvaos", blurb: "Mikvah listings across towns." },
+      { href: "/admin/mikvaos", label: "Mikvaos", blurb: "Mikvah listings across towns.", keywords: "mikvah mikvaos" },
       { href: "/admin/eruvin", label: "Eruvin", blurb: "Add community eruvin to the public page." },
-      { href: "/admin/shuls", label: "Shuls", blurb: "Add shuls that belong to no town." },
+      { href: "/admin/shuls", label: "Shuls", blurb: "Add shuls that belong to no town.", keywords: "shul synagogue minyan" },
       { href: "/admin/heritage-cemeteries", label: "Heritage cemeteries", blurb: "Add batei hachaim to the locator and map." },
-      { href: "/admin/directory/businesses", label: "Businesses", blurb: "Operators, planners, guides." },
+      { href: "/admin/directory/businesses", label: "Businesses", blurb: "Operators, planners, guides.", keywords: "provider contact business operator guide" },
       { href: "/admin/directory-listings", label: "Listings", blurb: "Drivers and agencies in the store." },
       { href: "/admin/recycle", label: "Deleted", blurb: "Put something back." },
     ],
@@ -170,12 +103,13 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       { href: "/admin/settings/proof", label: "Case studies", blurb: "Trip outcomes with permission." },
       { href: "/admin/settings/limits", label: "Limits", blurb: "Trip and print limits." },
       { href: "/admin/settings/plans", label: "Paid plans", blurb: "Whether they are offered, and how." },
+      { href: "/admin/history", label: "Audit log", blurb: "Edits, and how to undo them.", keywords: "history audit change undo revision" },
       { href: "/admin/team", label: "Team", blurb: "Who else can get in." },
       { href: "/admin/settings/website", label: "Website access", blurb: "Open or close the site." },
       { href: "/admin/settings/passwords", label: "Passwords", blurb: "Change the codes." },
       { href: "/admin/settings/security", label: "Security policy", blurb: "The load rule, and what it blocks." },
       { href: "/admin/settings/trello", label: "Trello", blurb: "Pictures, listings and reports." },
-      { href: "/admin/accounts", label: "Users", blurb: "People who signed up." },
+      { href: "/admin/accounts", label: "Users", blurb: "People who signed up.", keywords: "account user visitor signup" },
       { href: "/admin/messages", label: "Messages", blurb: "What people wrote from the site." },
       {
         href: "/admin/settings/travel-gear",
@@ -199,8 +133,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       { href: "/admin/settings/referral", label: "Referrals", blurb: "Off until rewards are final." },
       { href: "/admin/settings/collaboration", label: "Collaboration", blurb: "Voting, favorites and rooms." },
       { href: "/admin/settings/membership", label: "White Glove Plus", blurb: "Planned only — not launched." },
-      { href: "/admin/finances", label: "Finances", blurb: "Money in and out." },
-      { href: "/admin/settings/connections", label: "Connections", blurb: "Email, maps and the assistant." },
+      { href: "/admin/finances", label: "Finances", blurb: "Money in and out.", keywords: "finance finances payment refund money" },
+      { href: "/admin/settings/connections", label: "Connections", blurb: "Email, maps and the assistant.", keywords: "email integration maps ai" },
       { href: "/admin/duffel", label: "Duffel", blurb: "Book flights here. Not public." },
       { href: "/admin/flight-itineraries", label: "Flight itineraries", blurb: "Write up flights you sell to send a customer." },
     ],
@@ -251,7 +185,7 @@ export function activeSection(pathname: string): AdminSection {
 }
 
 /** Screens inside a section, not including the section’s own front page. */
-export function sectionScreens(sectionHref: string): Array<{ href: string; label: string; blurb: string }> {
+export function sectionScreens(sectionHref: string): Array<{ href: string; label: string; blurb: string; keywords?: string }> {
   const section = ADMIN_SECTIONS.find((item) => item.href === sectionHref);
   return (section?.children ?? []).filter((child) => child.href !== sectionHref);
 }
@@ -268,7 +202,7 @@ export function allAdminDestinations(): Array<{ href: string; label: string; blu
     for (const child of sectionScreens(section.href)) {
       if (seen.has(child.href)) continue;
       seen.add(child.href);
-      out.push({ href: child.href, label: child.label, blurb: child.blurb, section: section.label, keywords: section.keywords ?? "" });
+      out.push({ href: child.href, label: child.label, blurb: child.blurb, section: section.label, keywords: child.keywords ?? "" });
     }
   }
   return out;
