@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { siteOrigin } from "@/lib/seo";
-import { PRIVATE_PATHS } from "@/lib/site-map";
+import { PRIVATE_PATHS } from "@/lib/private-paths";
 
 /**
  * What a crawler may and may not read.
@@ -9,7 +9,7 @@ import { PRIVATE_PATHS } from "@/lib/site-map";
  * page, because it fell through to the [city] route and was treated as a town.
  *
  * The disallow list is the SAME list the sitemap refuses to include, from
- * lib/site-map.ts. Two hand-written lists is how a page ends up submitted in
+ * lib/private-paths.ts (also used by lib/site-map.ts). Two lists let a page end up submitted in
  * one and forbidden in the other, which Google reports as an error against the
  * whole site.
  *
@@ -27,13 +27,14 @@ import { PRIVATE_PATHS } from "@/lib/site-map";
  * `Disallow: /account` would also block a future /accountants, which
  * isPrivatePath deliberately treats as public.
  *
- * So: `$` for the address exactly, and the slash for everything beneath it.
+ * So: `$` for the address exactly, the slash for everything beneath it,
+ * and `?` for the same address with a query (robots matches the query too).
  * That is the same whole-segment rule isPrivatePath applies, said in the syntax
  * robots.txt has for it.
  */
 function disallowFor(path: string): string[] {
   if (path.endsWith("/")) return [path];
-  return [`${path}$`, `${path}/`];
+  return [`${path}$`, `${path}/`, `${path}?`];
 }
 
 export default function robots(): MetadataRoute.Robots {
