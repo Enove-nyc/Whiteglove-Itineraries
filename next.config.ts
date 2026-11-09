@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { PRIVATE_PATHS } from "./lib/private-paths";
 import { contentSecurityPolicy, reportingEndpointsHeader } from "./lib/csp-policy";
 import { MAINSTREAM_CSP, MAINSTREAM_PATH } from "./lib/mainstream-property-check";
 
@@ -88,6 +89,12 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: contentSecurityPolicy(CSP_REPORT_PATH) },
         ],
       },
+      // Indexing protection also applies to redirects, files and other non-HTML
+      // responses. This never grants access or changes API cache lifetimes.
+      ...PRIVATE_PATHS.map((path) => ({
+        source: `${path.replace(/\/$/, "")}/:path*`,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      })),
       {
         source: `${MAINSTREAM_PATH}/:path*`,
         headers: [

@@ -1,0 +1,29 @@
+# White Glove Itineraries
+
+> White Glove Itineraries is a travel itinerary and trip-management website for travellers and travel advisers. Build day-by-day itineraries, organise travel details and carry a shared itinerary in the companion app.
+
+Official website: https://www.whitegloveitineraries.com/
+Contact: contact@whitegloveitineraries.com
+
+## Public information
+
+- [Home](https://www.whitegloveitineraries.com/): Product overview and ways to explore the website.
+- [About](https://www.whitegloveitineraries.com/about): What White Glove Itineraries does.
+- [Sample itinerary](https://www.whitegloveitineraries.com/sample-itinerary): An illustrative trip for a fictional family in Rome, with day-by-day, companion-app and printed views. This is a sample, not a reservation or an actual customer's trip.
+- [Pricing and access](https://www.whitegloveitineraries.com/pricing): Current plan and availability information. New accounts require an invitation; existing account holders can log in. Purchases are currently unavailable.
+- [Contact](https://www.whitegloveitineraries.com/contact): Contact information and enquiries.
+- [Privacy](https://www.whitegloveitineraries.com/privacy): Personal information, device-only travel wallet files, shared attachments and trip conversations.
+- [Terms](https://www.whitegloveitineraries.com/terms): Terms for using the website.
+- [Sitemap](https://www.whitegloveitineraries.com/sitemap.xml): Public pages available for discovery.
+
+## Product details
+
+An itinerary can bring flights, accommodation, transport, activities, maps, schedules, notes and contacts together. The traveller companion opens a particular shared trip using its trip code. It provides itinerary viewing, a personal travel wallet and conversations with that trip's travel group.
+
+Personal wallet documents are stored on the traveller's device, with offline document viewing. They are not cloud-synced or automatically shared with the group. Shared itinerary attachments have separate access permissions.
+
+## Public and private access
+
+Public information pages are readable without an account or JavaScript. The public sample is fictional. Customer itineraries, trip-code links, travel documents, group conversations, invitations, accounts and administration are private access flows and are excluded from crawler discovery. A shared-trip link grants access to that trip; it is not a public listing.
+
+The site's robots.txt describes crawler exclusions. Those exclusions do not replace server-side access controls. Crawlers have the same access requirements as people; a crawler user-agent does not bypass authentication or trip-code checks.

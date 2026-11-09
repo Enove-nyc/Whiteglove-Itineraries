@@ -13,10 +13,11 @@ import TravelAssistantBox from "@/components/TravelAssistantBox";
 import { ASSISTANT_HOME_LABEL, ASSISTANT_HOME_SUPPORT } from "@/lib/assistant-disclosure";
 import { readBookingLink } from "@/lib/booking-access-store";
 import { website } from "@/lib/structured-data";
+import { ITINERARIES_DESCRIPTION, ITINERARIES_TITLE, itinerariesStructuredData } from "@/lib/itineraries-discovery";
 import { DEFAULT_PHOTO } from "@/lib/default-photo";
 import ItinerariesHome from "@/components/ItinerariesHome";
 import StandaloneAppRedirect from "@/components/StandaloneAppRedirect";
-import { BRAND_ORIGIN, brandFromRequestHeaders, currentBrand } from "@/lib/site-brand";
+import { brandFromRequestHeaders, currentBrand } from "@/lib/site-brand";
 import { accountCookieName, getCurrentAccountSummary, readSessionEmail } from "@/lib/account-store";
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
@@ -29,12 +30,11 @@ import Link from "next/link";
 // origin so search does not fold the two into one.
 export async function generateMetadata() {
   if ((await currentBrand()) === "itineraries") {
-    return {
-      title: "White Glove Itineraries — your trip, together",
-      description:
-        "Build your itinerary, organise trip details and share the journey with White Glove Itineraries.",
-      alternates: { canonical: `${BRAND_ORIGIN.itineraries}/` },
-    };
+    return pageMetadata({
+      title: ITINERARIES_TITLE,
+      description: ITINERARIES_DESCRIPTION,
+      path: "/",
+    });
   }
   return pageMetadata({
     title: "Jewish Travel Guide — Kosher Destinations & Trip Planning",
@@ -124,6 +124,7 @@ export default async function Home() {
     return (
       <>
         <StandaloneAppRedirect />
+        <StructuredData data={itinerariesStructuredData()} />
         <ItinerariesHome />
       </>
     );

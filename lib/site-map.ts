@@ -22,6 +22,7 @@
  * claiming to be the most important one on the site.
  */
 
+import { isPrivatePath } from "@/lib/private-paths";
 import { cemeteries } from "@/data/cemeteries";
 import { cityGuides } from "@/data/destinations-detailed";
 import { bulkDestinations } from "@/data/destinations-bulk";
@@ -45,25 +46,7 @@ import { allTzaddikim } from "@/lib/tzaddikim";
  *    land on from search. `/embed` holds the partner search forms iframed
  *    from Search booking partners.
  */
-export const PRIVATE_PATHS = [
-  "/admin",
-  "/api",
-  "/account",
-  "/login",
-  "/access",
-  "/embed",
-  "/itinerary",
-  "/my-route",
-  "/command-center",
-  "/book/review",
-  "/i/",
-  "/version",
-] as const;
-
-/** Is this address one a crawler should be kept away from? */
-export function isPrivatePath(path: string): boolean {
-  return PRIVATE_PATHS.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`));
-}
+export { PRIVATE_PATHS, isPrivatePath } from "@/lib/private-paths";
 
 /**
  * The pages that are not generated from a list — written out, because there is
