@@ -15,6 +15,13 @@ export function itinerariesStructuredData() {
         name: BRAND_NAME.itineraries,
         url: `${origin}/`,
         email: BRAND_CONTACT_EMAIL.itineraries,
+        description: ITINERARIES_DESCRIPTION,
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "customer service",
+          email: BRAND_CONTACT_EMAIL.itineraries,
+          url: `${origin}/contact`,
+        },
       },
       {
         "@type": "WebSite",

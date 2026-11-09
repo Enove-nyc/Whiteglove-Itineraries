@@ -19,6 +19,7 @@ import { guideAnswer } from "@/lib/guide-paths";
 import { BRAND_ORIGIN, brandFromRequestHeaders, configuredBrand } from "@/lib/site-brand-core";
 import { isAndroidAppHeaders } from "@/lib/android-app";
 import { isMainstreamPath } from "@/lib/mainstream-property-check";
+import { prefersMarkdown } from "@/lib/markdown-request";
 
 /*
  * The guide lives on the kosher site; the itineraries site is strictly the
@@ -487,7 +488,14 @@ export async function middleware(request: NextRequest) {
 
   const lockRedirect = await siteLockRedirect(request, pathname);
   if (lockRedirect) return lockRedirect;
-  return NextResponse.next();
+  // Negotiate only the public Itineraries homepage, after the existing lock.
+  // Private routes and all ordinary HTML/session redirects keep their handlers.
+  const homepage = pathname === "/" && brandFromRequestHeaders(request.headers) === "itineraries";
+  const response = homepage && prefersMarkdown(request.headers.get("accept"))
+    ? NextResponse.rewrite(new URL("/site-overview.md", request.url))
+    : NextResponse.next();
+  if (homepage) response.headers.append("Vary", "Accept");
+  return response;
 }
 
 export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };
