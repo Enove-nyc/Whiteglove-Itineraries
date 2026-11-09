@@ -5,6 +5,8 @@ import robots from "@/app/robots";
 import nextConfig from "../next.config";
 import { ITINERARIES_TITLE, ITINERARIES_DESCRIPTION, itinerariesStructuredData } from "@/lib/itineraries-discovery";
 import { pageMetadata } from "@/lib/seo";
+import { prefersMarkdown } from "@/lib/markdown-request";
+import { GET as markdownOverview } from "@/app/site-overview.md/route";
 import { isPrivatePath, PRIVATE_PATHS } from "@/lib/private-paths";
 
 /** Robots path matching includes the query; `$` anchors the end of the URL. */
@@ -15,6 +17,20 @@ function matches(rule: string, path: string) {
 }
 
 describe("public discovery and private crawler boundaries", () => {
+  it("negotiates explicit Markdown preferences while preserving HTML and q=0 exclusions", () => {
+    for (const accept of [null, "*/*", "text/html,application/xhtml+xml,*/*;q=0.8", "text/markdown;q=0", "text/html;q=1,text/markdown;q=0.2"]) assert.equal(prefersMarkdown(accept), false, accept ?? "missing");
+    for (const accept of ["text/markdown", "text/markdown,*/*;q=0.5", "text/html;q=0.4,text/markdown;q=0.9"]) assert.equal(prefersMarkdown(accept), true, accept);
+  });
+
+  it("serves exactly the public guide as Markdown with a canonical link and cache variation", async () => {
+    const response = markdownOverview();
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^text\/markdown/);
+    assert.equal(response.headers.get("vary"), "Accept");
+    assert.match(response.headers.get("link") ?? "", /whitegloveitineraries\.com/);
+    assert.equal(await response.text(), readFileSync("public/llms.txt", "utf8"));
+  });
+
   it("offers public pages and assets to every crawler without a special access grant", () => {
     const policy = robots();
     assert.ok(!Array.isArray(policy.rules));

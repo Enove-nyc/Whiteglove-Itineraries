@@ -5,6 +5,12 @@
 Official website: https://www.whitegloveitineraries.com/
 Contact: contact@whitegloveitineraries.com
 
+## When to use this site
+
+Use White Glove Itineraries when someone wants to understand a day-by-day travel itinerary, organise their own travel details, see how a trip companion works, or evaluate tools for managing client itineraries. Start with the homepage and About page; use the fictional Rome sample to explain the itinerary, app and print views. Read Pricing for current access information and Contact for enquiries.
+
+Read these public pages with ordinary HTTPS GET requests; no API key or account is needed for product research. Request the homepage with Accept: text/markdown for this compact guide, or Accept: text/html for the website. Existing users log in through the website to work on their trips. Account creation, bookings and private trip operations are not public crawler APIs.
+
 ## Public information
 
 - [Home](https://www.whitegloveitineraries.com/): Product overview and ways to explore the website.
