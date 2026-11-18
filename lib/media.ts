@@ -261,3 +261,21 @@ export async function deleteMediaFromDisk(id: string): Promise<void> {
   if (!dir || !MEDIA_ID.test(id)) return;
   await unlink(fileFor(dir, id)).catch(() => undefined);
 }
+
+/**
+ * The ids of every file on this host's disk, in order, a page at a time — so a
+ * new host can copy them across (app/api/cron/media-list). Ids only: each file
+ * is then fetched through /api/media, which already serves it by id.
+ */
+export async function listDiskMediaIds(after = "", limit = 200): Promise<string[]> {
+  const dir = mediaDir();
+  if (!dir) return [];
+  const { readdir } = await import("node:fs/promises");
+  const names = await readdir(dir).catch(() => [] as string[]);
+  return names
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => name.slice(0, -5))
+    .filter((id) => MEDIA_ID.test(id) && id > after)
+    .sort()
+    .slice(0, Math.max(1, Math.min(limit, 500)));
+}
