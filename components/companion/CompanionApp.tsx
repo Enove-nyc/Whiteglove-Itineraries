@@ -36,7 +36,6 @@ import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type 
 import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Link from "next/link";
 import PersonalTravelWallet from "@/components/companion/PersonalTravelWallet";
 import TripGroupChat from "@/components/companion/TripGroupChat";
 import {
