@@ -27,11 +27,7 @@ type Carrier = { name?: string; iata_code?: string; logo_symbol_url?: string; lo
 type RawSegment = { origin?: { iata_code?: string; name?: string; terminal?: string }; destination?: { iata_code?: string; name?: string; terminal?: string }; departing_at?: string; arriving_at?: string; duration?: string; marketing_carrier?: Carrier; operating_carrier?: Carrier; marketing_carrier_flight_number?: string; aircraft?: { name?: string; iata_code?: string } };
 
 export async function POST(request: NextRequest) {
-  // ADMIN ONLY. Taking the buttons off the public page is not the same as
-  // closing the door: anybody who saw the site last month can still post here,
-  // and this endpoint reaches the White Glove Duffel account. See
-  // lib/duffel-guard.ts.
-  const refused = duffelRefusal(request);
+  const refused = await duffelRefusal(request, { privateBooking: true });
   if (refused) return NextResponse.json({ message: refused.error }, { status: refused.status });
 
 

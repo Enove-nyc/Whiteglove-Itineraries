@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
  * lib/duffel-guard.ts.
  */
 export async function POST(request: NextRequest) {
-  const refused = duffelRefusal(request);
+  const refused = await duffelRefusal(request);
   if (refused) return NextResponse.json({ message: refused.error }, { status: refused.status });
 
   const access = duffelBearer();

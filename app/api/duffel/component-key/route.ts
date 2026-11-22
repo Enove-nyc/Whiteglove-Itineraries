@@ -3,11 +3,7 @@ import { duffelRefusal } from "@/lib/duffel-guard";
 import { duffelBearer } from "@/lib/duffel-token";
 
 export async function POST(request: NextRequest) {
-  // ADMIN ONLY. Taking the buttons off the public page is not the same as
-  // closing the door: anybody who saw the site last month can still post here,
-  // and this endpoint reaches the White Glove Duffel account. See
-  // lib/duffel-guard.ts.
-  const refused = duffelRefusal(request);
+  const refused = await duffelRefusal(request, { privateBooking: true });
   if (refused) return NextResponse.json({ message: refused.error }, { status: refused.status });
 
 

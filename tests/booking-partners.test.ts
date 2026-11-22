@@ -9,7 +9,7 @@ import { inspectDuffelToken } from "@/lib/duffel-token";
  * Who runs a search on /book.
  *
  * HAVING A TOKEN IS NOT A DECISION, and neither is DUFFEL_FLIGHTS=1. Duffel
- * takes a card and issues a ticket. That flow is admin-only. These tests hold
+ * takes a card and issues a ticket. The flow is restricted to admin and invited guests. These tests hold
  * that no configuration can put it on the public site.
  */
 
@@ -52,7 +52,9 @@ describe("Duffel is off the public site", () => {
       "app/api/hotels/search/route.ts",
       "app/api/duffel/component-key/route.ts",
     ]) {
-      assert.match(readFileSync(route, "utf8"), /duffelRefusal\(request\)/, route);
+      const source = readFileSync(route, "utf8");
+      const guard = route.includes("/hotels/") ? /duffelRefusal\(request\)/ : /duffelRefusal\(request, \{ privateBooking: true \}\)/;
+      assert.match(source, guard, route);
       assert.match(readFileSync(route, "utf8"), /duffelBearer\(\)/, route);
     }
   });
@@ -110,7 +112,7 @@ function walk(dir: string, acc: string[] = []): string[] {
 
 describe("visitor-facing app code does not import Duffel UI", () => {
   it("keeps BookingSearch, FlightReview and @duffel/components off public pages", () => {
-    const files = walk("app").filter((file) => !file.includes(`${join("app", "admin")}`) && !file.includes(`${join("app", "api")}`));
+    const files = walk("app").filter((file) => !file.includes(`${join("app", "admin")}`) && !file.includes(`${join("app", "api")}`) && !file.startsWith(join("app", "private-booking") + "/"));
     for (const file of files) {
       const source = readFileSync(file, "utf8");
       assert.doesNotMatch(source, /BookingSearch/, file);
