@@ -19,6 +19,7 @@ import { guideAnswer } from "@/lib/guide-paths";
 import { BRAND_ORIGIN, brandFromRequestHeaders, configuredBrand } from "@/lib/site-brand-core";
 import { isAndroidAppHeaders } from "@/lib/android-app";
 import { isMainstreamPath } from "@/lib/mainstream-property-check";
+import { BOOKING_ORIGIN, hasBookingAccess, isBookingHost } from "@/lib/private-booking";
 import { prefersMarkdown } from "@/lib/markdown-request";
 
 /*
@@ -247,6 +248,35 @@ async function siteLockRedirect(request: NextRequest, pathname: string): Promise
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isBookingHost(request.headers)) {
+    const login = "/private-booking/access";
+    const api = pathname.startsWith("/api/");
+    const headers = { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" };
+    const accessible = [login, "/api/private-booking/access"].includes(pathname);
+    const bookingRoutes = [
+      "/", "/private-booking", "/private-booking/review", "/api/airports",
+      "/api/flights/search", "/api/flights/book", "/api/duffel/component-key", "/api/private-booking/assistant",
+    ];
+    if (!accessible && !bookingRoutes.includes(pathname)) {
+      return new NextResponse("Not found", { status: 404, headers });
+    }
+    if (!accessible && !(await hasBookingAccess(request))) {
+      if (api) return NextResponse.json({ message: "Please unlock booking first." }, { status: 401, headers });
+      return NextResponse.redirect(new URL(login, BOOKING_ORIGIN), { headers });
+    }
+    if (pathname === "/") {
+      const target = request.nextUrl.clone();
+      target.pathname = "/private-booking";
+      return NextResponse.rewrite(target, { headers });
+    }
+    return NextResponse.next({ headers });
+  }
+
+  if (pathname.startsWith("/private-booking") || pathname.startsWith("/api/private-booking")) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
 
   /**
    * THE ADMIN API IS NOT THIS DEPLOYMENT'S EITHER — and this must come before

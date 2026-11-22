@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { duffelRefusal } from "@/lib/duffel-guard";
 import { duffelBearer } from "@/lib/duffel-token";
 
+import { DUFFEL_API_ORIGIN, duffelApiHeaders } from "@/lib/duffel-api";
+import { bookingSignature, isBookingHost } from "@/lib/private-booking";
+
 type Traveler = { firstName?: string; lastName?: string; email?: string; bornOn?: string; title?: string; gender?: string; phone?: string; passportNumber?: string; passportCountry?: string; passportExpires?: string };
 
 const duffelHeaders = (token: string, request?: Request) => ({
@@ -16,11 +19,7 @@ const duffelHeaders = (token: string, request?: Request) => ({
 });
 
 export async function POST(request: NextRequest) {
-  // ADMIN ONLY. Taking the buttons off the public page is not the same as
-  // closing the door: anybody who saw the site last month can still post here,
-  // and this endpoint reaches the White Glove Duffel account. See
-  // lib/duffel-guard.ts.
-  const refused = duffelRefusal(request);
+  const refused = await duffelRefusal(request, { privateBooking: true });
   if (refused) return NextResponse.json({ message: refused.error }, { status: refused.status });
 
 
@@ -44,10 +43,26 @@ export async function POST(request: NextRequest) {
     title: traveler.title, gender: traveler.gender, phone_number: traveler.phone.trim(),
     ...(traveler.passportNumber && traveler.passportCountry && traveler.passportExpires ? { identity_documents: [{ type: "passport", unique_identifier: traveler.passportNumber.trim(), issuing_country_code: traveler.passportCountry.trim().toUpperCase(), expires_on: traveler.passportExpires }] } : {}),
   };
+  let customerUserId: string | undefined;
+  if (isBookingHost(request.headers) && (access.kind === "test" || process.env.DUFFEL_ASSISTANT_LIVE === "1")) {
+    const customer = await fetch(`${DUFFEL_API_ORIGIN}/identity/customer/users`, {
+      method: "POST",
+      headers: duffelApiHeaders(token),
+      cache: "no-store",
+      body: JSON.stringify({ data: {
+        email: passenger.email, given_name: passenger.given_name, family_name: passenger.family_name,
+      } }),
+    }).catch(() => null);
+    if (customer?.ok) {
+      const details = await customer.json().catch(() => null);
+      customerUserId = details?.data?.id;
+    }
+  }
   const orderResponse = await fetch("https://api.duffel.com/air/orders", {
     method: "POST", headers: duffelHeaders(token, request), cache: "no-store",
     body: JSON.stringify({ data: {
       type: "instant", selected_offers: [offer.id], passengers: [passenger],
+      ...(customerUserId ? { users: [customerUserId] } : {}),
       payments: [{ type: "card", currency: offer.total_currency, amount: offer.total_amount, three_d_secure_session_id: threeDSecureSessionId }],
     } }),
   });
@@ -56,5 +71,12 @@ export async function POST(request: NextRequest) {
     const reason = result.errors?.[0]?.message ?? result.errors?.[0]?.title;
     return NextResponse.json({ message: reason ?? "Duffel could not complete the booking. No ticket has been issued." }, { status: 422 });
   }
-  return NextResponse.json({ bookingReference: result.data?.booking_reference, orderId: result.data?.id, airline: result.data?.owner?.name, totalAmount: result.data?.total_amount, totalCurrency: result.data?.total_currency });
+  let assistantReceipt: string | undefined;
+  if (customerUserId && result.data?.users?.includes(customerUserId)) {
+    const expires = Math.floor(Date.now() / 1000) + 30 * 60;
+    const payload = `${customerUserId}.${expires}`;
+    const signature = await bookingSignature(`assistant:${payload}`).catch(() => null);
+    if (signature) assistantReceipt = `${payload}.${signature}`;
+  }
+  return NextResponse.json({ assistantReceipt, bookingReference: result.data?.booking_reference, orderId: result.data?.id, airline: result.data?.owner?.name, totalAmount: result.data?.total_amount, totalCurrency: result.data?.total_currency });
 }
