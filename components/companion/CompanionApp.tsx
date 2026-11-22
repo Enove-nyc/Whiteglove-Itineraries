@@ -704,9 +704,9 @@ function WalletDocLink({
   async function open(e: ReactMouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     setNote("");
-    // Get the bytes: the saved copy when offline, otherwise the served file.
+    const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
     let blob: Blob | null = null;
-    if (offlineCapable && typeof navigator !== "undefined" && !navigator.onLine) {
+    if (offlineCapable && isOffline) {
       blob = await readDocumentOffline(fileId);
       if (!blob) {
         setNote(explicitDownload ? "Save this file for offline use while you have a connection." : "This file isn’t available offline yet.");
@@ -714,10 +714,11 @@ function WalletDocLink({
       }
     } else {
       try {
-        const r = await fetch(url, { cache: "no-store" });
-        if (r.ok) blob = await r.blob();
+        const response = await fetch(url, { cache: "no-store" });
+        if (response.ok) blob = await response.blob();
       } catch {
-        /* fall through to a plain open */
+        // A browser can report a connection while the network cannot reach the host.
+        if (offlineCapable) blob = await readDocumentOffline(fileId);
       }
     }
     if (!blob && explicitDownload) { setNote("Could not open this file. Check your connection and invite access."); return; }

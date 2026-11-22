@@ -118,22 +118,31 @@ try {
   }
   await tripPage.getByRole('button',{name:'Open itinerary',exact:true}).first().waitFor();
   await tripPage.getByRole('button',{name:'Wallet',exact:true}).click();
-  await tripPage.getByRole('link',{name:'Sample boarding pass.pdf · Jamie',exact:false}).click();
+  const passLink = tripPage.getByRole('link',{name:'Sample boarding pass.pdf · Jamie',exact:false});
+  const passControls = passLink.locator('..');
+  await passLink.click();
   await tripPage.getByRole('dialog').waitFor();
   await tripPage.getByLabel('Document page 1').waitFor();
   await tripPage.getByRole('button',{name:'View larger'}).click();
   await tripPage.getByRole('button',{name:'Close document'}).click();
-  await tripPage.getByRole('button',{name:'Save for offline',exact:true}).first().click();
-  await tripPage.getByText('Available offline',{exact:true}).first().waitFor();
-  await tripPage.evaluate(() => navigator.serviceWorker.ready.then(() => Boolean(navigator.serviceWorker.controller)));
+  await passControls.getByRole('button',{name:'Save for offline',exact:true}).click();
+  await passControls.getByText('Available offline',{exact:true}).waitFor();
+  await tripPage.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) => navigator.serviceWorker.addEventListener('controllerchange', resolve, {once:true}));
+    }
+  });
   await one.setOffline(true);
   await tripPage.reload();
   await tripPage.getByRole('button',{name:'Wallet',exact:true}).click();
-  await tripPage.getByRole('link',{name:'Sample boarding pass.pdf · Jamie',exact:false}).click();
+  await passControls.getByText('Available offline',{exact:true}).waitFor();
+  await passLink.click();
   await tripPage.getByRole('dialog').waitFor();
+  await tripPage.getByLabel('Document page 1').waitFor();
   await tripPage.getByRole('button',{name:'Close document'}).click();
-  await tripPage.getByRole('button',{name:'Remove offline copy',exact:true}).first().click();
-  await tripPage.getByRole('button',{name:'Save for offline',exact:true}).first().waitFor();
+  await passControls.getByRole('button',{name:'Remove offline copy',exact:true}).click();
+  await passControls.getByRole('button',{name:'Save for offline',exact:true}).waitFor();
   await one.setOffline(false);
   console.log('PASS explicit publish, wallet privacy, opening originals, offline copy and removal in Chromium');
   await post(owner,'/api/account/traveler-share',{action:'revoke',tripId,travelerId:'first'});
