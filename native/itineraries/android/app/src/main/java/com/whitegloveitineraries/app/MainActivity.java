@@ -23,7 +23,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        startup = AppStartupGuard.attach(this, "https://whitegloveitineraries.com/app", "White Glove Itineraries");
+        startup = AppStartupGuard.attach(this, "https://www.whitegloveitineraries.com/app", "White Glove Itineraries");
         // The web app's voice notes and camera need the OS mic and camera
         // permissions; ask for them up front so the WebView grant below always
         // has the real OS grant behind it.
