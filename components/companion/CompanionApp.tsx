@@ -36,6 +36,7 @@ import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type 
 import { useOnValueChange } from "@/components/useOnValueChange";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Link from "next/link";
 import PersonalTravelWallet from "@/components/companion/PersonalTravelWallet";
 import TripGroupChat from "@/components/companion/TripGroupChat";
 import {
@@ -1913,7 +1914,7 @@ export default function CompanionApp({
         {syncedAt && <p className="text-sm">Last synced <time dateTime={syncedAt}>{syncedAt.replace("T", " ").slice(0, 16)} UTC</time></p>}
         {unread && <button type="button" className="min-h-11 self-start text-sm font-semibold underline" onClick={() => go("messages")}>Read your new message</button>}
         {liveAlerts.length === 0 && !unread && <p className="text-sm">No trip updates yet.</p>}
-        <a className="inline-flex min-h-11 items-center text-sm font-semibold underline" href="/account">Manage your account or sign out</a>
+        <Link className="inline-flex min-h-11 items-center text-sm font-semibold underline" href="/account" prefetch={false}>Manage your account or sign out</Link>
       </>}
       {/* The advisor's own side of the trip: a way to send the traveler a line
           by hand. Shown only where the account actually serves clients

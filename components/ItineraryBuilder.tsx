@@ -186,7 +186,6 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // null until the first trips read decides, so the editor does not flash up
   // before the list for somebody who has several.
   const [mode, setMode] = useState<"list" | "edit" | null>(null);
-  const [tripCount, setTripCount] = useState(0);
   useEffect(() => {
     let active = true;
     fetch("/api/account/trips", { cache: "no-store" })
@@ -198,7 +197,6 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           setMode((m) => m ?? "edit");
           return;
         }
-        setTripCount(d.trips.length);
         setMode((m) => (m === null ? (d.trips.length >= 2 && !entry && !(itineraries && localStorage.getItem(GUEST_DRAFT_KEY)) ? "list" : "edit") : m));
       })
       .catch(() => {

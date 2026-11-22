@@ -70,9 +70,19 @@ export default function TravelDocumentPreview({ document, onClose }: { document:
   return <dialog aria-label={document.name} ref={dialog} onCancel={onClose} className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-[#FAF8F3] p-0 text-[#102F35] backdrop:bg-black/70">
     <div className="flex h-full flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-2"><h2 className="min-w-0 truncate text-sm font-semibold">{document.name}</h2><button type="button" autoFocus onClick={onClose} className="min-h-11 shrink-0 rounded-xl px-4 font-semibold">Close document</button></header>
-      {document.blob.type === "application/pdf" ? <PdfPage blob={document.blob} pageNumber={page} zoomed={zoomed} onPages={setPages} /> : <div className={`flex min-h-0 flex-1 items-start overflow-auto p-4 ${zoomed ? "justify-start" : "justify-center"}`}>{url ? /* A private local blob must never go through the image optimizer. */ <img src={url} alt={document.name} className={zoomed ? "h-auto max-w-none object-contain" : "h-auto max-w-full object-contain"} /> : null}</div>}
+      {document.blob.type === "application/pdf" ? (
+        <PdfPage blob={document.blob} pageNumber={page} zoomed={zoomed} onPages={setPages} />
+      ) : (
+        <div className={`flex min-h-0 flex-1 items-start overflow-auto p-4 ${zoomed ? "justify-start" : "justify-center"}`}>
+          {url && (
+            // The original blob stays in the browser and keeps its native resolution.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt={document.name} className={zoomed ? "h-auto max-w-none object-contain" : "h-auto max-w-full object-contain"} />
+          )}
+        </div>
+      )}
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-stone-200 bg-white px-4 py-2">
-        {document.blob.type === "application/pdf" ? <div className="flex items-center gap-3"><button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="min-h-11 px-2 text-sm disabled:opacity-40">Previous</button><span className="text-xs">Page {page} of {pages}</span><button type="button" disabled={page >= pages} onClick={() => setPage((value) => value + 1)} className="min-h-11 px-2 text-sm disabled:opacity-40">Next</button></div> : <span className="text-xs">Saved on this device</span>}
+        {document.blob.type === "application/pdf" ? <div className="flex items-center gap-3"><button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="min-h-11 px-2 text-sm disabled:opacity-40">Previous</button><span className="text-xs">Page {page} of {pages}</span><button type="button" disabled={page >= pages} onClick={() => setPage((value) => value + 1)} className="min-h-11 px-2 text-sm disabled:opacity-40">Next</button></div> : <span className="text-xs">Original image</span>}
         <button type="button" aria-pressed={zoomed} onClick={() => setZoomed((value) => !value)} className="min-h-11 px-2 text-sm font-semibold underline">{zoomed ? "Fit to screen" : "View larger"}</button>
         {url ? <a href={url} download={document.name} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold underline">Save a copy</a> : null}
       </footer>
