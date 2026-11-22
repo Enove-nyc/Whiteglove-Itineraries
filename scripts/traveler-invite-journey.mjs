@@ -134,6 +134,11 @@ try {
   const secondThread = await post(two,chat,{code:codeTwo,action:'read'});
   assert.deepEqual(ownThread.messages.map(message=>message.text),['Where should we meet?','I’m coming too.','Meet in the main square.']);
   assert.deepEqual(ownThread.messages,secondThread.messages);
+  const reportId = ownThread.messages[1].id;
+  await post(outsider,chat,{code,action:'report',messageId:reportId,reportKind:'traveler'},404);
+  assert.equal((await post(one,chat,{code,action:'report',messageId:reportId,reportKind:'traveler'})).reported,true);
+  await post(two,chat,{code:codeTwo,action:'report',messageId:reportId,reportKind:'message'},404);
+  console.log('PASS invited travelers can report another member and outsiders cannot report');
   console.log('PASS three signed-in travelers can chat together and other accounts are excluded');
   const boardingPass = await owner.newPage();
   await boardingPass.setContent(`<h1>Sample boarding pass</h1><p>Fictional test document · Jamie · FCO to MXP</p><div style="width:220px;height:40px;background:repeating-linear-gradient(90deg,black 0 2px,white 2px 5px,black 5px 6px,white 6px 10px)"></div>`);

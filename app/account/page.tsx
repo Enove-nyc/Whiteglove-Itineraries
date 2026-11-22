@@ -259,6 +259,10 @@ export default async function AccountPage() {
           </p>
         </section>
 
+        {siteBrand === "itineraries" && <section aria-labelledby="account-deletion-heading" className="mt-10">
+          <h2 id="account-deletion-heading" className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Delete account</h2>
+          <Link href="/privacy#account-deletion" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Request deletion of your account and data</Link>
+        </section>}
         <section aria-labelledby="account-sign-out" className="mt-10">
           <h2 id="account-sign-out" className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Sign out</h2>
           <div className="mt-4">

@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { isValidAccessToken } from "@/lib/secure-access";
+import { readFamilyChatReports } from "@/lib/trip-group-store";
+import { reviewFamilyChatReport } from "./actions";
 import ForgetSearchButton from "@/components/ForgetSearchButton";
 import { buildDemandReport } from "@/lib/demand-data";
 
@@ -17,6 +21,8 @@ const card = "rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3] p-5 sm:p
  */
 export default async function AdminReportsPage() {
   const report = await buildDemandReport();
+  const owner = isValidAccessToken("admin", (await cookies()).get("white_glove_admin")?.value);
+  const chatReports = owner ? await readFamilyChatReports().catch(() => null) : null;
 
   return (
     <div className="pb-12">
@@ -34,6 +40,20 @@ export default async function AdminReportsPage() {
         </p>
       </header>
 
+      {owner && <section className={`${card} mt-7`}>
+        <h2 className="text-xl font-semibold">Family chat reports</h2>
+        {chatReports === null && <p className="mt-2 text-sm">The report queue could not be loaded.</p>}
+        {chatReports?.length === 0 && <p className="mt-2 text-sm">No open reports.</p>}
+        {chatReports?.map((item) => <article key={item.id} className="mt-4 border-t border-stone-200 pt-4">
+          <p className="text-sm font-semibold">{item.kind === "traveler" ? "Reported traveler" : "Reported message"} · {item.message.name}</p>
+          <p className="my-2 whitespace-pre-wrap break-words text-sm">{item.message.text}</p>
+          <form action={reviewFamilyChatReport} className="flex flex-wrap gap-3">
+            <input type="hidden" name="id" value={item.id} />
+            <button name="decision" value="remove" className="min-h-11 rounded border px-3">Remove reported message</button>
+            <button name="decision" value="close" className="min-h-11 rounded border px-3">Close report</button>
+          </form>
+        </article>)}
+      </section>}
       {!report.counting ? (
         <section className={`${card} mt-7`}>
           <p className="text-sm leading-6 text-stone-600">

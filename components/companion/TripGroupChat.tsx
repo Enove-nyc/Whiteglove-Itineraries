@@ -33,6 +33,7 @@ function ChannelTripGroupChat({ code, family, channel, draft, onDraftChange }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [reported, setReported] = useState("");
   const sequence = useRef(0);
   const mutating = useRef(false);
   const request = useCallback(async (action: string, extra: Record<string, string> = {}) => {
@@ -75,8 +76,19 @@ function ChannelTripGroupChat({ code, family, channel, draft, onDraftChange }: {
     catch (problem) { setError(problem instanceof Error ? problem.message : "Your message was not sent. Try again."); }
     finally { mutating.current = false; setBusy(false); }
   }
+  async function report(messageId: string, reportKind: "message" | "traveler") {
+    setError("");
+    setReported("");
+    try {
+      await request("report", { messageId, reportKind });
+      setReported("Report sent to White Glove for review.");
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : "The report could not be sent. Try again.");
+    }
+  }
   return <section className="flex min-h-0 flex-1 flex-col gap-3 p-4 text-[#102F35]" aria-labelledby={`${id}-heading`}>
     <div><h2 id={`${id}-heading`} className="text-lg font-semibold">{label}</h2><p className="mt-1 text-sm leading-6 text-stone-600">{family ? "Everyone invited to this trip can read and send messages here." : "A conversation for everyone with this trip’s code. Your display name is chosen by you."}</p></div>
+    {reported && <p role="status" className="text-sm">{reported}</p>}
     {loading ? <p role="status">Opening the conversation…</p> : null}
     {error ? <p role="alert" className="rounded-xl bg-white p-3 text-sm text-red-800">{error} <button type="button" onClick={() => void refresh()} className="min-h-11 px-2 font-semibold underline">Try again</button></p> : null}
     {needsName ? <form onSubmit={(event) => { event.preventDefault(); void join(); }} className="rounded-2xl bg-white p-4">
@@ -86,6 +98,13 @@ function ChannelTripGroupChat({ code, family, channel, draft, onDraftChange }: {
       <div className="text-sm text-stone-600">Chatting as {member.name} {!family && <button type="button" onClick={() => { setName(member.name); setNeedsName(true); }} className="min-h-11 px-2 underline">Change name</button>}</div>
       <ol aria-label="Trip messages" className="flex flex-col gap-3">{messages.map((message) => <li key={message.id} className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.memberId === member.id ? "self-end bg-[#102F35] text-white" : "self-start bg-white"}`}>
         <p className="text-xs font-semibold">{message.memberId === member.id ? "You" : message.name}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{message.text}</p><time dateTime={message.at} className="mt-1 block text-xs opacity-80">{new Date(message.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
+        {family && message.memberId !== member.id && <details className="mt-1">
+          <summary className="flex min-h-11 cursor-pointer items-center text-xs underline">Report</summary>
+          <div className="flex flex-wrap gap-x-3">
+            <button type="button" className="min-h-11 text-xs underline" onClick={() => void report(message.id, "message")}>Report message</button>
+            <button type="button" className="min-h-11 text-xs underline" onClick={() => void report(message.id, "traveler")}>Report traveler</button>
+          </div>
+        </details>}
       </li>)}</ol>
       {!messages.length && !loading ? <p className="text-sm text-stone-600">No messages yet. Start the conversation with your travel group.</p> : null}
       <p className="text-xs text-stone-600">Showing the latest 500 messages in this channel.</p>

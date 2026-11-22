@@ -50,3 +50,43 @@ export async function sendTripGroup(member: TripGroupMember, text: string, chann
   ]);
   return messages(rows, channel);
 }
+
+const REPORTS = "white-glove:family-chat-reports";
+export type FamilyChatReport = {
+  id: string;
+  group: string;
+  channel: TripChatChannel;
+  message: TripGroupMessage;
+  kind: "message" | "traveler";
+  at: string;
+};
+
+export async function reportFamilyChat(group: string, channel: TripChatChannel, reporter: string, messageId: string, kind: FamilyChatReport["kind"]): Promise<boolean> {
+  const message = (await readTripGroup(group, channel)).find((item) => item.id === messageId);
+  if (!message || message.memberId === reporter) return false;
+  // A report stores the selected message for review, even if it rolls out of chat history.
+  const id = randomUUID();
+  const report: FamilyChatReport = { id, group, channel, message, kind, at: new Date().toISOString() };
+  await command(["EVAL", "redis.call('LPUSH',KEYS[1],ARGV[1]); redis.call('LTRIM',KEYS[1],0,99); return 1", 1, REPORTS, JSON.stringify(report)]);
+  return true;
+}
+
+export async function readFamilyChatReports(): Promise<FamilyChatReport[]> {
+  const rows = await command<string[]>(["LRANGE", REPORTS, 0, 99]);
+  return rows.map((row) => JSON.parse(row) as FamilyChatReport);
+}
+
+export async function resolveFamilyChatReport(id: string, remove: boolean): Promise<void> {
+  const rows = await command<string[]>(["LRANGE", REPORTS, 0, 99]);
+  const raw = rows.find((row) => (JSON.parse(row) as FamilyChatReport).id === id);
+  if (!raw) return;
+  const report = JSON.parse(raw) as FamilyChatReport;
+  await command(["EVAL", `
+    if ARGV[2] == 'yes' then
+      for _, row in ipairs(redis.call('LRANGE', KEYS[2], 0, -1)) do
+        if cjson.decode(row).id == ARGV[3] then redis.call('LREM', KEYS[2], 1, row); break end
+      end
+    end
+    return redis.call('LREM', KEYS[1], 1, ARGV[1])
+  `, 2, REPORTS, conversationKey(report.group, report.channel), raw, remove ? "yes" : "no", report.message.id]);
+}
