@@ -38,12 +38,14 @@ export async function POST(request: NextRequest) {
   // Accepts either a whole-trip token or a traveler-scoped one, resolved to
   // the same underlying thread — see resolveCompanionShare and the note on
   // it in lib/account-store.ts. The resolved chatKey is server-side only.
-  const resolved = await resolveCompanionShare(shareId);
+  const cookie = (await cookies()).get(accountCookieName())?.value;
+  const account = await getCurrentAccountData(cookie);
+  const resolved = await resolveCompanionShare(shareId, account?.email);
   if (!resolved) return NextResponse.json({ error: "That link is not active." }, { status: 404 });
   const { ownerEmail: owner, chatKey } = resolved;
   // Business-only, the same gate as the chat it reports on — a non-Business
   // share link has no thread to report against.
-  if (!mayServeCompanionClients(await getPlan(owner))) {
+  if (!resolved.privateInvite && !mayServeCompanionClients(await getPlan(owner))) {
     return NextResponse.json({ error: "That link is not active." }, { status: 404 });
   }
   if (!(await isKnownChannel(chatKey, channel))) {
@@ -55,8 +57,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "That is a lot of reports at once — try again shortly." }, { status: 429 });
   }
 
-  const cookie = (await cookies()).get(accountCookieName())?.value;
-  const account = await getCurrentAccountData(cookie);
   const by = account?.email && identityKey(account.email) === identityKey(owner) ? "advisor" : "client";
 
   const ok = await appendReport(chatKey, { by, messageAt: at, at: new Date().toISOString() }, channel);

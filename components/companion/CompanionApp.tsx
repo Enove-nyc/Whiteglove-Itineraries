@@ -53,7 +53,8 @@ import dynamic from "next/dynamic";
 const PaymentCheckout = dynamic(() => import("@/components/companion/PaymentCheckout"), { ssr: false });
 import { useDeviceClock } from "@/components/TripProgressStrip";
 import { followAlong, type FollowStop } from "@/lib/trip-progress";
-import { readDocumentOffline, saveDocumentOffline, readMessagesOffline, saveMessagesOffline } from "@/lib/offline-trip-store";
+import TravelDocumentPreview, { preparePdfViewer } from "@/components/companion/TravelDocumentPreview";
+import { removeDocumentOffline, readDocumentOffline, saveDocumentOffline, readMessagesOffline, saveMessagesOffline } from "@/lib/offline-trip-store";
 
 /** The blue the app already uses for its own accents — map notes, the
  * initials avatar, kickers. The chat toolbar's icons match it rather than
@@ -78,7 +79,7 @@ const getIsOfflineServer = () => false;
 type Screen = "home" | "day" | "activity" | "chat" | "messages" | "alerts" | "wallet" | "profile" | "pay";
 type ChatSide = "client" | "advisor";
 /** The live thread on this trip — present once the trip has been shared. */
-export type CompanionChat = { shareId: string; side: ChatSide; advisorName: string };
+export type CompanionChat = { shareId: string; side: ChatSide; advisorName: string; privateInvite?: boolean };
 type Mode = "concierge" | "guide";
 type Role = "traveler" | "advisor";
 type SwapId = "a" | "b";
@@ -657,13 +658,44 @@ function WalletDocLink({
   fileId,
   name,
   offlineCapable,
+  explicitDownload = false,
 }: {
   url: string;
   fileId: string;
   name: string;
   offlineCapable: boolean;
+  explicitDownload?: boolean;
 }) {
   const [note, setNote] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [document, setDocument] = useState<Blob | null>(null);
+  useEffect(() => {
+    if (explicitDownload) void readDocumentOffline(fileId).then((blob) => setSaved(Boolean(blob)));
+  }, [explicitDownload, fileId]);
+
+  async function changeOfflineCopy() {
+    setBusy(true);
+    setNote("");
+    try {
+      if (saved) {
+        await removeDocumentOffline(fileId);
+        if (await readDocumentOffline(fileId)) throw new Error("This device could not remove the file.");
+      } else {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error("Could not download this file. Check your access and connection.");
+        const blob = await response.blob();
+        if (blob.type === "application/pdf") await preparePdfViewer();
+        await saveDocumentOffline(fileId, blob);
+        if (!await readDocumentOffline(fileId)) throw new Error("This device could not save the file.");
+      }
+      setSaved(!saved);
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : "Could not change the offline copy.");
+    } finally {
+      setBusy(false);
+    }
+  }
   // An image document (a boarding pass photographed or exported as a picture)
   // opened in a fitted overlay, rather than a raw new tab where a phone shows it
   // at full pixel size and you have to pinch it down.
@@ -677,7 +709,7 @@ function WalletDocLink({
     if (offlineCapable && typeof navigator !== "undefined" && !navigator.onLine) {
       blob = await readDocumentOffline(fileId);
       if (!blob) {
-        setNote("Not saved for offline yet — open it once with a connection.");
+        setNote(explicitDownload ? "Save this file for offline use while you have a connection." : "This file isn’t available offline yet.");
         return;
       }
     } else {
@@ -688,10 +720,12 @@ function WalletDocLink({
         /* fall through to a plain open */
       }
     }
+    if (!blob && explicitDownload) { setNote("Could not open this file. Check your connection and invite access."); return; }
     if (!blob) {
       window.open(url, "_blank", "noopener");
       return;
     }
+    if (explicitDownload) { setDocument(blob); return; }
     if (blob.type.startsWith("image/")) {
       // Fit it to the screen instead of opening it at native resolution.
       setImageView(URL.createObjectURL(blob));
@@ -714,6 +748,11 @@ function WalletDocLink({
       >
         📎 {name}
       </a>
+      {explicitDownload && <>
+        <button type="button" disabled={busy} onClick={() => void changeOfflineCopy()} className="min-h-11 self-start text-left text-xs font-semibold underline">{busy ? "Working…" : saved ? "Remove offline copy" : "Save for offline"}</button>
+        {saved && <span className="text-xs">Available offline</span>}
+      </>}
+      {document && <TravelDocumentPreview document={{ id: fileId, scope: "", name, kind: "", savedAt: "", blob: document }} onClose={() => setDocument(null)} />}
       {note && <span style={{ fontSize: 11, color: "#b42318" }}>{note}</span>}
       {imageView && (
         <div
@@ -906,6 +945,11 @@ function MediaViewer({
 
 export default function CompanionApp({
   travelerGroupCode,
+  travelerInvite = false,
+  syncedAt,
+  travelerName,
+  tripTimeZone,
+  pushPublicKey,
   travelerPreview = false,
   personalWalletKey,
   trip = COMPANION_DEMO_TRIP,
@@ -919,6 +963,11 @@ export default function CompanionApp({
 }: {
   /** A traveler-owned group, with no advisor role. */
   travelerGroupCode?: string;
+  travelerInvite?: boolean;
+  syncedAt?: string;
+  travelerName?: string;
+  tripTimeZone?: string;
+  pushPublicKey?: string;
   travelerPreview?: boolean;
   personalWalletKey?: string;
   trip?: CompanionTrip;
@@ -1040,12 +1089,12 @@ export default function CompanionApp({
       }
     }
     void poll();
-    const t = setInterval(poll, 15000);
+    const t = setInterval(() => { if (!document.hidden && navigator.onLine) void poll(); }, travelerInvite ? 45_000 : 15_000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, [liveChat]);
+  }, [liveChat, travelerInvite]);
 
   // KEEP THE WALLET DOCUMENTS ON THE DEVICE. Whoever opens the trip with a
   // connection — the client through their share link, the advisor through their
@@ -1059,6 +1108,7 @@ export default function CompanionApp({
   useEffect(() => {
     // The client needs their share token to fetch; the advisor fetches by
     // account and needs none. Without either door, there is nothing to pull.
+    if (travelerInvite) return;
     const shareId = groupCode ?? liveChat?.shareId;
     if (isClientViewer && !shareId) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
@@ -1085,7 +1135,7 @@ export default function CompanionApp({
     return () => {
       cancelled = true;
     };
-  }, [isClientViewer, groupCode, liveChat?.shareId, trip.walletGroups]);
+  }, [isClientViewer, groupCode, liveChat?.shareId, trip.walletGroups, travelerInvite]);
 
   // How many wallet documents are ACTUALLY on this device — so the wallet badge
   // tells the truth rather than promising "works with no signal" for a boarding
@@ -1096,7 +1146,7 @@ export default function CompanionApp({
   const walletFileIds = trip.walletGroups
     .flatMap((g) => g.rows)
     .flatMap((r) => r.attachments ?? [])
-    .map((a) => a.id)
+    .map((a) => travelerInvite ? `${liveChat?.shareId}:${a.id}` : a.id)
     .join("|");
   const [offlineDocs, setOfflineDocs] = useState<{ kept: number; total: number }>({ kept: 0, total: 0 });
   useEffect(() => {
@@ -1229,6 +1279,7 @@ export default function CompanionApp({
   // and fall back to the server index only before the device clock has resolved
   // (first paint / SSR) or when no day matches today at all.
   const todayIdx = (() => {
+    if (travelerInvite) return trip.todayIndex;
     if (deviceToday) {
       const i = days.findIndex((d) => d.date === deviceToday);
       if (i >= 0) return i;
@@ -1247,7 +1298,7 @@ export default function CompanionApp({
   const items = sel.items.map(decorate);
   // Whether the day on screen is the traveler's own today (device clock), which
   // gates the "happening now / next up" follow-along below.
-  const selIsToday = deviceToday ? sel.date === deviceToday : Boolean(sel.today);
+  const selIsToday = travelerInvite || !deviceToday ? Boolean(sel.today) : sel.date === deviceToday;
   const offline = useSyncExternalStore(subscribeOnline, getIsOffline, getIsOfflineServer);
   const followStops: FollowStop[] = items.map((it, i) => ({ id: String(i), name: it.title, arrivalTime: it.time || undefined }));
   const follow = selIsToday ? followAlong({ stops: followStops, nowMinutes }) : null;
@@ -1358,8 +1409,8 @@ export default function CompanionApp({
     day: sel.name,
     activity: "On the day",
     chat: advisor,
-    messages: groupMode ? "Trip group chat" : advisorInbox ? "Messages" : liveChat ? (liveChat.side === "advisor" ? "Your client" : liveChat.advisorName) : "Advisor",
-    alerts: "Changes",
+    messages: travelerInvite ? liveChat?.advisorName ?? "Trip chat" : groupMode ? "Trip group chat" : advisorInbox ? "Messages" : liveChat ? (liveChat.side === "advisor" ? "Your client" : liveChat.advisorName) : "Advisor",
+    alerts: travelerInvite ? "Updates" : "Changes",
     wallet: "Travel wallet",
     profile: "You",
     pay: "Trip balance",
@@ -1369,7 +1420,7 @@ export default function CompanionApp({
     day: `Day ${curDay + 1} of ${trip.days.length}`,
     activity: sel.name,
     chat: hasConcierge || usesRealChat ? "Your advisor" : "On your own",
-    messages: groupMode ? "Everyone on this trip" : advisorInbox ? "Your clients" : liveChat?.side === "advisor" ? "Their trip, and yours to move" : "Your advisor · replies when they can",
+    messages: travelerInvite ? "Private conversation" : groupMode ? "Everyone on this trip" : advisorInbox ? "Your clients" : liveChat?.side === "advisor" ? "Their trip, and yours to move" : "Your advisor · replies when they can",
     alerts: open ? "One needs you" : unreadAlerts.length > 0 ? `${unreadAlerts.length} to see` : settled ? "All settled" : "Nothing right now",
     wallet: "Kept offline",
     profile: hasConcierge ? "The trip is in your name" : "This trip, and you",
@@ -1436,18 +1487,18 @@ export default function CompanionApp({
   // The bottom nav is capped at four on a real trip — Trip, Advisor, Wallet,
   // You — so a real trip's Guide notes live inside the You tab (see
   // guideSection below) rather than getting a tab of their own.
-  const tabDefs: [Screen, string, IconName][] = [["home", "Trip", "map-pin"]];
-  if (hasConcierge)
+  const tabDefs: [Screen, string, IconName][] = [["home", travelerInvite ? "Itinerary" : "Trip", "map-pin"]];
+  if (!travelerInvite && hasConcierge)
     tabDefs.push(
       trip.previewAsClient
         ? // Where a client's advisor thread sits, under the name a client sees.
           [conciergeTabScreen, "Advisor", "chat"]
         : [conciergeTabScreen, isGuideMode ? "Guide" : "Concierge", "sparkle"],
     );
-  if (hasMessages && conciergeTabScreen !== "messages") tabDefs.push(["messages", groupMode ? "Chat" : advisorInbox ? "Messages" : "Advisor", "chat"]);
-  tabDefs.push(["wallet", "Wallet", "wallet"], ["profile", "You", "account"]);
+  if (hasMessages && (travelerInvite || conciergeTabScreen !== "messages")) tabDefs.push(["messages", groupMode || travelerInvite ? "Chat" : advisorInbox ? "Messages" : "Advisor", "chat"]);
+  tabDefs.push(["wallet", "Wallet", "wallet"], travelerInvite ? ["alerts", "Updates", "account"] : ["profile", "You", "account"]);
   const tabs = tabDefs.map(([id, label, icon]) => {
-    const on = st.screen === id || (id === "home" && (st.screen === "day" || st.screen === "activity" || st.screen === "alerts"));
+    const on = st.screen === id || (id === "home" && (st.screen === "day" || st.screen === "activity" || (!travelerInvite && st.screen === "alerts")));
     return { id, label, icon, on, badge: id === "messages" && unread && st.screen !== "messages" };
   });
 
@@ -1744,6 +1795,7 @@ export default function CompanionApp({
 
   const dayScreen = (
     <div style={{ padding: "16px 18px 28px", display: "flex", flexDirection: "column", gap: 16, animation: "wgIn .28s ease both" }}>
+      {travelerInvite && tripTimeZone && <p className="text-xs text-stone-600">Local schedule · {tripTimeZone.replaceAll("_", " ")}</p>}
       {(sel.weather || sel.walk) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {sel.weather && <span style={{ font: "600 11.5px/1 Inter,sans-serif", background: "var(--color-surface-muted)", color: "#102F35", padding: "8px 12px", borderRadius: 14 }}>{sel.weather}</span>}
@@ -1837,13 +1889,31 @@ export default function CompanionApp({
     </div>
   );
 
+  useEffect(() => {
+    if (!travelerInvite) return;
+    const refresh = () => { if (navigator.onLine && document.visibilityState === "visible") router.refresh(); };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("online", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
+    };
+  }, [router, travelerInvite]);
+
   const alertsScreen = (
     <div style={{ padding: "16px 16px 28px", display: "flex", flexDirection: "column", gap: 14, animation: "wgIn .28s ease both" }}>
       {/* Only where a client is looking at their own trip through a real
           share link — the subscription is keyed by that token (see
           savePushSubscription in lib/account-store.ts), and neither the
           advisor's own view nor the scripted demo has one. */}
-      {isClientViewer && liveChat?.shareId && <NotifyControl shareId={liveChat.shareId} />}
+      {isClientViewer && liveChat?.shareId && <NotifyControl shareId={liveChat.shareId} privateInvite={travelerInvite} pushPublicKey={pushPublicKey} />}
+      {travelerInvite && <>
+        <button type="button" className="min-h-11 self-start text-sm font-semibold underline" onClick={() => router.refresh()}>Refresh itinerary</button>
+        {syncedAt && <p className="text-sm">Last synced <time dateTime={syncedAt}>{syncedAt.replace("T", " ").slice(0, 16)} UTC</time></p>}
+        {unread && <button type="button" className="min-h-11 self-start text-sm font-semibold underline" onClick={() => go("messages")}>Read your new message</button>}
+        {liveAlerts.length === 0 && !unread && <p className="text-sm">No trip updates yet.</p>}
+        <a className="inline-flex min-h-11 items-center text-sm font-semibold underline" href="/account">Manage your account or sign out</a>
+      </>}
       {/* The advisor's own side of the trip: a way to send the traveler a line
           by hand. Shown only where the account actually serves clients
           (advisorInbox), never on a client's own view. */}
@@ -1863,6 +1933,7 @@ export default function CompanionApp({
             </span>
             <div style={{ font: `400 20px/1.15 ${serif}`, color: unread ? "#6B4A1C" : INK }}>{a.title}</div>
             <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: unread ? "#6B4A1C" : "#57534e", textWrap: "pretty" }}>{a.note}</p>
+            {travelerInvite && <button type="button" onClick={() => go("home")} className="min-h-11 self-start text-sm font-semibold underline">Open itinerary</button>}
           </div>
         );
       })}
@@ -1901,7 +1972,7 @@ export default function CompanionApp({
           <button onClick={() => go("day")} className="wg-navy" style={{ alignSelf: "flex-start", border: "1px solid rgba(25, 63, 70,.4)", background: "none", cursor: "pointer", font: `400 13.5px/1 ${serif}`, padding: "11px 17px", borderRadius: 14, color: "#102F35" }}>See the new day</button>
         </div>
       )}
-      {!open && !settled && handledSteps.length === 0 && (
+      {!travelerInvite && !open && !settled && handledSteps.length === 0 && (
         <div style={{ padding: "22px 18px", borderRadius: 20, background: "#ffffff", border: "1px solid rgba(16, 47, 53,.08)", display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={kicker(NAVY)}>Changes</span>
           <div style={{ font: `400 20px/1.15 ${serif}` }}>Nothing needs a decision</div>
@@ -2019,6 +2090,7 @@ export default function CompanionApp({
 
   const walletScreen = (
     <div style={{ padding: "16px 16px 28px", display: "flex", flexDirection: "column", gap: 16, animation: "wgIn .28s ease both" }}>
+      {travelerInvite && <p className="text-xs leading-5 text-stone-600">Save individual files to use offline. Signing out clears copies held by this app. Revoking an invite blocks future downloads. Copies exported to your device stay there.</p>}
       {personalWalletKey ? <PersonalTravelWallet key={personalWalletKey} tripKey={personalWalletKey} /> : null}
       {(() => {
         // Only promise "works with no signal" when every document is actually
@@ -2112,8 +2184,9 @@ export default function CompanionApp({
                               ? `/api/trip-file/${encodeURIComponent(groupCode ?? liveChat!.shareId)}?id=${encodeURIComponent(att.id)}`
                               : `/api/account/attachments?id=${encodeURIComponent(att.id)}`
                         }
-                        fileId={att.id}
-                        name={att.name}
+                        fileId={travelerInvite ? `${liveChat?.shareId}:${att.id}` : att.id}
+                        name={travelerInvite && isClientViewer && travelerName ? `${att.name} · ${travelerName}` : att.name}
+                        explicitDownload={travelerInvite}
                         offlineCapable={!att.sampleUrl}
                       />
                       {!att.sampleUrl && !isClientViewer && trip.tripId && r.id && r.stopKind && (
@@ -2437,13 +2510,13 @@ export default function CompanionApp({
             );
           })}
         </nav>
-        <button onClick={() => go("alerts")} aria-current={st.screen === "alerts" ? "page" : undefined} style={{ ...railBtn(st.screen === "alerts"), marginTop: "auto" }}>
+        {!travelerInvite && <button onClick={() => go("alerts")} aria-current={st.screen === "alerts" ? "page" : undefined} style={{ ...railBtn(st.screen === "alerts"), marginTop: "auto" }}>
           <span style={{ position: "relative", display: "inline-flex" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
             {(open || unreadAlerts.length > 0) && <span aria-hidden="true" style={{ position: "absolute", top: -2, right: -3, width: 9, height: 9, borderRadius: 14, background: GOLD, border: `2px solid ${NAVY}` }} />}
           </span>
           Changes
-        </button>
+        </button>}
       </aside>
       {/* content — a slim per-screen bar over the screen itself */}
       <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -2619,8 +2692,8 @@ type NotifyStatus = "checking" | "unsupported" | "off" | "on" | "denied";
  * this deployment has no VAPID key configured — an offer nobody can accept
  * is not an offer.
  */
-function NotifyControl({ shareId }: { shareId: string }) {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+function NotifyControl({ shareId, privateInvite, pushPublicKey }: { shareId: string; privateInvite?: boolean; pushPublicKey?: string }) {
+  const publicKey = pushPublicKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const [status, setStatus] = useState<NotifyStatus>("checking");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -2630,7 +2703,7 @@ function NotifyControl({ shareId }: { shareId: string }) {
     // The unsupported branch used to run synchronously, before any of the
     // asynchronous work below — which is the setState the rule refuses. It is
     // the same answer either way; it just no longer arrives during the effect.
-    if (!publicKey || typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    if (!publicKey || typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
       void Promise.resolve().then(() => {
         if (active) setStatus("unsupported");
       });
@@ -2640,8 +2713,17 @@ function NotifyControl({ shareId }: { shareId: string }) {
     }
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => {
-        if (active) setStatus(sub ? "on" : Notification.permission === "denied" ? "denied" : "off");
+      .then(async (sub) => {
+        let enabled = Boolean(sub);
+        if (sub && privateInvite) {
+          const response = await fetch("/api/companion/push", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ shareId, action: "status", endpoint: sub.endpoint }),
+          });
+          enabled = response.ok && (await response.json()).enabled === true;
+        }
+        if (active) setStatus(Notification.permission === "denied" ? "denied" : enabled ? "on" : "off");
       })
       .catch(() => {
         if (active) setStatus("off");
@@ -2649,7 +2731,7 @@ function NotifyControl({ shareId }: { shareId: string }) {
     return () => {
       active = false;
     };
-  }, [publicKey]);
+  }, [publicKey, shareId, privateInvite]);
 
   async function subscribe() {
     if (!publicKey) return;
@@ -2662,7 +2744,7 @@ function NotifyControl({ shareId }: { shareId: string }) {
         return;
       }
       const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource });
+      const sub = await reg.pushManager.getSubscription() ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource });
       const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
       if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) throw new Error("incomplete subscription");
       const res = await fetch("/api/companion/push", {
@@ -2686,12 +2768,13 @@ function NotifyControl({ shareId }: { shareId: string }) {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await fetch("/api/companion/push", {
+        const response = await fetch("/api/companion/push", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ shareId, action: "unsubscribe", endpoint: sub.endpoint }),
-        }).catch(() => undefined);
-        await sub.unsubscribe();
+        });
+        if (!response.ok) throw new Error("Could not turn off notifications.");
+        if (!privateInvite) await sub.unsubscribe();
       }
       setStatus("off");
     } catch {
@@ -2701,7 +2784,10 @@ function NotifyControl({ shareId }: { shareId: string }) {
     }
   }
 
-  if (status === "unsupported" || status === "checking") return null;
+  if (status === "checking") return null;
+  if (status === "unsupported") return privateInvite
+    ? <p className="text-sm leading-6">Push is unavailable in this browser. On iPhone, open the trip in Safari and choose Share → Add to Home Screen. Open the installed app and turn on notifications from Updates. You can read Updates here at any time.</p>
+    : null;
 
   const serif = "Georgia,'Times New Roman',serif";
   return (
@@ -2713,7 +2799,7 @@ function NotifyControl({ shareId }: { shareId: string }) {
             ? "Notifications are blocked in your browser's settings."
             : status === "on"
               ? "On for this device."
-              : "A delay, a cancellation, a gate change — sent straight to your phone."}
+              : privateInvite ? "Get chat replies, published itinerary changes and a trip reminder." : "A delay, a cancellation, a gate change — sent straight to your phone."}
         </span>
         {error && <span style={{ fontSize: 12, color: "#b42318" }}>{error}</span>}
       </div>
@@ -3426,6 +3512,10 @@ function LiveChat({
     try {
       const r = await fetch(`/api/companion/chat?share=${encodeURIComponent(shareId)}&channel=${encodeURIComponent(channel)}`, { cache: "no-store" });
       if (!r.ok) {
+        if (chat.privateInvite && (r.status === 401 || r.status === 404)) {
+          setMessages([]);
+          setAvailable(false);
+        }
         // Say why, and stop rendering a blank panel. A non-2xx here used to
         // leave `loaded` false with no note, so the whole thread showed as an
         // empty screen — which reads as broken and hides the real reason (a 404
@@ -3462,7 +3552,7 @@ function LiveChat({
       }
       setLoaded(true);
     }
-  }, [shareId, channel, offlineKey]);
+  }, [shareId, channel, offlineKey, chat.privateInvite]);
 
   // Async wrapper rather than a bare call from the effect body: a bare call
   // enters it synchronously, which the rule counts as a setState during the
@@ -3472,12 +3562,12 @@ function LiveChat({
     void (async () => {
       if (active) await load();
     })();
-    const t = setInterval(() => void load(), 5000);
+    const t = setInterval(() => { if (!document.hidden && navigator.onLine) void load(); }, chat.privateInvite ? 15_000 : 5_000);
     return () => {
       active = false;
       clearInterval(t);
     };
-  }, [load]);
+  }, [load, chat.privateInvite]);
 
   // The trip's channels, refreshed on a slow beat — both sides read the same
   // list. If the channel being viewed is removed (the advisor deleted it),
@@ -3508,12 +3598,12 @@ function LiveChat({
     void (async () => {
       if (active) await loadChannels();
     })();
-    const t = setInterval(() => void loadChannels(), 20000);
+    const t = setInterval(() => { if (!document.hidden && navigator.onLine) void loadChannels(); }, chat.privateInvite ? 60_000 : 20_000);
     return () => {
       active = false;
       clearInterval(t);
     };
-  }, [loadChannels]);
+  }, [loadChannels, chat.privateInvite]);
 
   // Switching channel is a fresh thread: clear what's shown and re-load, so one
   // channel's messages never flash under another's header.
@@ -4608,7 +4698,7 @@ function LiveChat({
                 camera on the right — with the round voice/send button beside it,
                 the WhatsApp / Signal shape. */}
             <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", gap: 1, background: "#ffffff", border: "1px solid rgba(16, 47, 53,.08)", borderRadius: 24, boxShadow: "0 1px 3px rgba(16, 47, 53,.05)", padding: "2px 4px 2px 3px" }}>
-              {!editingAt && (
+              {!editingAt && !chat.privateInvite && (
                 <div ref={attachMenuRef} style={{ position: "relative", flex: "none" }}>
                   <button
                     onClick={() => setAttachOpen((o) => !o)}
@@ -4664,7 +4754,7 @@ function LiveChat({
                 onFocus={() => { setComposerFocused(true); requestAnimationFrame(() => pinToBottomIfNear()); }}
                 onBlur={() => setComposerFocused(false)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={editingAt ? "Edit your message…" : side === "advisor" ? "Reply to your client…" : `Message ${otherName}…`}
+                placeholder={editingAt ? "Edit your message…" : side === "advisor" ? (chat.privateInvite ? "Reply to your traveler…" : "Reply to your client…") : `Message ${otherName}…`}
                 // 16px, not 14: iOS Safari auto-zooms the whole page into any
                 // text input under 16px the moment it is focused, which is
                 // exactly what reads as the screen "jumping" when the keyboard
@@ -4672,7 +4762,7 @@ function LiveChat({
                 // rather than staying squashed to one line.
                 style={{ flex: 1, minWidth: 0, resize: "none", overflow: "auto", border: 0, background: "none", borderRadius: 0, padding: "11px 6px 11px 8px", fontFamily: "Inter,sans-serif", fontSize: 16, lineHeight: 1.4, color: INK, outline: "none", boxShadow: "none", WebkitAppearance: "none", WebkitTapHighlightColor: "transparent" }}
               />
-              {!editingAt && (
+              {!editingAt && !chat.privateInvite && (
                 <button
                   onClick={() => cameraRef.current?.click()}
                   disabled={sending || recording}
@@ -4691,8 +4781,8 @@ function LiveChat({
               <button onClick={() => stopRecording()} title="Stop recording" aria-label="Stop recording" style={{ flex: "none", border: 0, cursor: "pointer", background: "#b5442e", color: "#fff", width: 46, height: 46, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", animation: "wgPulse 1.1s ease-in-out infinite" }}>
                 <Icon name="stop" className="h-[19px] w-[19px]" />
               </button>
-            ) : draft.trim() || editingAt ? (
-              <button onClick={() => send()} disabled={sending} title="Send" aria-label="Send" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: ON_GOLD, width: 46, height: 46, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}>
+            ) : draft.trim() || editingAt || chat.privateInvite ? (
+              <button onClick={() => send()} disabled={sending || (!draft.trim() && !editingAt)} title="Send" aria-label="Send" className="wg-press" style={{ flex: "none", border: 0, cursor: "pointer", background: GOLD, color: ON_GOLD, width: 46, height: 46, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: sending ? 0.6 : 1 }}>
                 {editingAt ? <Icon name="check" className="h-[21px] w-[21px]" strokeWidth={2.4} /> : <Icon name="send" className="h-[20px] w-[20px]" strokeWidth={1.9} />}
               </button>
             ) : (

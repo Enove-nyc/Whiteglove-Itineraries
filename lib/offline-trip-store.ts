@@ -190,6 +190,10 @@ export async function readDocumentOffline(fileId: string): Promise<Blob | null> 
   return idbGet<Blob>(DOC_STORE, fileId);
 }
 
+export async function removeDocumentOffline(fileId: string): Promise<void> {
+  await idbDelete(DOC_STORE, fileId);
+}
+
 // --- Chat messages ---------------------------------------------------------
 
 /**

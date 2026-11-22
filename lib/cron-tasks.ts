@@ -1,7 +1,7 @@
 import { getPlan } from "@/lib/account-plan-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { appendChat, type CompanionChatMessage } from "@/lib/companion-chat-store";
-import { checkTripFlightStatus, getAccountData, listAllAccounts, markReminderSent, withTrips } from "@/lib/account-store";
+import { checkTripFlightStatus, getAccountData, listAllAccounts, markReminderSent, runTravelerDepartureReminders, withTrips } from "@/lib/account-store";
 import {
   balanceDueReminderDue,
   balanceDueReminderText,
@@ -65,7 +65,7 @@ export async function runFlightStatusSweep(): Promise<{ checked: number; alerted
  * lapsed subscription cannot still send. `today` is a YYYY-MM-DD date.
  */
 export async function runTripReminders(today: string): Promise<{ sent: number }> {
-  let sent = 0;
+  let sent = await runTravelerDepartureReminders();
   const accounts = await listAllAccounts();
   for (const account of accounts.filter((a) => mayServeCompanionClients(a.plan))) {
     // listAllAccounts' `plan` is a snapshot from the scan — read it fresh here

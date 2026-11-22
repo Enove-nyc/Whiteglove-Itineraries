@@ -5,6 +5,7 @@ import {
   getCurrentAccountData,
   getSharedTraveler,
   readAccountPushSubscriptions,
+  readInvitePushSubscriptions,
   removeAccountPushSubscription,
   resolveCompanionShare,
 } from "@/lib/account-store";
@@ -100,8 +101,10 @@ const NOUN_FOR: Record<ChatMediaKind, string> = { image: "picture", video: "vide
  */
 async function sideFor(
   shareId: string,
-): Promise<{ owner: string; side: CompanionChatSide; chatKey: string; traveler?: { id: string; name?: string } } | null> {
-  const resolved = await resolveCompanionShare(shareId);
+): Promise<{ owner: string; side: CompanionChatSide; chatKey: string; privateInvite?: boolean; traveler?: { id: string; name?: string } } | null> {
+  const cookie = (await cookies()).get(accountCookieName())?.value;
+  const account = await getCurrentAccountData(cookie);
+  const resolved = await resolveCompanionShare(shareId, account?.email);
   if (!resolved) return null;
   const { ownerEmail: owner, chatKey } = resolved;
   // The thread is the client-facing app, so it is Business-only — the SAME gate
@@ -109,9 +112,7 @@ async function sideFor(
   // from a Gold or Traveler account is a real read-only itinerary, never a
   // message or image channel; without this check the plan boundary would be UI
   // only, and any share token a link-holder could POST pictures into the store.
-  if (!mayServeCompanionClients(await getPlan(owner))) return null;
-  const cookie = (await cookies()).get(accountCookieName())?.value;
-  const account = await getCurrentAccountData(cookie);
+  if (!resolved.privateInvite && !mayServeCompanionClients(await getPlan(owner))) return null;
   const side: CompanionChatSide =
     account?.email && identityKey(account.email) === identityKey(owner) ? "advisor" : "client";
   // WHICH traveller, when the client came in by their own per-traveler link.
@@ -120,11 +121,11 @@ async function sideFor(
   // client on a /t/ token (chatKey differs) does, and only then is the traveller
   // record read. This is what lets messages and votes carry a name.
   let traveler: { id: string; name?: string } | undefined;
-  if (side === "client" && chatKey !== shareId) {
-    const t = await getSharedTraveler(shareId).catch(() => null);
+  if (side === "client" && (chatKey !== shareId || resolved.privateInvite)) {
+    const t = await getSharedTraveler(shareId, account?.email).catch(() => null);
     if (t?.traveler) traveler = { id: t.traveler.id, name: t.traveler.name?.trim() || undefined };
   }
-  return { owner, side, chatKey, traveler };
+  return { owner, side, chatKey, traveler, privateInvite: resolved.privateInvite };
 }
 
 const otherSideOf = (side: CompanionChatSide): CompanionChatSide => (side === "advisor" ? "client" : "advisor");
@@ -277,26 +278,20 @@ export async function POST(request: NextRequest) {
   const sender = who.traveler ?? null;
   const senderFields = sender ? { senderId: sender.id, senderName: sender.name } : {};
 
-  // When the CLIENT writes, tell the advisor on their phone — best-effort, and
-  // only if they turned notifications on (their devices live on the account,
-  // /api/account/push). Never the other way: the client's own alerts are the
-  // per-trip subscription. Fire-and-forget so it never holds up the reply.
-  const notifyAdvisor = (summary: string) => {
-    if (who.side !== "client") return;
-    void (async () => {
-      try {
-        const subs = await readAccountPushSubscriptions(who.owner);
-        if (!subs.length) return;
-        const result = await sendPushToSubscriptions(subs, {
-          title: sender?.name ? `New message from ${sender.name}` : "New message from a client",
-          body: summary.slice(0, 140) || "You have a new message.",
-          url: "/advisor",
-        });
-        for (const endpoint of result.expired) await removeAccountPushSubscription(who.owner, endpoint);
-      } catch {
-        /* a failed push is never a failed send */
-      }
-    })();
+  const notifyChatRecipient = async () => {
+    if (who.side !== "client" && !who.privateInvite) return;
+    try {
+      const subs = who.side === "advisor" ? await readInvitePushSubscriptions(shareId!, who.owner) : await readAccountPushSubscriptions(who.owner);
+      if (!subs.length) return;
+      const result = await sendPushToSubscriptions(subs, {
+        title: "New trip message",
+        body: "Open White Glove to read your message.",
+        url: who.privateInvite ? `/t/${encodeURIComponent(shareId!)}/app?screen=messages` : "/advisor",
+      });
+      if (who.side === "client") for (const endpoint of result.expired) await removeAccountPushSubscription(who.owner, endpoint);
+    } catch {
+      // Delivery to the conversation succeeds independently of push.
+    }
   };
 
   // "I am typing" — a courtesy signal, not a message. No rate limit: it is
@@ -369,7 +364,7 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
       ...senderFields,
     }, channel);
-    notifyAdvisor(`Poll: ${question}`);
+    await notifyChatRecipient();
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -393,6 +388,7 @@ export async function POST(request: NextRequest) {
   // data URL's own declared type, never from a separate field the caller
   // could mismatch.
   if (typeof body?.dataUrl === "string" && body.dataUrl) {
+    if (who.privateInvite) return NextResponse.json({ error: "Use the trip wallet to share tickets and boarding passes." }, { status: 400 });
     // parseChatDataUrl tolerates a codec parameter (audio/webm;codecs=opus) and
     // returns the base content type — see lib/chat-media.ts, tested there.
     const parsed = parseChatDataUrl(body.dataUrl);
@@ -436,7 +432,7 @@ export async function POST(request: NextRequest) {
       itineraryRef,
       ...senderFields,
     }, channel);
-    notifyAdvisor(`Sent a ${NOUN_FOR[media.kind]}`);
+    await notifyChatRecipient();
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -456,7 +452,7 @@ export async function POST(request: NextRequest) {
       itineraryRef,
       ...senderFields,
     }, channel);
-    notifyAdvisor("Shared a location");
+    await notifyChatRecipient();
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -474,7 +470,7 @@ export async function POST(request: NextRequest) {
       itineraryRef,
       ...senderFields,
     }, channel);
-    notifyAdvisor("Shared a location");
+    await notifyChatRecipient();
     return NextResponse.json({ messages, side: who.side });
   }
 
@@ -490,6 +486,6 @@ export async function POST(request: NextRequest) {
     itineraryRef,
     ...senderFields,
   }, channel);
-  notifyAdvisor(text);
+  await notifyChatRecipient();
   return NextResponse.json({ messages, side: who.side });
 }

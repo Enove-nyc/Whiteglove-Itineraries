@@ -11,6 +11,7 @@ import { readTeam, type TeamMember } from "@/data/team";
 import { clientsFromTrips, emptyClientProfile, tripsForClient, type ClientProfile, type ClientSummary } from "@/data/clients";
 import type { AddonItem } from "@/data/trip-addons";
 import type { CommissionRecord } from "@/data/trip-commission";
+import { DateTime } from "luxon";
 import { createHmac, pbkdf2Sync, randomBytes } from "crypto";
 import { accepting, openStatus, withOpen, withRevoked, type OpenStatus, type ShareOpens } from "@/lib/share-opens";
 import { tripTimeZone } from "@/lib/trip-timezone";
@@ -202,6 +203,7 @@ export type SavedTrip = {
    * Most trips never use this; it stays empty.
    */
   travelerShares?: Record<string, string>;
+  travelerPublication?: { itinerary: Itinerary; updatedAt: string; alerts?: TripAlert[]; departureReminderDate?: string };
   /**
    * The pre-trip form a client fills out — legal name, passport, emergency
    * contact, preferences, whatever the planner asks for. The template (which
@@ -344,12 +346,13 @@ function redisConfig() {
   return url && token ? { url: url.replace(/\/$/, ""), token } : null;
 }
 
-async function redis<T>(command: string) {
+async function redis<T>(command: string, body?: string) {
   const config = redisConfig();
   if (!config) return undefined;
   try {
     const response = await fetch(`${config.url}/${command}`, {
       headers: { Authorization: `Bearer ${config.token}` },
+      ...(body !== undefined ? { method: "POST", body } : {}),
       cache: "no-store",
     });
     if (!response.ok) return undefined;
@@ -421,9 +424,8 @@ async function readJson<T>(key: string) {
 }
 
 async function writeJson(key: string, value: unknown) {
-  const payload = encodeURIComponent(JSON.stringify(value));
-  const response = await redis(`set/${encodeURIComponent(key)}/${payload}`);
-  return Boolean(response);
+  const response = await redis<string>(`set/${encodeURIComponent(key)}`, JSON.stringify(value));
+  return response?.result === "OK";
 }
 
 /**
@@ -2029,8 +2031,28 @@ function travelerShareKey(shareId: string) {
   return `white-glove:traveler-share:${shareId}`;
 }
 
+function travelerInviteInboxKey(email: string) {
+  return `white-glove:traveler-invites:${email}`;
+}
+
+async function rememberTravelerInvite(email: string, shareId: string): Promise<boolean> {
+  const key = travelerInviteInboxKey(email);
+  const tokens = await readJson<string[]>(key) ?? [];
+  if (tokens.includes(shareId)) return true;
+  return writeJson(key, [shareId, ...tokens].slice(0, 15));
+}
+
+export async function listTravelerInvites(email: string): Promise<{ shareId: string; title: string }[]> {
+  const tokens = await readJson<string[]>(travelerInviteInboxKey(normalizeId(email))) ?? [];
+  const invites = await Promise.all(tokens.slice(0, 10).map(async (shareId) => {
+    const trip = await getSharedTraveler(shareId, email);
+    return trip?.privateInvite ? { shareId, title: trip.itinerary.title } : null;
+  }));
+  return invites.filter((invite) => invite !== null);
+}
+
 /** One traveler's own link — created once, reused after. */
-export async function ensureTravelerShare(email: string, tripId: string, travelerId: string): Promise<string | null> {
+export async function ensureTravelerShare(email: string, tripId: string, travelerId: string, privateInvite = false): Promise<string | null> {
   if (!hasAccountStorage()) return null;
   const normalized = normalizeId(email);
   const data = await getAccountData(normalized);
@@ -2039,8 +2061,18 @@ export async function ensureTravelerShare(email: string, tripId: string, travele
   const traveler = trip?.itinerary.travelers?.find((p) => p.id === travelerId);
   if (!trip || !traveler) return null;
 
+  const invitedEmail = privateInvite ? normalizeId(traveler.email ?? "") : undefined;
+  if (privateInvite && (!invitedEmail || invitedEmail === normalized || !invitedEmail.includes("@") || !trip.itinerary.startDate || !trip.itinerary.endDate)) return null;
   const existing = trip.travelerShares?.[travelerId];
-  if (existing) {
+  const record = existing ? await readJson<{ invitedEmail?: string }>(travelerShareKey(existing)) : null;
+  if (existing && record && record.invitedEmail === invitedEmail) {
+    if (invitedEmail) {
+      const [indexed, scheduled] = await Promise.all([
+        rememberTravelerInvite(invitedEmail, existing),
+        queueTravelerReminder(normalized, tripId, trip.travelerPublication?.itinerary ?? trip.itinerary),
+      ]);
+      return indexed && scheduled ? existing : null;
+    }
     await writeJson(travelerShareKey(existing), { ownerEmail: normalized, tripId, travelerId, createdAt: new Date().toISOString() });
     // A trip that already had per-traveler links from before this was added
     // may still have no trip-wide share — ensure one now, since the chat
@@ -2049,7 +2081,7 @@ export async function ensureTravelerShare(email: string, tripId: string, travele
     return existing;
   }
   const token = shareToken();
-  const wrote = await writeJson(travelerShareKey(token), { ownerEmail: normalized, tripId, travelerId, createdAt: new Date().toISOString() });
+  const wrote = await writeJson(travelerShareKey(token), { ownerEmail: normalized, tripId, travelerId, invitedEmail, createdAt: new Date().toISOString() });
   if (!wrote) return null;
   const nextTravelers = (trip.itinerary.travelers ?? []).map((p) => (p.id === travelerId ? { ...p, hasOwnAccess: true } : p));
   const next = trips.map((t) =>
@@ -2058,6 +2090,7 @@ export async function ensureTravelerShare(email: string, tripId: string, travele
           ...t,
           itinerary: { ...t.itinerary, travelers: nextTravelers },
           travelerShares: { ...(t.travelerShares ?? {}), [travelerId]: token },
+          ...(privateInvite && !t.travelerPublication ? { travelerPublication: { itinerary: t.itinerary, updatedAt: new Date().toISOString() } } : {}),
           updatedAt: new Date().toISOString(),
         }
       : t,
@@ -2067,8 +2100,124 @@ export async function ensureTravelerShare(email: string, tripId: string, travele
   // Same reason as above: guarantee a trip-wide share exists so this
   // traveler's app has a chat thread to open, even if the planner never
   // created a whole-trip client link.
-  await ensureTripShare(normalized, tripId);
+  if (!privateInvite) await ensureTripShare(normalized, tripId);
+  if (invitedEmail) {
+    const [indexed, scheduled] = await Promise.all([
+      rememberTravelerInvite(invitedEmail, token),
+      queueTravelerReminder(normalized, tripId, trip.travelerPublication?.itinerary ?? trip.itinerary),
+    ]);
+    if (!indexed || !scheduled) return null;
+  }
   return token;
+}
+
+const TRAVELER_REMINDERS_KEY = "white-glove:traveler-reminders";
+
+async function queueTravelerReminder(owner: string, tripId: string, itinerary: Itinerary) {
+  const start = DateTime.fromISO(itinerary.startDate, { zone: tripTimeZone(itinerary) });
+  if (!start.isValid) return false;
+  const scheduled = start.minus({ days: 3 }).set({ hour: 9 }).toMillis();
+  const member = encodeURIComponent(JSON.stringify([owner, tripId]));
+  return Boolean(await redis(`zadd/${TRAVELER_REMINDERS_KEY}/${scheduled}/${member}`));
+}
+
+export async function runTravelerDepartureReminders(now = new Date()): Promise<number> {
+  // A small batch on the existing scheduler keeps each invocation bounded.
+  const due = await redis<string[]>(`zrangebyscore/${TRAVELER_REMINDERS_KEY}/-inf/${now.getTime()}/LIMIT/0/3`);
+  let sent = 0;
+  for (const member of due?.result ?? []) {
+    const [owner, tripId] = JSON.parse(member) as [string, string];
+    const outcome = await sendTravelerDepartureReminder(owner, tripId, now);
+    if (outcome === "retry") continue;
+    await redis(`zrem/${TRAVELER_REMINDERS_KEY}/${encodeURIComponent(member)}`);
+    if (outcome === "sent") sent += 1;
+  }
+  return sent;
+}
+
+export async function publishTravelerItinerary(email: string, tripId: string): Promise<boolean> {
+  const owner = normalizeId(email);
+  const { trips, activeId } = withTrips(await getAccountData(owner));
+  const trip = trips.find((item) => item.id === tripId);
+  if (!trip?.itinerary.startDate || !trip.itinerary.endDate || !trip.travelerPublication) return false;
+  const previous = trip.travelerPublication.itinerary;
+  if (previous.updatedAt === trip.itinerary.updatedAt) return queueTravelerReminder(owner, tripId, trip.itinerary);
+
+  const now = new Date().toISOString();
+  const change = summarizeItineraryChange(previous, trip.itinerary);
+  const publication = trip.travelerPublication;
+  const alerts = change ? coalesceItineraryChange(publication.alerts ?? [], change, now, tripAlertId).slice(-50) : publication.alerts;
+  const updated = { ...trip, travelerPublication: { ...publication, itinerary: trip.itinerary, updatedAt: now, alerts } };
+  const saved = await writeTrips(owner, trips.map((item) => item.id === tripId ? updated : item), activeId);
+  if (!saved) return false;
+  const reminderQueued = await queueTravelerReminder(owner, tripId, trip.itinerary);
+  if (change) {
+    await Promise.allSettled(Object.values(trip.travelerShares ?? {}).map(async (token) => {
+      const subscriptions = await readInvitePushSubscriptions(token, owner);
+      if (subscriptions.length) await sendPushToSubscriptions(subscriptions, {
+        title: "Trip itinerary updated",
+        body: "Open White Glove to see what changed.",
+        url: `/t/${encodeURIComponent(token)}/app?screen=alerts`,
+      });
+    }));
+  }
+  return reminderQueued;
+}
+
+async function sendTravelerDepartureReminder(email: string, tripId: string, now: Date): Promise<"sent" | "skip" | "retry"> {
+  const owner = normalizeId(email);
+  const { trips, activeId } = withTrips(await getAccountData(owner));
+  const trip = trips.find((item) => item.id === tripId);
+  const publication = trip?.travelerPublication;
+  if (!trip || !publication) return "skip";
+  const startDate = publication.itinerary.startDate;
+  if (publication.departureReminderDate === startDate) return "skip";
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: tripTimeZone(publication.itinerary), year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const daysLeft = (Date.parse(startDate) - Date.parse(today)) / 86_400_000;
+  if (daysLeft < 0 || daysLeft > 3) return "skip";
+  if (!await tryAcquireLease(`departure:${tripId}:${startDate}`, 30 * 60_000)) return "retry";
+  const tokens = Object.values(trip.travelerShares ?? {});
+  if (tokens.length === 0) return "skip";
+  const alert: TripAlert = {
+    id: `departure-${startDate}`,
+    kind: "departure_reminder",
+    title: daysLeft === 0 ? "Your trip starts today" : `Your trip starts in ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`,
+    note: "Review your itinerary and save the documents you’ll need before you leave.",
+    createdAt: now.toISOString(),
+    acknowledged: false,
+  };
+  const updated = { ...trip, travelerPublication: { ...publication, departureReminderDate: startDate, alerts: [...(publication.alerts ?? []), alert].slice(-50) } };
+  if (!await writeTrips(owner, trips.map((item) => item.id === tripId ? updated : item), activeId)) return "retry";
+  await Promise.allSettled(tokens.map(async (token) => {
+    const subscriptions = await readInvitePushSubscriptions(token, owner);
+    if (subscriptions.length) await sendPushToSubscriptions(subscriptions, {
+      title: "Trip reminder",
+      body: "Open White Glove to get ready for your trip.",
+      url: `/t/${encodeURIComponent(token)}/app?screen=alerts`,
+    });
+  }));
+  return "sent";
+}
+
+export async function revokeTravelerShare(email: string, tripId: string, travelerId: string): Promise<boolean> {
+  const owner = normalizeId(email);
+  const { trips, activeId } = withTrips(await getAccountData(owner));
+  const trip = trips.find((item) => item.id === tripId);
+  if (!trip) return false;
+  const shares = { ...trip.travelerShares };
+  const token = shares[travelerId];
+  if (!token) return true;
+  if (!await deleteKey(travelerShareKey(token))) return false;
+  delete shares[travelerId];
+  const itinerary = {
+    ...trip.itinerary,
+    travelers: trip.itinerary.travelers?.map((person) => person.id === travelerId ? { ...person, hasOwnAccess: false } : person),
+  };
+  const saved = await writeTrips(owner, trips.map((item) => item.id === tripId ? { ...item, itinerary, travelerShares: shares } : item), activeId);
+  if (!saved) return false;
+  await markShareRevoked(token);
+  await deleteKey(invitePushKey(token));
+  return true;
 }
 
 /**
@@ -2087,19 +2236,28 @@ export async function ensureTravelerShare(email: string, tripId: string, travele
  * their own unredacted trip. Use resolveCompanionShare, not this field
  * directly, for anything chat-related.
  */
-export async function getSharedTraveler(shareId: string) {
-  const rec = await readJson<{ ownerEmail: string; tripId: string; travelerId: string }>(travelerShareKey(shareId));
+export async function getSharedTraveler(shareId: string, viewerEmail?: string | null) {
+  const rec = await readJson<{ ownerEmail: string; tripId: string; travelerId: string; invitedEmail?: string }>(travelerShareKey(shareId));
   if (!rec) return null;
+  const viewer = normalizeId(viewerEmail ?? "");
+  if (rec.invitedEmail && viewer !== rec.ownerEmail && viewer !== rec.invitedEmail) return null;
   const [data, record] = await Promise.all([getAccountData(rec.ownerEmail), getAccountRecord(rec.ownerEmail)]);
   const trip = withTrips(data).trips.find((t) => t.id === rec.tripId);
   const traveler = trip?.itinerary.travelers?.find((p) => p.id === rec.travelerId);
-  if (!trip || !traveler) return null;
+  if (!trip || !traveler || trip.travelerShares?.[traveler.id] !== shareId) return null;
+  if (rec.invitedEmail && normalizeId(traveler.email ?? "") !== rec.invitedEmail) return null;
   return {
     ownerEmail: rec.ownerEmail,
     tripId: rec.tripId,
     traveler,
-    itinerary: withoutAttachments(trip.itinerary),
-    internalChatKey: trip.shareId,
+    itinerary: rec.invitedEmail
+      ? travelerAttachments(trip.travelerPublication?.itinerary ?? trip.itinerary, traveler.id)
+      : withoutAttachments(trip.itinerary),
+    currentItinerary: trip.itinerary,
+    publishedAt: trip.travelerPublication?.updatedAt,
+    alerts: trip.travelerPublication?.alerts ?? [],
+    internalChatKey: rec.invitedEmail ? shareId : trip.shareId,
+    privateInvite: Boolean(rec.invitedEmail),
     ownerName: record?.name,
     advisor: trip.advisor?.trim() ?? "",
   };
@@ -2118,7 +2276,7 @@ export async function getSharedTraveler(shareId: string) {
  * `shareId`, its own, less-powerful token, for anything the client needs to
  * keep using.
  */
-export async function resolveCompanionShare(shareId: string): Promise<{ ownerEmail: string; chatKey: string } | null> {
+export async function resolveCompanionShare(shareId: string, viewerEmail?: string | null): Promise<{ ownerEmail: string; chatKey: string; privateInvite?: boolean } | null> {
   const ownerEmail = await getShareOwnerEmail(shareId);
   if (ownerEmail) {
     // A code somebody made for their own phone has no second person on it, so
@@ -2130,8 +2288,8 @@ export async function resolveCompanionShare(shareId: string): Promise<{ ownerEma
     if ((await getShareKind(shareId)) === "self") return null;
     return { ownerEmail, chatKey: shareId };
   }
-  const traveler = await getSharedTraveler(shareId);
-  if (traveler?.internalChatKey) return { ownerEmail: traveler.ownerEmail, chatKey: traveler.internalChatKey };
+  const traveler = await getSharedTraveler(shareId, viewerEmail);
+  if (traveler?.internalChatKey) return { ownerEmail: traveler.ownerEmail, chatKey: traveler.internalChatKey, privateInvite: traveler.privateInvite };
   return null;
 }
 
@@ -2156,9 +2314,33 @@ async function resolveShareToTrip(shareId: string): Promise<{ ownerEmail: string
 
 const MAX_PUSH_SUBSCRIPTIONS = 12;
 
+function invitePushKey(shareId: string) {
+  return `white-glove:traveler-invite-push:${shareId}`;
+}
+
+export async function readInvitePushSubscriptions(shareId: string, organizerEmail: string): Promise<PushSubscriptionRecord[]> {
+  const invite = await getSharedTraveler(shareId, organizerEmail);
+  if (!invite?.privateInvite || invite.ownerEmail !== normalizeId(organizerEmail)) return [];
+  return await readJson<PushSubscriptionRecord[]>(invitePushKey(shareId)) ?? [];
+}
+
+export async function hasInvitePushSubscription(shareId: string, viewerEmail: string, endpoint: string): Promise<boolean> {
+  const invite = await getSharedTraveler(shareId, viewerEmail);
+  if (!invite?.privateInvite || invite.ownerEmail === normalizeId(viewerEmail)) return false;
+  const subscriptions = await readJson<PushSubscriptionRecord[]>(invitePushKey(shareId)) ?? [];
+  return subscriptions.some((record) => record.endpoint === endpoint);
+}
+
 /** A device asking to be told about this trip's alerts — added from inside the app itself, never on anyone's behalf. */
-export async function savePushSubscription(shareId: string, subscription: PushSubscriptionRecord): Promise<boolean> {
+export async function savePushSubscription(shareId: string, subscription: PushSubscriptionRecord, viewerEmail?: string | null): Promise<boolean> {
   if (!hasAccountStorage()) return false;
+  const invite = await getSharedTraveler(shareId, viewerEmail);
+  if (invite?.privateInvite) {
+    if (normalizeId(viewerEmail ?? "") === invite.ownerEmail) return false;
+    const key = invitePushKey(shareId);
+    const existing = await readJson<PushSubscriptionRecord[]>(key) ?? [];
+    return writeJson(key, [...existing.filter((record) => record.endpoint !== subscription.endpoint), subscription].slice(-MAX_PUSH_SUBSCRIPTIONS));
+  }
   const resolved = await resolveShareToTrip(shareId);
   if (!resolved) return false;
   const data = await getAccountData(resolved.ownerEmail);
@@ -2216,8 +2398,15 @@ export async function removeAccountPushSubscription(email: string, endpoint: str
 }
 
 /** Turning notifications back off on one device. */
-export async function removePushSubscription(shareId: string, endpoint: string): Promise<boolean> {
+export async function removePushSubscription(shareId: string, endpoint: string, viewerEmail?: string | null): Promise<boolean> {
   if (!hasAccountStorage()) return false;
+  const invite = await getSharedTraveler(shareId, viewerEmail);
+  if (invite?.privateInvite) {
+    if (normalizeId(viewerEmail ?? "") === invite.ownerEmail) return false;
+    const key = invitePushKey(shareId);
+    const existing = await readJson<PushSubscriptionRecord[]>(key) ?? [];
+    return writeJson(key, existing.filter((record) => record.endpoint !== endpoint));
+  }
   const resolved = await resolveShareToTrip(shareId);
   if (!resolved) return false;
   const data = await getAccountData(resolved.ownerEmail);
@@ -2627,7 +2816,11 @@ export async function stopTripShare(email: string, tripId: string): Promise<bool
   // A traveller's own door is stopped with the trip-wide one — each is a
   // separate link with its own status, so each gets its own tombstone.
   for (const token of Object.values(trip.travelerShares ?? {})) {
-    if (token) await markShareRevoked(token);
+    if (token) {
+      await deleteKey(travelerShareKey(token));
+      await deleteKey(invitePushKey(token));
+      await markShareRevoked(token);
+    }
   }
   for (const collaborator of readCollaborators(trip.collaborators)) {
     await removeFromSharedWith(collaborator.person, normalized);

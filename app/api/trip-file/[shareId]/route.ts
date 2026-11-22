@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAttachmentFor } from "@/lib/attachment-store";
-import { getSharedItineraryByShareId } from "@/lib/account-store";
+import { cookies } from "next/headers";
+import { accountCookieName, getCurrentAccountSummary, getSharedTraveler, getSharedItineraryByShareId } from "@/lib/account-store";
 import { sharedAttachmentIds } from "@/lib/attachments";
 import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
 
@@ -41,12 +42,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const id = request.nextUrl.searchParams.get("id");
   if (!shareId || !id) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const shared = await getSharedItineraryByShareId(shareId);
+  const wholeTrip = await getSharedItineraryByShareId(shareId);
+  const viewer = wholeTrip ? null : await getCurrentAccountSummary((await cookies()).get(accountCookieName())?.value);
+  const invite = viewer ? await getSharedTraveler(shareId, viewer.email) : null;
+  const shared = wholeTrip ?? invite;
   if (!shared) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   // The itinerary this hands back has already had everything unshared removed,
   // so this set is exactly the files the traveler was given.
-  if (!sharedAttachmentIds(shared.itinerary).has(id)) {
+  const travelerId = invite?.privateInvite ? invite.traveler.id : undefined;
+  if (!sharedAttachmentIds(shared.itinerary, travelerId).has(id) ||
+      (invite && !sharedAttachmentIds(invite.currentItinerary, travelerId).has(id))) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 

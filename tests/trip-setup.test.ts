@@ -211,25 +211,9 @@ describe("the panel sits in front of the planner, not in its way", () => {
     assert.match(PANEL, /aria-expanded=\{open\}/);
   });
 
-  it("says a trip is kept in the account, because now that is the only place it is", () => {
-    // REVERSED, AND THE CODE MOVED WITH IT. This used to require the words
-    // "in this browser only", which were true: a signed-out visitor's trip
-    // was written to localStorage and nowhere else, so it lived on one device
-    // until the day that browser was cleared. The browser copy is gone —
-    // ItineraryBuilder reads and writes the account and nothing else, and the
-    // first change made signed out opens the sign-in dialog. So the note says
-    // trips are saved to the account, and no longer offers a browser.
-    // Comments stripped: the rule is about what a visitor reads, and the
-    // panel's own note explains the browser copy that used to be here.
-    const copy = PANEL.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-    assert.doesNotMatch(copy, /in this browser only/);
-    assert.doesNotMatch(copy, /browser/i, "no browser is offered as a place to keep a trip");
-    assert.match(copy, /saved securely to your account|securely to your account/i);
-    const builder = readFileSync("components/ItineraryBuilder.tsx", "utf8")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/\/\/[^\n]*/g, "");
-    assert.doesNotMatch(builder, /localStorage\.setItem/, "the builder must not write a trip to the browser");
-    assert.doesNotMatch(builder, /localStorage\.getItem\(LS_KEY\)/, "and must not read one back");
+  it("explains where a guest draft and an account trip are stored", () => {
+    assert.match(PANEL, /guest draft stays in this browser/);
+    assert.match(PANEL, /Saved securely to your account/);
   });
 
   it("keeps “have us plan it” visible without interrupting", () => {

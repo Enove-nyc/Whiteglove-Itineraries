@@ -120,9 +120,10 @@ describe("the traveler-scoped app page and its share route keep the same fences 
     assert.ok(post.indexOf("sameOrigin") < post.indexOf("Please log in first"));
   });
 
-  it("a traveler-scoped link strips attachments the same way every client link does", () => {
-    const fn = STORE.slice(STORE.indexOf("export async function getSharedTraveler"), STORE.indexOf("export async function getSharedTraveler") + 800);
+  it("private traveler links expose only assigned attachments, and legacy links strip them", () => {
+    const fn = STORE.slice(STORE.indexOf("export async function getSharedTraveler"), STORE.indexOf("export async function resolveCompanionShare"));
     assert.match(fn, /withoutAttachments/);
+    assert.match(fn, /travelerAttachments\([^\n]+, traveler\.id\)/);
   });
 
   it("ensures the trip's own share exists so the traveler's link has a chat thread to open", () => {

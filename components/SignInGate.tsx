@@ -149,6 +149,7 @@ export function SignInGateProvider({
               initialMode="login"
               phoneSignupAvailable={phoneSignupAvailable}
               googleAvailable={googleAvailable}
+              next={typeof window === "undefined" ? undefined : window.location.pathname + window.location.search}
               onSuccess={() => {
                 const action = pending.onSuccess;
                 setPending(null);

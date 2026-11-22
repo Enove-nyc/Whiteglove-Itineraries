@@ -33,12 +33,12 @@ export async function generateMetadata() {
 // The `ask` hand-off used to arrive here, because the travel assistant lived on
 // this page. It has its own page now — app/assistant — and this one is the
 // planner again, so there is no question to read out of the address.
-export default async function ItineraryPage() {
-  // The planner is signed-in only, at the owner's word.
-  await requireSignedIn("/itinerary");
+export default async function ItineraryPage({ searchParams }: { searchParams: Promise<{ start?: string }> }) {
   // Itineraries is not a kosher product — the builder hides kosher/heritage-
   // specific tools (kevarim, zmanim, kosher food nearby) on that brand.
   const itineraries = (await currentBrand()) === "itineraries";
+  if (!itineraries) await requireSignedIn("/itinerary");
+  const { start } = await searchParams;
   /**
    * Whether this account asked for the kosher & Shabbos layer — the switch on
    * /account (AppPrefs.kosherFeatures). It decides whether the planner offers
@@ -81,6 +81,7 @@ export default async function ItineraryPage() {
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
             Itinerary planner
           </h1>
+          {itineraries && <Link href="/itinerary/inbox" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Trip inbox</Link>}
           <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
             Flights, hotels and stops, day by day — see{" "}
             <Link href="/sample-itinerary" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-4">
@@ -94,7 +95,7 @@ export default async function ItineraryPage() {
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-12">
         <div className="itinerary-planner mt-6">
           <SharedWithMe />
-          <ItineraryBuilder crossings={crossings} today={new Date().toISOString().slice(0, 10)} assume={assume} templates={templates} itineraries={itineraries} kosher={kosher} />
+          <ItineraryBuilder key={start ?? "planner"} entry={itineraries && (start === "sample" || start === "import") ? start : undefined} crossings={crossings} today={new Date().toISOString().slice(0, 10)} assume={assume} templates={templates} itineraries={itineraries} kosher={kosher} />
         </div>
 
         <ItineraryFooter promotion={footerPromotions[0] ?? null} />

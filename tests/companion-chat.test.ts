@@ -189,11 +189,12 @@ describe("the thread is Business-only, like the app it belongs to", () => {
   // the chat and report routes are the write path behind them and must carry
   // the SAME gate, or a share link from any plan becomes a way to push chat
   // and hosted images the product otherwise withholds.
-  it("gates the chat route on the owner's plan, before a side is read", () => {
+  it("checks the signed-in identity for private invites and the plan for legacy links", () => {
     const ROUTE = readFileSync("app/api/companion/chat/route.ts", "utf8");
     const sideFor = ROUTE.slice(ROUTE.indexOf("async function sideFor"), ROUTE.indexOf("export async function GET"));
     assert.match(sideFor, /mayServeCompanionClients\(await getPlan\(owner\)\)/);
-    assert.ok(sideFor.indexOf("mayServeCompanionClients") < sideFor.indexOf("accountCookieName"), "the plan is checked before the side is worked out");
+    assert.match(sideFor, /resolveCompanionShare\(shareId, account\?\.email\)/);
+    assert.match(sideFor, /!resolved\.privateInvite && !mayServeCompanionClients/);
   });
 
   it("gates the report route on the owner's plan too", () => {
