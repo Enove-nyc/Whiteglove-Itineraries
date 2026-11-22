@@ -8,7 +8,7 @@ name: Build Itineraries native app
 on:
   workflow_dispatch:
   push:
-    branches: [claude/native-apps]
+    branches: [claude/native-apps, codex/family-trip-play-store]
     paths:
       - "native/itineraries/**"
       - ".github/workflows/native-itineraries.yml"

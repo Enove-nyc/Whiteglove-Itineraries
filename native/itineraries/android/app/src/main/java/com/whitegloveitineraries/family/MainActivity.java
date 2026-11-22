@@ -1,4 +1,4 @@
-package com.whitegloveitineraries.app;
+package com.whitegloveitineraries.family;
 
 import android.Manifest;
 import android.content.pm.PackageManager;

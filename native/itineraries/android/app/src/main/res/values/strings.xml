@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">White Glove Itineraries</string>
     <string name="title_activity_main">White Glove Itineraries</string>
-    <string name="package_name">com.whitegloveitineraries.app</string>
-    <string name="custom_url_scheme">com.whitegloveitineraries.app</string>
+    <string name="package_name">com.whitegloveitineraries.family</string>
+    <string name="custom_url_scheme">com.whitegloveitineraries.family</string>
 </resources>

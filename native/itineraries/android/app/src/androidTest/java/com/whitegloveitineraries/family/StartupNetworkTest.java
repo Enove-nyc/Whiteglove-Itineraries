@@ -1,4 +1,4 @@
-package com.whitegloveitineraries.app;
+package com.whitegloveitineraries.family;
 
 import static org.junit.Assert.*;
 import android.content.Context;

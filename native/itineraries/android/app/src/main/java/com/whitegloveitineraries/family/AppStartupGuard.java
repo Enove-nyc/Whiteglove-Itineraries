@@ -1,4 +1,4 @@
-package com.whitegloveitineraries.app;
+package com.whitegloveitineraries.family;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
