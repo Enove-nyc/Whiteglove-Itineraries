@@ -81,7 +81,7 @@ export default async function ItineraryPage({ searchParams }: { searchParams: Pr
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">
             Itinerary planner
           </h1>
-          {itineraries && <Link href="/itinerary/inbox" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Trip inbox</Link>}
+          {itineraries && <Link href="/itinerary/inbox" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Family trip chats</Link>}
           <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
             Flights, hotels and stops, day by day — see{" "}
             <Link href="/sample-itinerary" className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-4">

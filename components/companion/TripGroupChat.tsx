@@ -12,16 +12,16 @@ function ChannelButtons({ channel, onChange }: { channel: TripChatChannel; onCha
       className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-medium ${channel === item.id ? "border-[#102F35] bg-[#102F35] text-white" : "border-stone-300 bg-white text-[#102F35]"}`}>{item.label}</button>)}
   </div>;
 }
-function LiveTripGroupChat({ code }: { code: string }) {
+function LiveTripGroupChat({ code, family }: { code: string; family?: boolean }) {
   const [channel, setChannel] = useState<TripChatChannel>("general");
   const [drafts, setDrafts] = useState<Partial<Record<TripChatChannel, string>>>({});
   return <div className="flex min-h-0 flex-1 flex-col">
     <ChannelButtons channel={channel} onChange={setChannel} />
-    <ChannelTripGroupChat key={channel} code={code} channel={channel} draft={drafts[channel] ?? ""}
+    <ChannelTripGroupChat key={channel} code={code} family={family} channel={channel} draft={drafts[channel] ?? ""}
       onDraftChange={draft => setDrafts(previous => ({ ...previous, [channel]: draft }))} />
   </div>;
 }
-function ChannelTripGroupChat({ code, channel, draft, onDraftChange }: { code: string; channel: TripChatChannel; draft: string; onDraftChange: (value: string) => void }) {
+function ChannelTripGroupChat({ code, family, channel, draft, onDraftChange }: { code: string; family?: boolean; channel: TripChatChannel; draft: string; onDraftChange: (value: string) => void }) {
   const id = useId();
   const [messages, setMessages] = useState<TripGroupMessage[]>([]);
   const [member, setMember] = useState<ChatReply["member"]>();
@@ -76,14 +76,14 @@ function ChannelTripGroupChat({ code, channel, draft, onDraftChange }: { code: s
     finally { mutating.current = false; setBusy(false); }
   }
   return <section className="flex min-h-0 flex-1 flex-col gap-3 p-4 text-[#102F35]" aria-labelledby={`${id}-heading`}>
-    <div><h2 id={`${id}-heading`} className="text-lg font-semibold">{label}</h2><p className="mt-1 text-sm leading-6 text-stone-600">A conversation for everyone with this trip’s code. Your display name is chosen by you.</p></div>
+    <div><h2 id={`${id}-heading`} className="text-lg font-semibold">{label}</h2><p className="mt-1 text-sm leading-6 text-stone-600">{family ? "Everyone invited to this trip can read and send messages here." : "A conversation for everyone with this trip’s code. Your display name is chosen by you."}</p></div>
     {loading ? <p role="status">Opening the conversation…</p> : null}
     {error ? <p role="alert" className="rounded-xl bg-white p-3 text-sm text-red-800">{error} <button type="button" onClick={() => void refresh()} className="min-h-11 px-2 font-semibold underline">Try again</button></p> : null}
     {needsName ? <form onSubmit={(event) => { event.preventDefault(); void join(); }} className="rounded-2xl bg-white p-4">
       <label htmlFor={`${id}-name`} className="block text-sm font-semibold">Your name in this trip</label><input id={`${id}-name`} value={name} onChange={(event) => setName(event.target.value)} maxLength={60} autoComplete="given-name" required className="mt-2 min-h-11 w-full rounded-xl border border-stone-300 px-3" />
       <button disabled={busy || !name.trim()} className="mt-3 min-h-11 rounded-xl bg-[#102F35] px-5 text-white disabled:opacity-50">Join the conversation</button>
     </form> : member ? <>
-      <div className="text-sm text-stone-600">Chatting as {member.name} <button type="button" onClick={() => { setName(member.name); setNeedsName(true); }} className="min-h-11 px-2 underline">Change name</button></div>
+      <div className="text-sm text-stone-600">Chatting as {member.name} {!family && <button type="button" onClick={() => { setName(member.name); setNeedsName(true); }} className="min-h-11 px-2 underline">Change name</button>}</div>
       <ol aria-label="Trip messages" className="flex flex-col gap-3">{messages.map((message) => <li key={message.id} className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.memberId === member.id ? "self-end bg-[#102F35] text-white" : "self-start bg-white"}`}>
         <p className="text-xs font-semibold">{message.memberId === member.id ? "You" : message.name}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{message.text}</p><time dateTime={message.at} className="mt-1 block text-xs opacity-80">{new Date(message.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
       </li>)}</ol>
@@ -114,7 +114,7 @@ function SampleTripGroupChat() {
     <div className="ml-6 rounded-2xl bg-[#102F35] p-4 text-white"><p className="text-xs font-semibold">David · Sample</p><p className="mt-1 text-sm leading-6">{samples[channel][1]}</p></div>
   </section>;
 }
-export default function TripGroupChat({ code, preview = false }: { code?: string; preview?: boolean }) {
+export default function TripGroupChat({ code, preview = false, family }: { code?: string; preview?: boolean; family?: boolean }) {
   if (preview) return <SampleTripGroupChat />;
-  return code ? <LiveTripGroupChat key={code} code={code} /> : null;
+  return code ? <LiveTripGroupChat key={code} code={code} family={family} /> : null;
 }

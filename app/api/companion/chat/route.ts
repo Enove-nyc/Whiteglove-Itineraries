@@ -105,7 +105,7 @@ async function sideFor(
   const cookie = (await cookies()).get(accountCookieName())?.value;
   const account = await getCurrentAccountData(cookie);
   const resolved = await resolveCompanionShare(shareId, account?.email);
-  if (!resolved) return null;
+  if (!resolved || resolved.privateInvite) return null;
   const { ownerEmail: owner, chatKey } = resolved;
   // The thread is the client-facing app, so it is Business-only — the SAME gate
   // as the client app page (app/i/[shareId]/app) and the inbox. A share link

@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
-import { getSharedItineraryByShareId } from "@/lib/account-store";
+import { after as afterResponse, NextRequest, NextResponse } from "next/server";
+import { accountCookieName, getCurrentAccountSummary, getSharedTraveler, getSharedItineraryByShareId, notifyFamilyChat } from "@/lib/account-store";
 import { sameOrigin } from "@/lib/secure-access";
 import { rateLimit } from "@/lib/rate-limit";
 import { groupKey, memberCookieName, readMember, signMember } from "@/lib/trip-group-identity";
-import { pollTripGroup, readTripGroup, sendTripGroup } from "@/lib/trip-group-store";
+import { newestTripGroupMessage, pollTripGroup, readTripGroup, sendTripGroup } from "@/lib/trip-group-store";
 
 import { isTripChatChannel } from "@/lib/trip-chat-channels";
 
@@ -23,22 +23,30 @@ export async function POST(request: NextRequest) {
   const code = typeof body.code === "string" ? body.code.trim() : "";
   if (!/^[A-Za-z0-9_-]{12,128}$/.test(code)) return reply({ error: "That trip code is not active." }, 404);
   const action = body.action;
-  if (action !== "join" && action !== "read" && action !== "send") return reply({ error: "Choose a chat action." }, 400);
+  if (action !== "join" && action !== "read" && action !== "send" && action !== "peek") return reply({ error: "Choose a chat action." }, 400);
   const channel = body.channel ?? "general";
   if (!isTripChatChannel(channel)) return reply({ error: "Choose a chat channel." }, 400);
   const after = body.after;
   if (after !== undefined && (typeof after !== "string" || !/^[a-f0-9-]{36}$/.test(after))) return reply({ error: "Reload the conversation." }, 400);
-  const group = groupKey(code);
+  const rateKey = groupKey(code);
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const limited = await rateLimit(`trip-group:${action}:${group}:${groupKey(ip)}`, { limit: action === "send" ? 40 : 120, windowSeconds: 60 });
+  const limited = await rateLimit(`trip-group:${action}:${rateKey}:${groupKey(ip)}`, { limit: action === "send" ? 40 : 120, windowSeconds: 60 });
   if (!limited.ok) return reply({ error: "Please wait a moment before trying again." }, 429);
   // Always resolve against the live trip. Revoking sharing closes chat too;
   // a stale cookie, raw trip id, or guessed neighboring id grants no access.
-  if (!(await getSharedItineraryByShareId(code))) return reply({ error: "That trip code is not active." }, 404);
+  const legacy = await getSharedItineraryByShareId(code);
+  const account = legacy ? null : await getCurrentAccountSummary(request.cookies.get(accountCookieName())?.value);
+  const family = account ? await getSharedTraveler(code, account.email) : null;
+  if (!legacy && !family?.privateInvite) return reply({ error: "That trip invitation is not active." }, 404);
+
+  const group = family?.privateInvite ? groupKey(JSON.stringify([family.ownerEmail, family.tripId])) : rateKey;
   const secret = process.env.WHITE_GLOVE_SESSION_SECRET?.trim() || process.env.ADMIN_PASSWORD?.trim();
   if (!secret) return reply({ error: "Trip chat is unavailable. Please try again later." }, 503);
   const cookie = memberCookieName(code);
-  let member = readMember(request.cookies.get(cookie)?.value, code, secret);
+  let member = account && family?.privateInvite
+    ? { id: groupKey(JSON.stringify([group, account.email])), name: (family.ownerEmail === account.email ? account.name || "Trip organizer" : family.traveler.name).slice(0, 60), group }
+    : readMember(request.cookies.get(cookie)?.value, code, secret);
+  if (action === "join" && family?.privateInvite && member) return reply({ member: { id: member.id, name: member.name } });
   if (action === "join") {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name || name.length > 60) return reply({ error: "Enter your name, up to 60 characters." }, 400);
@@ -51,10 +59,19 @@ export async function POST(request: NextRequest) {
   }
   if (!member) return reply({ needsName: true }, 401);
   try {
+    if (action === "peek") {
+      if (!family?.privateInvite) return reply({ error: "This trip does not support chat previews." }, 404);
+      const message = await newestTripGroupMessage(group);
+      return reply({ newestId: message?.id, mine: message?.memberId === member.id });
+    }
     if (action === "send") {
       const text = typeof body.text === "string" ? body.text.trim() : "";
       if (!text || text.length > 2000) return reply({ error: "Write a message of up to 2,000 characters." }, 400);
-      return reply({ messages: await sendTripGroup(member, text, channel), member: { id: member.id, name: member.name } });
+      const messages = await sendTripGroup(member, text, channel);
+      if (account && family?.privateInvite) {
+        afterResponse(() => notifyFamilyChat(family.ownerEmail, family.tripId, account.email).catch(() => undefined));
+      }
+      return reply({ messages, member: { id: member.id, name: member.name } });
     }
     const messages = after ? await pollTripGroup(group, channel, after as string) : await readTripGroup(group, channel);
     return reply({ ...(messages === null ? { unchanged: true } : { messages }), member: { id: member.id, name: member.name } });

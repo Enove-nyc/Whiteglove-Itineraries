@@ -1074,7 +1074,7 @@ export default function CompanionApp({
     return () => { clearTimeout(restore); window.removeEventListener("popstate", onPop); };
   }, [embedded]);
   useEffect(() => {
-    if (!liveChat) return;
+    if (!liveChat || travelerInvite) return;
     let cancelled = false;
     async function poll() {
       try {
@@ -1096,6 +1096,31 @@ export default function CompanionApp({
       clearInterval(t);
     };
   }, [liveChat, travelerInvite]);
+
+  useEffect(() => {
+    if (!travelerInvite || !groupCode) return;
+    let active = true;
+    const key = `wg-family-chat-seen:${groupCode}`;
+    async function check() {
+      if (document.hidden || !navigator.onLine) return;
+      try {
+        const response = await fetch("/api/trip-group", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: groupCode, action: "peek" }),
+        });
+        if (!response.ok || !active) return;
+        const { newestId, mine } = await response.json() as { newestId?: string; mine?: boolean };
+        if (!active) return;
+        if (newestId && st.screen === "messages") localStorage.setItem(key, newestId);
+        setUnread(Boolean(newestId && !mine && st.screen !== "messages" && newestId !== localStorage.getItem(key)));
+      } catch { /* The chat tab remains usable if the badge cannot refresh. */ }
+    }
+    void check();
+    const timer = window.setInterval(check, 45_000);
+    document.addEventListener("visibilitychange", check);
+    return () => { active = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", check); };
+  }, [groupCode, st.screen, travelerInvite]);
 
   // KEEP THE WALLET DOCUMENTS ON THE DEVICE. Whoever opens the trip with a
   // connection — the client through their share link, the advisor through their
@@ -1410,7 +1435,7 @@ export default function CompanionApp({
     day: sel.name,
     activity: "On the day",
     chat: advisor,
-    messages: travelerInvite ? liveChat?.advisorName ?? "Trip chat" : groupMode ? "Trip group chat" : advisorInbox ? "Messages" : liveChat ? (liveChat.side === "advisor" ? "Your client" : liveChat.advisorName) : "Advisor",
+    messages: travelerInvite ? "Family trip chat" : groupMode ? "Trip group chat" : advisorInbox ? "Messages" : liveChat ? (liveChat.side === "advisor" ? "Your client" : liveChat.advisorName) : "Advisor",
     alerts: travelerInvite ? "Updates" : "Changes",
     wallet: "Travel wallet",
     profile: "You",
@@ -1421,7 +1446,7 @@ export default function CompanionApp({
     day: `Day ${curDay + 1} of ${trip.days.length}`,
     activity: sel.name,
     chat: hasConcierge || usesRealChat ? "Your advisor" : "On your own",
-    messages: travelerInvite ? "Private conversation" : groupMode ? "Everyone on this trip" : advisorInbox ? "Your clients" : liveChat?.side === "advisor" ? "Their trip, and yours to move" : "Your advisor · replies when they can",
+    messages: travelerInvite ? "Everyone invited to this trip" : groupMode ? "Everyone on this trip" : advisorInbox ? "Your clients" : liveChat?.side === "advisor" ? "Their trip, and yours to move" : "Your advisor · replies when they can",
     alerts: open ? "One needs you" : unreadAlerts.length > 0 ? `${unreadAlerts.length} to see` : settled ? "All settled" : "Nothing right now",
     wallet: "Kept offline",
     profile: hasConcierge ? "The trip is in your name" : "This trip, and you",
@@ -1702,7 +1727,10 @@ export default function CompanionApp({
           <button onClick={() => go("messages")} className="wg-warm" style={{ flex: "none", border: "1px solid rgba(16, 47, 53,.16)", background: "#ffffff", cursor: "pointer", font: `400 13px/1 ${serif}`, padding: "11px 16px", borderRadius: 14, color: INK }}>Open</button>
         </div>
       )}
-      {liveChat && !advisorInbox && (
+      {travelerInvite && (
+        <button type="button" onClick={() => go("messages")} className="mx-4 mt-4 min-h-11 rounded-xl border border-stone-200 bg-white px-4 text-sm font-semibold">Open family trip chat</button>
+      )}
+      {!travelerInvite && liveChat && !advisorInbox && (
         <div style={{ margin: "14px 14px 0", padding: "16px 18px", borderRadius: 20, background: "#FAF8F3", display: "flex", alignItems: "center", gap: 13 }}>
           <div style={{ flex: "none", width: 46, height: 46, borderRadius: 14, background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", font: `400 20px/1 ${serif}`, color: "#6B4A1C" }}>
             {(liveChat.side === "advisor" ? trip.family : liveChat.advisorName).charAt(0).toUpperCase()}
@@ -1907,7 +1935,7 @@ export default function CompanionApp({
           share link — the subscription is keyed by that token (see
           savePushSubscription in lib/account-store.ts), and neither the
           advisor's own view nor the scripted demo has one. */}
-      {isClientViewer && liveChat?.shareId && <NotifyControl shareId={liveChat.shareId} privateInvite={travelerInvite} pushPublicKey={pushPublicKey} />}
+      {isClientViewer && liveChat?.shareId && (!travelerInvite || liveChat.side === "client") && <NotifyControl shareId={liveChat.shareId} privateInvite={travelerInvite} pushPublicKey={pushPublicKey} />}
       {travelerInvite && <>
         <button type="button" className="min-h-11 self-start text-sm font-semibold underline" onClick={() => router.refresh()}>Refresh itinerary</button>
         {syncedAt && <p className="text-sm">Last synced <time dateTime={syncedAt}>{syncedAt.replace("T", " ").slice(0, 16)} UTC</time></p>}
@@ -2342,7 +2370,7 @@ export default function CompanionApp({
   else if (st.screen === "chat") body = isConcierge ? conciergeChat : guideChat;
   else if (st.screen === "messages")
     body = groupMode ? (
-      <TripGroupChat key={groupCode} code={groupCode} preview={travelerPreview} />
+      <TripGroupChat key={groupCode} code={groupCode} preview={travelerPreview} family={travelerInvite} />
     ) : advisorInbox ? (
       <AdvisorInbox
         pendingShare={pendingShare}
@@ -2787,7 +2815,7 @@ function NotifyControl({ shareId, privateInvite, pushPublicKey }: { shareId: str
 
   if (status === "checking") return null;
   if (status === "unsupported") return privateInvite
-    ? <p className="text-sm leading-6">Push is unavailable in this browser. On iPhone, open the trip in Safari and choose Share → Add to Home Screen. Open the installed app and turn on notifications from Updates. You can read Updates here at any time.</p>
+    ? <p className="text-sm leading-6">Push is unavailable on this device. You can still check family trip changes in Updates.</p>
     : null;
 
   const serif = "Georgia,'Times New Roman',serif";

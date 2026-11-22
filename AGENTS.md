@@ -176,3 +176,7 @@ The separate White Glove Itineraries business is paused. Reuse its EXISTING inst
 
 The companion code and chat use the existing shared backend across both deployments; preserve accounts, trips and private attachment boundaries. Opening an already-shared itinerary in the companion does not consume a Trip Pass or start a purchase. Do not reopen purchases. Personal wallet files are stored privately on that device, with explicit offline/device-only wording, removal controls, and sign-out cleanup; do not claim cloud sync. Group display names are self-chosen, not verified identities. Keep trip codes private and tell the owner plainly what is implemented and what has actually been verified.
 
+
+## Owner direction — family trip companion, 22 November 2026
+
+The companion is for people traveling together. Use family trip and traveler language. The person organizing a trip invites others by email. New travelers choose their own password from the invitation, and invited group members can chat together. Wallet documents still belong to their assigned traveler. Android app distribution is through a fresh Google Play listing for package `com.whitegloveitineraries.family`. The owner plans to retire the old Play listings. The website remains available for planning, accepting invites, and opening trips in a browser.

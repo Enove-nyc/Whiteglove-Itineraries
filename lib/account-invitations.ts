@@ -12,6 +12,7 @@ export type AccountInvitation = {
   expiresAtMs: number;
   createdBy: string;
   status: "pending" | "used" | "revoked";
+  tripShareId?: string;
   usedAt?: string;
   revokedAt?: string;
 };
@@ -59,14 +60,14 @@ return 1
 `;
 
 /** Trusted owner-side operation. Raw tokens are returned once and never stored. */
-export async function createAccountInvitation(identifier: string, by: string, now = Date.now()) {
+export async function createAccountInvitation(identifier: string, by: string, now = Date.now(), tripShareId?: string) {
   const identity = normalizeIdentity(identifier);
   if (!identity) throw new Error("Enter a valid email address or phone number.");
   const token = randomBytes(32).toString("base64url");
   const id = invitationId(token)!;
   const expiresAtMs = now + INVITATION_LIFETIME_SECONDS * 1000;
   const invitation: AccountInvitation = {
-    id, identity: identity.value, createdBy: by, status: "pending",
+    id, identity: identity.value, createdBy: by, status: "pending", tripShareId,
     createdAt: new Date(now).toISOString(), expiresAt: new Date(expiresAtMs).toISOString(), expiresAtMs,
   };
   const saved = await command<number>(["EVAL", CREATE, 2, PREFIX + id, INDEX, JSON.stringify(invitation), INVITATION_LIFETIME_SECONDS, now, id]);
@@ -112,22 +113,51 @@ local raw = redis.call('GET', KEYS[1])
 if not raw then return -1 end
 local invite = cjson.decode(raw)
 if invite.status ~= 'pending' or invite.identity ~= ARGV[1] or invite.expiresAtMs <= tonumber(ARGV[2]) then return -1 end
+if invite.tripShareId then
+  local rawShare = redis.call('GET', 'white-glove:traveler-share:' .. invite.tripShareId)
+  if not rawShare then return -1 end
+  local share = cjson.decode(rawShare)
+  if share.invitedEmail ~= invite.identity or share.ownerEmail ~= invite.createdBy then return -1 end
+  local rawData = redis.call('GET', 'white-glove:account-data:' .. share.ownerEmail)
+  if not rawData then return -1 end
+  local active = false
+  for _, trip in ipairs(cjson.decode(rawData).trips or {}) do
+    if trip.id == share.tripId and trip.travelerShares and trip.travelerShares[share.travelerId] == invite.tripShareId then
+      for _, traveler in ipairs(trip.itinerary.travelers or {}) do
+        if traveler.id == share.travelerId and traveler.email and traveler.email:match('^%s*(.-)%s*$'):lower() == invite.identity then
+          active = true
+        end
+      end
+    end
+  end
+  if not active then return -1 end
+end
 if redis.call('EXISTS', KEYS[2]) == 1 or redis.call('EXISTS', KEYS[3]) == 1 then return -2 end
-redis.call('SET', KEYS[2], ARGV[3])
+local accountJson = ARGV[3]
+if invite.tripShareId then
+  local account = cjson.decode(accountJson)
+  account.verifiedAt = ARGV[5]
+  account.verificationRequestedAt = nil
+  account.verificationCodeHash = nil
+  account.verificationCodeExpiresAt = nil
+  accountJson = cjson.encode(account)
+end
+redis.call('SET', KEYS[2], accountJson)
 redis.call('SET', KEYS[3], ARGV[4])
 invite.status = 'used'
 invite.usedAt = ARGV[5]
 redis.call('SET', KEYS[1], cjson.encode(invite), 'KEEPTTL')
-return 1
+return invite.tripShareId and 2 or 1
 `;
 
 /** Account creation and spending the invitation are one atomic Redis operation. */
-export async function createInvitedAccount(token: string, identifier: string, accountJson: string, dataJson: string, now = Date.now()): Promise<"created" | "invalid" | "exists"> {
+export async function createInvitedAccount(token: string, identifier: string, accountJson: string, dataJson: string, now = Date.now()): Promise<"created" | "trip-created" | "invalid" | "exists"> {
   const id = invitationId(token);
   if (!id) return "invalid";
   const identity = identityKey(identifier);
   const result = await command<number>(["EVAL", ACCEPT, 3, PREFIX + id, `white-glove:account:${identity}`, `white-glove:account-data:${identity}`, identity, now, accountJson, dataJson, new Date(now).toISOString()]);
   if (result === 1) return "created";
+  if (result === 2) return "trip-created";
   if (result === -1) return "invalid";
   if (result === -2) return "exists";
   throw new InvitationStorageError();

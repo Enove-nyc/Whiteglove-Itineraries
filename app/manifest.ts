@@ -25,7 +25,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     // reliable way to land on /app — the middleware redirect only fires when
     // the app announces itself with a header newer Chrome versions may drop.
     start_url: itineraries ? "/app" : "/",
-    display: "standalone",
+    display: itineraries ? "browser" : "standalone",
     background_color: "#102F35",
     theme_color: "#102F35",
     orientation: "portrait",

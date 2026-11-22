@@ -29,6 +29,11 @@ function messages(rows: string[], channel: TripChatChannel): TripGroupMessage[] 
 export async function readTripGroup(group: string, channel: TripChatChannel = "general"): Promise<TripGroupMessage[]> {
   return messages(await command<string[]>(["LRANGE", conversationKey(group, channel), -500, -1]), channel);
 }
+export async function newestTripGroupMessage(group: string): Promise<TripGroupMessage | null> {
+  const row = await command<string | null>(["LINDEX", conversationKey(group, "general"), -1]);
+  return row ? JSON.parse(row) as TripGroupMessage : null;
+}
+
 /** A quiet conversation returns null without transferring the entire Redis list. */
 export async function pollTripGroup(group: string, channel: TripChatChannel, after: string): Promise<TripGroupMessage[] | null> {
   const rows = await command<string[] | null>(["EVAL",

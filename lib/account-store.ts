@@ -565,7 +565,7 @@ export async function createAccount(identifier: string, password: string, name?:
       const outcome = await createInvitedAccount(invitationToken, normalized, JSON.stringify(record), JSON.stringify({ route: [], favorites: [], updatedAt: new Date().toISOString() } satisfies AccountData));
       if (outcome === "invalid") return { ok: false as const, error: "This invitation is no longer available.", code: "invitation" as const };
       if (outcome === "exists") return { ok: false as const, error: "An account already exists. Log in to continue.", code: "exists" as const };
-      return { ok: true as const, email: normalized, verificationCode: code };
+      return { ok: true as const, email: normalized, verificationCode: code, tripVerified: outcome === "trip-created" };
     } catch {
       return { ok: false as const, error: "Account registration is temporarily unavailable. Please try again.", code: "unavailable" as const };
     }
@@ -2322,6 +2322,37 @@ export async function readInvitePushSubscriptions(shareId: string, organizerEmai
   const invite = await getSharedTraveler(shareId, organizerEmail);
   if (!invite?.privateInvite || invite.ownerEmail !== normalizeId(organizerEmail)) return [];
   return await readJson<PushSubscriptionRecord[]>(invitePushKey(shareId)) ?? [];
+}
+
+export async function notifyFamilyChat(owner: string, tripId: string, sender: string) {
+  const trip = withTrips(await getAccountData(owner)).trips.find((item) => item.id === tripId);
+  if (!trip) return;
+  const tokens = Object.entries(trip.travelerShares ?? {}).flatMap(([id, token]) => {
+    const email = normalizeId(trip.itinerary.travelers?.find((person) => person.id === id)?.email ?? "");
+    return email && email !== sender ? [{ token, email }] : [];
+  });
+  if (tokens.length === 0) return;
+  const keys = tokens.flatMap(({ token }) => [travelerShareKey(token), invitePushKey(token)]).map(encodeURIComponent);
+  const records = (await redis<(string | null)[]>(`mget/${keys.join("/")}`))?.result ?? [];
+  const deliveries = tokens.flatMap(({ token, email }, index) => {
+    const share = records[index * 2];
+    const subscriptions = records[index * 2 + 1];
+    if (!share || !subscriptions || JSON.parse(share).invitedEmail !== email) return [];
+    return [{ token, subscriptions: JSON.parse(subscriptions) as PushSubscriptionRecord[] }];
+  });
+  const seen = new Set<string>();
+  for (const { token, subscriptions } of deliveries) {
+    const devices = subscriptions.filter(({ endpoint }) => {
+      if (seen.has(endpoint)) return false;
+      seen.add(endpoint);
+      return true;
+    });
+    if (devices.length) await sendPushToSubscriptions(devices, {
+      title: "New family trip message",
+      body: "Open White Glove to read your trip chat.",
+      url: `/t/${encodeURIComponent(token)}/app?screen=messages`,
+    });
+  }
 }
 
 export async function hasInvitePushSubscription(shareId: string, viewerEmail: string, endpoint: string): Promise<boolean> {

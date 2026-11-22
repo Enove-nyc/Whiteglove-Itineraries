@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 // Run against a disposable Next.js instance and scripts/visitor-redis.mjs.
 const base = process.env.COMPANION_TEST_URL || 'http://127.0.0.1:3003';
@@ -14,7 +15,8 @@ async function seed(...args) {
   assert.ok(response.ok, await response.text());
 }
 const browser = await chromium.launch({...(process.env.COMPANION_CHROMIUM ? {executablePath:process.env.COMPANION_CHROMIUM} : {}),args:['--no-sandbox']});
-const headers = {'x-wg-brand':'itineraries', Origin:base};
+const fixtureIp = `198.18.${parseInt(stamp.slice(0,2),16)}.${parseInt(stamp.slice(2,4),16)}`;
+const headers = {'x-wg-brand':'itineraries', Origin:base, 'x-forwarded-for':fixtureIp};
 async function contextFor(email) {
   const context = await browser.newContext({viewport:{width:390,height:844}, extraHTTPHeaders:headers});
   await context.addInitScript(() => { localStorage.setItem('whiteGloveBetaNotice', '6'); localStorage.setItem('whiteGloveBetaNoticeShown', '6'); });
@@ -54,7 +56,8 @@ try {
   console.log('PASS guest sample, reload, printable preview, preserved draft during import sign-in');
   const owner = await contextFor(organizer);
   const one = await contextFor(traveler);
-  const two = await contextFor(second);
+  const two = await contextFor();
+  const outsider = await contextFor(`outsider-${stamp}@example.test`);
   const itinerary = {
     ...copy, title:'Fictional Lake Como trip', startDate:'2027-05-17',endDate:'2027-05-19',
     flights:[{id:'sample-flight',from:'FCO',to:'MXP',date:'2027-05-17',departTime:'07:00',arriveTime:'08:15'}],
@@ -64,19 +67,61 @@ try {
   const {activeId:tripId} = await post(owner,'/api/account/trips',{action:'import',itinerary});
   const invite = async (travelerId) => (await post(owner,'/api/account/traveler-share',{tripId,travelerId})).shareId;
   const code = await invite('first');
-  const codeTwo = await invite('second');
+  const emailCapture = process.env.COMPANION_TEST_EMAIL_FILE;
+  let codeTwo;
+  let token;
+  if (emailCapture) {
+    const sent = await post(owner,'/api/account/traveler-share',{tripId,travelerId:'second',action:'email'});
+    assert.equal(sent.emailed,true);
+    codeTwo = sent.shareId;
+    const emails = (await readFile(emailCapture,'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    const email = emails.find(message => message.to === second);
+    assert.ok(email?.text.includes('choose your password'));
+    const match = /#invite=([A-Za-z0-9_-]{43})/.exec(email.text);
+    assert.ok(match,'The email includes a password-setup link');
+    token = match[1];
+  } else {
+    codeTwo = await invite('second');
+    token = randomBytes(32).toString('base64url');
+    const inviteId = createHash('sha256').update(token).digest('hex');
+    const expiresAtMs = Date.now() + 86400000;
+    await seed('SET', `white-glove:account-invitation:${inviteId}`, JSON.stringify({
+      id:inviteId,identity:second,createdBy:organizer,tripShareId:codeTwo,status:'pending',
+      createdAt:new Date().toISOString(),expiresAt:new Date(expiresAtMs).toISOString(),expiresAtMs,
+    }));
+  }
   assert.notEqual(code,codeTwo);
+  const guidance = await post(two,'/api/account/invitation',{invitationToken:token});
+  assert.equal(guidance.next,`/t/${codeTwo}/app`);
+  await post(two,'/api/account/register',{invitationToken:token,email:`wrong-${stamp}@example.test`,password:'Example-only-928!'},403);
+  const join = await two.newPage();
+  await join.goto(`${base}/join#invite=${token}`);
+  await join.getByText("Choose your password to join the family trip.").waitFor();
+  await join.getByLabel("Your name",{exact:true}).fill("Morgan");
+  await join.locator('input[type="password"]').fill('Example-only-928!');
+  await join.getByRole('checkbox').check();
+  const registration = join.waitForResponse(response => response.url().endsWith('/api/account/register'));
+  await join.getByRole('button',{name:'Create account',exact:true}).click();
+  const enrolled = await registration;
+  assert.equal(enrolled.status(),200);
+  assert.equal((await enrolled.json()).verificationRequired,false);
+  await join.waitForURL(`**/t/${codeTwo}/app`);
+  await post(two,'/api/account/invitation',{invitationToken:token},403);
+  assert.equal((await (await two.request.get(base+'/api/account/me')).json()).signedIn,true);
+  console.log('PASS emailed token is bound to the traveler, consumed once, and signs in after they set their own password');
   const tripPage = await one.newPage();
   const url = base+'/t/'+code+'/app';
   await tripPage.goto(url);
   for (const name of ['Itinerary','Chat','Wallet','Updates']) await tripPage.getByRole('button',{name,exact:true}).waitFor();
-  const wrong = await two.newPage();
+  const wrong = await outsider.newPage();
   await wrong.goto(url);
   await wrong.getByRole('heading',{name:'Trip invite unavailable'}).waitFor();
-  const chat = '/api/companion/chat';
-  await post(two,chat,{share:code,text:'Wrong person'},404);
-  await post(one,chat,{share:code,text:'Where should we meet?'});
-  await post(owner,chat,{share:code,text:'Meet in the main square.'});
+  const chat = '/api/trip-group';
+  await post(outsider,chat,{code,action:'send',text:'Wrong person'},404);
+  await post(two,chat,{code,action:'read'},404);
+  await post(one,chat,{code,action:'send',text:'Where should we meet?'});
+  await post(two,chat,{code:codeTwo,action:'send',text:'I’m coming too.'});
+  await post(owner,chat,{code,action:'send',text:'Meet in the main square.'});
   await tripPage.goto(url+'?screen=messages');
   await tripPage.getByText('Meet in the main square.',{exact:true}).waitFor();
   const appPage = await one.newPage();
@@ -84,11 +129,12 @@ try {
   await appPage.getByRole('link',{name:'Fictional Lake Como trip',exact:true}).waitFor();
   const inbox = await owner.newPage();
   await inbox.goto(base+'/itinerary/inbox');
-  await inbox.getByRole('link',{name:/Jamie/}).waitFor();
-  const ownThread = await (await one.request.get(base+chat+'?share='+code)).json();
-  assert.deepEqual(ownThread.messages.map(m=>[m.from,m.text]),[['client','Where should we meet?'],['advisor','Meet in the main square.']]);
-  assert.equal((await (await two.request.get(base+chat+'?share='+codeTwo)).json()).messages.length,0);
-  console.log('PASS signed-in invite, four tabs, two-way chat, wrong-account and second-conversation isolation');
+  await inbox.getByRole('link',{name:'Fictional Lake Como trip',exact:true}).waitFor();
+  const ownThread = await post(one,chat,{code,action:'read'});
+  const secondThread = await post(two,chat,{code:codeTwo,action:'read'});
+  assert.deepEqual(ownThread.messages.map(message=>message.text),['Where should we meet?','I’m coming too.','Meet in the main square.']);
+  assert.deepEqual(ownThread.messages,secondThread.messages);
+  console.log('PASS three signed-in travelers can chat together and other accounts are excluded');
   const boardingPass = await owner.newPage();
   await boardingPass.setContent(`<h1>Sample boarding pass</h1><p>Fictional test document · Jamie · FCO to MXP</p><div style="width:220px;height:40px;background:repeating-linear-gradient(90deg,black 0 2px,white 2px 5px,black 5px 6px,white 6px 10px)"></div>`);
   const pdf = await boardingPass.pdf({format:'A5',printBackground:true});
@@ -147,7 +193,8 @@ try {
   console.log('PASS explicit publish, wallet privacy, opening originals, offline copy and removal in Chromium');
   await post(owner,'/api/account/traveler-share',{action:'revoke',tripId,travelerId:'first'});
   assert.equal((await one.request.get(file(code,pass.attachment.id))).status(),404);
-  await post(one,chat,{share:code,text:'Revoked'},404);
+  await post(one,chat,{code,action:'send',text:'Revoked'},404);
+  assert.equal((await post(two,chat,{code:codeTwo,action:'read'})).messages.length,3);
   await tripPage.goto(url);
   await tripPage.getByRole('heading',{name:'Trip invite unavailable'}).waitFor();
   console.log('PASS revocation blocks itinerary, chat and future downloads');

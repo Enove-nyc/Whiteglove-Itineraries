@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   const cookie = (await cookies()).get(accountCookieName())?.value;
   const account = await getCurrentAccountData(cookie);
   const resolved = await resolveCompanionShare(shareId, account?.email);
-  if (!resolved) return NextResponse.json({ error: "That link is not active." }, { status: 404 });
+  if (!resolved || resolved.privateInvite) return NextResponse.json({ error: "That link is not active." }, { status: 404 });
   const { ownerEmail: owner, chatKey } = resolved;
   // Business-only, the same gate as the chat it reports on — a non-Business
   // share link has no thread to report against.

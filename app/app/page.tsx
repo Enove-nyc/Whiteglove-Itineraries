@@ -34,11 +34,11 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
     <section className="mx-auto max-w-2xl">
       <p className="text-xs font-bold uppercase tracking-[0.2em]">White Glove · Trip companion</p>
       <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl">Your trip, with you.</h1>
-      <p className="mt-4 text-base leading-7 text-stone-600">{itineraries ? "Open the invite from your trip organizer and sign in with the email they used. You can also find an invite by signing in here." : "Your itinerary, personal travel wallet and a conversation with the people on your trip."}</p>
-      {itineraries && <details className="mt-4 text-sm leading-6 text-stone-700">
-        <summary className="flex min-h-11 cursor-pointer items-center font-semibold">Install on your phone</summary>
-        <p>On iPhone, open Safari and choose Share → Add to Home Screen. On Android, open Chrome and choose Install app or Add to Home screen from the menu. Sign in on the installed app to find your trips.</p>
-      </details>}
+      <p className="mt-4 text-base leading-7 text-stone-600">{itineraries ? "Open your family trip invitation and sign in with the email that received it. You can also find an invite by signing in here." : "Your itinerary, personal travel wallet and a conversation with the people on your trip."}</p>
+      {itineraries && <p className="mt-4 text-sm leading-6 text-stone-700">On Android, get the companion through Google Play. Sign in with the email that received your family trip invitation.</p>}
+      {itineraries && process.env.NEXT_PUBLIC_ITINERARIES_PLAY_STORE_AVAILABLE === "1" && (
+        <a href="https://play.google.com/store/apps/details?id=com.whitegloveitineraries.family" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-[#102F35] px-5 text-sm font-semibold text-white">Get it on Google Play</a>
+      )}
       {invites.length > 0 && <section className="mt-8">
         <h2 className="text-xl font-semibold">Trips you’ve been invited to</h2>
         <ul className="mt-4 space-y-3">

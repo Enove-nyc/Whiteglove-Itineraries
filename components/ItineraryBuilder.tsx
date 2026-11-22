@@ -864,7 +864,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           </summary>
           <div className="border-t border-[var(--gold-light)] p-3">
             {itineraries && tripId && !guest && <div className="mb-4 space-y-2 text-sm text-stone-600">
-              <p>Add each traveler’s sign-in email and create an invite. The first invite publishes your itinerary. Use Publish changes after editing. Each traveler sees their own conversation and assigned documents.</p>
+              <p>Enter each traveler’s email and send an invitation. New travelers choose their own password. The first invite publishes your itinerary. Use Publish changes after editing. Everyone invited can chat together. Each traveler can open their own assigned documents.</p>
               <button type="button" disabled={saveState === "saving" || saveState === "error" || draftStatus === "Publishing…"} onClick={() => void publishChanges()} className={toolbarButton(false)}>Publish changes to travelers</button>
             </div>}
             <TravelersPanel
@@ -2550,6 +2550,7 @@ function TravelerShareLink({ tripId, traveler, privateInvites, tripSaving }: { t
   const [error, setError] = useState("");
   const [revoked, setRevoked] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emailed, setEmailed] = useState(false);
 
   async function invite(action: "invite" | "revoke") {
     if (!tripId) return;
@@ -2559,10 +2560,10 @@ function TravelerShareLink({ tripId, traveler, privateInvites, tripSaving }: { t
       const res = await fetch("/api/account/traveler-share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tripId, travelerId: traveler.id, action }),
+        body: JSON.stringify({ tripId, travelerId: traveler.id, action: privateInvites && action === "invite" ? "email" : action }),
       });
       const data = await res.json().catch(() => null);
-      if (action === "revoke" && res.ok) { setLink(""); setRevoked(true); return; }
+      if (action === "revoke" && res.ok) { setLink(""); setEmailed(false); setRevoked(true); return; }
       if (!res.ok || !data?.shareId) {
         setError(data?.error || "Could not create that link.");
         return;
@@ -2570,6 +2571,7 @@ function TravelerShareLink({ tripId, traveler, privateInvites, tripSaving }: { t
       setRevoked(false);
       setCopied(false);
       setLink(`${window.location.origin}/t/${data.shareId}/app`);
+      setEmailed(data.emailed === true);
     } catch {
       setError("Could not reach the server. Try again.");
     } finally {
@@ -2581,17 +2583,19 @@ function TravelerShareLink({ tripId, traveler, privateInvites, tripSaving }: { t
 
   return (
     <div className="mt-1.5 w-full space-y-2 text-xs">
-      {link ? (
+      {privateInvites && emailed && <p role="status">Invitation email sent.</p>}
+      {privateInvites && link && <a href={link + "?screen=messages"} className="inline-flex min-h-11 items-center px-2 font-semibold underline">Open family chat</a>}
+      {link && !privateInvites ? (
         <>
           <input aria-label="Traveler invite link" readOnly value={link} className={inputClass} onFocus={(event) => event.target.select()} />
           <div className="flex flex-wrap gap-2">
             <button type="button" className="inline-flex min-h-11 items-center px-2 font-semibold underline underline-offset-4" onClick={() => void navigator.clipboard.writeText(link).then(() => setCopied(true)).catch(() => setError("Select the link to copy it."))}>{copied ? "Copied" : "Copy invite"}</button>
-            {privateInvites && <a href={link + "?screen=messages"} className="inline-flex min-h-11 items-center px-2 font-semibold underline underline-offset-4">Open conversation</a>}
+
           </div>
         </>
       ) : (
         <button type="button" onClick={() => void invite("invite")} disabled={busy || !tripId || tripSaving || (privateInvites && !traveler.email?.includes("@"))} className="inline-flex min-h-11 items-center px-2 font-semibold underline underline-offset-4">
-          {traveler.hasOwnAccess && !revoked ? "Get invite link" : privateInvites ? "Create traveler invite" : "Create access link"}
+          {privateInvites ? (emailed || traveler.hasOwnAccess && !revoked ? "Resend invitation email" : "Email invitation") : traveler.hasOwnAccess ? "Get invite link" : "Create access link"}
         </button>
       )}
       {privateInvites && !revoked && (link || traveler.hasOwnAccess) && <button type="button" disabled={busy || tripSaving} onClick={() => void invite("revoke")} className="inline-flex min-h-11 items-center px-2 font-semibold underline underline-offset-4">Revoke invite</button>}
