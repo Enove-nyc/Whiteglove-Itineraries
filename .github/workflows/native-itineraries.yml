@@ -82,6 +82,7 @@ jobs:
       - name: Verify package, SDK, version and original signing certificate
         if: env.WG_ITIN_KEYSTORE_BASE64 != ''
         env:
+          EXPECTED_MIN_SDK: "24"
           EXPECTED_UPLOAD_CERT_SHA256: 3af98de9a3da39f9ff3a34f1debf00b330ad2edc19e65003ff7012c8ed8f680a
         run: node ../../scripts/verify-native-release.mjs
       - name: Upload public release verification

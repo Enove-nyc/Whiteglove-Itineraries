@@ -29,7 +29,11 @@ const { applicationId: packageName, versionCode } = gradleIdentity(gradle);
 assert.ok(metadata.includes(`package: name='${packageName}'`), 'APK application ID changed');
 assert.ok(metadata.includes(`versionCode='${versionCode}'`), 'APK version code does not match the reviewed project');
 assert.match(metadata, /targetSdkVersion:'36'/, 'Android target SDK must remain 36');
-const report = { applicationId: packageName, versionCode: Number(versionCode), targetSdkVersion: 36, uploadCertificateSha256: expected,
+const minSdk = metadata.match(/^sdkVersion:'([0-9]+)'/m)?.[1];
+assert.ok(minSdk, 'Could not read Android minimum SDK');
+const expectedMinSdk = process.env.EXPECTED_MIN_SDK;
+if (expectedMinSdk) assert.equal(minSdk, expectedMinSdk, 'Android minimum SDK does not match the release requirement');
+const report = { minSdkVersion: Number(minSdk), applicationId: packageName, versionCode: Number(versionCode), targetSdkVersion: 36, uploadCertificateSha256: expected,
   apkSha256: createHash('sha256').update(readFileSync(apk)).digest('hex'), aabSha256: createHash('sha256').update(readFileSync(aab)).digest('hex') };
 writeFileSync('release-verification.json', JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify(report));
