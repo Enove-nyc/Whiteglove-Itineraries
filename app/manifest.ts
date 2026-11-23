@@ -17,7 +17,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     name: itineraries ? "White Glove Itineraries" : "White Glove Kosher Travel",
     short_name: "White Glove",
     description: itineraries
-      ? "Your itinerary, private travel wallet and trip group chat, ready for travel."
+      ? "Your itinerary, private travel wallet, messages and trip updates."
       : "Thoughtfully planned kosher travel and Jewish heritage journeys — kevarim, kosher food, minyanim, and trip planning.",
     // The itineraries app is the planner app, not the marketing site, so it
     // launches straight into /app; the kosher app is the whole site and opens
@@ -25,7 +25,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     // reliable way to land on /app — the middleware redirect only fires when
     // the app announces itself with a header newer Chrome versions may drop.
     start_url: itineraries ? "/app" : "/",
-    display: "standalone",
+    display: itineraries ? "browser" : "standalone",
     background_color: "#102F35",
     theme_color: "#102F35",
     orientation: "portrait",

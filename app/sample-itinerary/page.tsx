@@ -238,7 +238,7 @@ export default async function SampleItineraryPage() {
             </div>
             <p className="mt-4 leading-7 text-stone-700">
               {itineraries
-                ? "The planner builds this document from the days you enter, and the same trip opens as an app on a phone. Planning your own trips is free; a Trip Pass upgrades one trip to the app, and an adviser plan runs your clients’ trips."
+                ? "Start an itinerary in your browser for free. Save it to your account to publish it and invite travelers to the companion app. Travelers sign in with the email used on their invitation."
                 : "Build the same document yourself, for your own dates — or answer three short steps for destination ideas first. Sign in to start; it’s free."}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -249,10 +249,10 @@ export default async function SampleItineraryPage() {
                 Open the itinerary planner
               </Link>
               <Link
-                href={itineraries ? "/pricing" : "/plan"}
+                href={itineraries ? "/app/preview" : "/plan"}
                 className="inline-flex min-h-11 items-center rounded-md border border-[var(--gold)] px-6 text-xs font-bold uppercase tracking-[0.12em] text-[var(--navy)] transition hover:bg-[var(--cream-deep)]"
               >
-                {itineraries ? "What it costs" : "Get recommendations"}
+                {itineraries ? "Explore the Lake Como sample" : "Get recommendations"}
               </Link>
             </div>
           </div>

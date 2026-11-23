@@ -67,6 +67,13 @@ export const DEPLOYMENT_SETTINGS: Connection[] = [
     where: "Set it on the deployment itself — Railway → the service → Variables.",
   },
   {
+    vars: ["NEXT_PUBLIC_ITINERARIES_PLAY_STORE_AVAILABLE"],
+    what: "Show the Google Play link for White Glove Itineraries.",
+    without: "Travelers can open their trips in the browser. The Google Play button appears once the listing is available.",
+    weight: "nicety",
+    where: "Set to 1 in the Cloudflare build settings once the Google Play listing is accessible to travelers.",
+  },
+  {
     vars: ["PLATFORM_FEE_BPS"],
     what: "White Glove's take rate on a trip payment, in basis points (10 = 0.1%).",
     without:

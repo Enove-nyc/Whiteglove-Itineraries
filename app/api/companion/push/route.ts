@@ -1,5 +1,6 @@
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { removePushSubscription, resolveCompanionShare, savePushSubscription } from "@/lib/account-store";
+import { accountCookieName, getCurrentAccountSummary, hasInvitePushSubscription, removePushSubscription, resolveCompanionShare, savePushSubscription } from "@/lib/account-store";
 import { mayServeCompanionClients } from "@/lib/account-limits";
 import { getPlan } from "@/lib/account-plan-store";
 import { isValidPushSubscription } from "@/lib/push-notify";
@@ -28,6 +29,20 @@ export async function POST(request: NextRequest) {
   const shareId = body?.shareId?.trim();
   if (!shareId) return NextResponse.json({ ok: false, error: "Missing the trip." }, { status: 400 });
 
+  // Push, like the chat itself, is a companion-app feature: only a trip whose
+  // owner may serve companion clients (Business) has an app to be pushed from.
+  // A share token from any other plan is a read-only itinerary, not a channel.
+  const account = await getCurrentAccountSummary((await cookies()).get(accountCookieName())?.value);
+  const resolved = await resolveCompanionShare(shareId, account?.email);
+  if (!resolved || (!resolved.privateInvite && !mayServeCompanionClients(await getPlan(resolved.ownerEmail)))) {
+    return NextResponse.json({ ok: false, error: "That link is not active." }, { status: 404 });
+  }
+
+  if (body?.action === "status" && resolved.privateInvite && account?.email) {
+    const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
+    return NextResponse.json({ enabled: endpoint ? await hasInvitePushSubscription(shareId, account.email, endpoint) : false });
+  }
+
   // A courtesy fence against a hammered subscribe/unsubscribe loop. The store
   // already caps a trip at a dozen subscriptions and dedups by endpoint, so
   // this is about request rate, not storage.
@@ -36,18 +51,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "Too many changes at once — try again shortly." }, { status: 429 });
   }
 
-  // Push, like the chat itself, is a companion-app feature: only a trip whose
-  // owner may serve companion clients (Business) has an app to be pushed from.
-  // A share token from any other plan is a read-only itinerary, not a channel.
-  const resolved = await resolveCompanionShare(shareId);
-  if (!resolved || !mayServeCompanionClients(await getPlan(resolved.ownerEmail))) {
-    return NextResponse.json({ ok: false, error: "That link is not active." }, { status: 404 });
-  }
-
   if (body?.action === "unsubscribe") {
     const endpoint = body.endpoint?.trim();
     if (!endpoint) return NextResponse.json({ ok: false, error: "Missing the subscription." }, { status: 400 });
-    const ok = await removePushSubscription(shareId, endpoint);
+    const ok = await removePushSubscription(shareId, endpoint, account?.email);
     return NextResponse.json({ ok }, { status: ok ? 200 : 400 });
   }
 
@@ -60,6 +67,6 @@ export async function POST(request: NextRequest) {
     keys: subscription.keys,
     addedAt: new Date().toISOString(),
   };
-  const ok = await savePushSubscription(shareId, record);
+  const ok = await savePushSubscription(shareId, record, account?.email);
   return NextResponse.json({ ok }, { status: ok ? 200 : 400 });
 }

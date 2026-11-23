@@ -220,7 +220,7 @@ export default function LoginForm({
         if (data?.verificationRequired) setMode("verify");
         return;
       }
-      if (mode === "signup") {
+      if (mode === "signup" && data?.verificationRequired !== false) {
         setMode("verify");
         setMessage(whereTheCodeWent(data, "verification code"));
         setSaving(false);

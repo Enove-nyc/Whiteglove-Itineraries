@@ -37,20 +37,29 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default async function PrivacyPolicyPage() {
   // The owner's published blocks once he has edited this page; the built-in
   // version — still wired to the site words for the contact email — until then.
-  const page = await resolvePage("privacy");
+  const [page, words, brand] = await Promise.all([resolvePage("privacy"), readWords(), currentBrand()]);
+  const contactEmail = contactEmailFor(brand, words);
+  const itineraries = brand === "itineraries";
+  const deletionRequest = itineraries && (
+    <section id="account-deletion" className="mx-auto max-w-3xl scroll-mt-24 px-5 pb-12 pt-4 sm:px-8">
+      <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--navy)]">Delete your White Glove Itineraries account</h2>
+      <p className="mt-3 text-sm leading-7 text-stone-700">
+        Email us from the address you use to sign in. We’ll verify your request and follow up about deleting your account and associated data.
+      </p>
+      <a className="mt-3 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" href={`mailto:${contactEmail}?subject=White%20Glove%20Itineraries%20account%20deletion`}>Request account deletion</a>
+    </section>
+  );
   if (page?.edited) {
     return (
       <main className="min-h-screen bg-[var(--cream)]">
         <Navbar />
         <PageBlocks blocks={page.blocks} />
+        {deletionRequest}
         <AppPrivacyNotice />
         <Footer />
       </main>
     );
   }
-  const [words, brand] = await Promise.all([readWords(), currentBrand()]);
-  const contactEmail = contactEmailFor(brand, words);
-  const itineraries = brand === "itineraries";
   const siteName = BRAND_NAME[brand];
   const siteDomain = BRAND_DOMAIN[brand];
   return (
@@ -60,7 +69,7 @@ export default async function PrivacyPolicyPage() {
         <div className="mx-auto max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-[0.26em] text-[var(--gold-ink)]">{siteName}</p>
           <h1 className="mt-5 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">Privacy Policy</h1>
-          <p className="mt-4 text-sm text-stone-500">Last updated: {UPDATED}</p>
+          <p className="mt-4 text-sm text-stone-500">Last updated: {itineraries ? "November 22, 2026" : UPDATED}</p>
         </div>
       </section>
 
@@ -76,6 +85,7 @@ export default async function PrivacyPolicyPage() {
           <ul className="glove-list space-y-2">
             <li><strong className="text-[var(--navy)]">Account details</strong> — your email address and a password. Passwords are stored only in a hashed form; we never store or see your plain password.</li>
             <li><strong className="text-[var(--navy)]">Content you save</strong> — the destinations, routes, and favorites you add to your account.</li>
+            {itineraries && <li><strong className="text-[var(--navy)]">Family trip content</strong> — traveler details, group messages, booking files and boarding passes you add. Trip members can read the group chat. Wallet files assigned to a traveler are available to that traveler and the organizer. Reports include the selected message for review.</li>}
             <li><strong className="text-[var(--navy)]">Searches and trip details</strong> — the cities, flights, and hotels you search for, so we can show relevant results and tools.</li>
             <li><strong className="text-[var(--navy)]">Usage analytics</strong> — aggregate counts such as page visits and popular search terms. These are totals and are not linked to your identity.</li>
             <li><strong className="text-[var(--navy)]">Cookies</strong> — a sign-in cookie that keeps you logged in, and, where enabled, a site-access cookie. We do not use advertising cookies.</li>
@@ -127,6 +137,7 @@ export default async function PrivacyPolicyPage() {
           </p>
         </Section>
       </article>
+      {deletionRequest}
       <AppPrivacyNotice />
       <Footer />
     </main>

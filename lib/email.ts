@@ -147,7 +147,7 @@ export function lastEmailFailure() {
 }
 
 /** POST one email to Resend and report exactly what happened. Never throws. */
-async function postResend(payload: Record<string, unknown>, to: string, kind = "email"): Promise<SendResult> {
+async function postResend(payload: Record<string, unknown>, to: string, kind = "email", sensitive = false): Promise<SendResult> {
   // Resolved here rather than threaded through twenty call sites: currentBrand
   // reads the request being served and answers "kosher" when there is no
   // request at all, so a background job keeps the behaviour it always had.
@@ -177,11 +177,11 @@ async function postResend(payload: Record<string, unknown>, to: string, kind = "
       const result: SendResult = {
         ok: false,
         status: response.status,
-        error: bodyText || `Resend returned HTTP ${response.status}.`,
+        error: (!sensitive && bodyText) || `Resend returned HTTP ${response.status}.`,
         sandboxRestricted,
       };
       lastFailure = { ...result, at: new Date().toISOString(), to };
-      console.error("[email] send failed:", response.status, bodyText);
+      console.error("[email] send failed:", response.status, sensitive ? kind : bodyText);
       await recordEmailAttempt({ at: new Date().toISOString(), kind, to, ok: false, status: response.status, error: result.error, sandboxRestricted });
       return result;
     }
@@ -450,6 +450,21 @@ export async function sendItineraryShareEmail(
     to,
     "itinerary share",
   );
+  return result.ok;
+}
+
+export async function sendFamilyTripInvitation(to: string, url: string, fromName: string, newAccount: boolean): Promise<boolean> {
+  const who = fromName || "Someone in your travel group";
+  const action = newAccount ? "Set your password and join the trip" : "Open the trip";
+  const detail = newAccount
+    ? "Use this link within seven days to choose your password and join the trip."
+    : "Sign in with the email address that received this invitation.";
+  const result = await postResend({
+    to,
+    subject: "You’re invited to a family trip on White Glove",
+    html: `<h1>You’re invited to a family trip</h1><p>${escapeHtml(who)} invited you to travel together on White Glove Itineraries.</p><p>${detail}</p><p><a style="display:inline-block;padding:14px;background:#102f35;color:#fff" href="${escapeHtml(url)}">${action}</a></p><p>If you weren’t expecting this invitation, you can ignore it.</p>`,
+    text: `${who} invited you to a family trip on White Glove Itineraries.\n\n${detail}\n\n${action}\n${url}\n\nIf you weren’t expecting this invitation, you can ignore it.`,
+  }, to, "family trip invitation", true);
   return result.ok;
 }
 

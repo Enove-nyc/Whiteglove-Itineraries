@@ -33,7 +33,8 @@ export type TripAlertKind =
   | "itinerary_update"
   /** Something the advisor sent the traveler by hand — "your driver is running
    *  twenty minutes late" — that no data feed would ever produce on its own. */
-  | "advisor_alert";
+  | "advisor_alert"
+  | "departure_reminder";
 
 export type TripAlert = {
   id: string;

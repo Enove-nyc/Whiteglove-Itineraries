@@ -34,12 +34,12 @@ export const dynamic = "force-dynamic";
  * it belongs to.
  */
 async function whoFor(shareId: string): Promise<{ owner: string; side: CompanionChatSide; chatKey: string } | null> {
-  const resolved = await resolveCompanionShare(shareId);
-  if (!resolved) return null;
-  const { ownerEmail: owner, chatKey } = resolved;
-  if (!mayServeCompanionClients(await getPlan(owner))) return null;
   const cookie = (await cookies()).get(accountCookieName())?.value;
   const account = await getCurrentAccountData(cookie);
+  const resolved = await resolveCompanionShare(shareId, account?.email);
+  if (!resolved || resolved.privateInvite) return null;
+  const { ownerEmail: owner, chatKey } = resolved;
+  if (!resolved.privateInvite && !mayServeCompanionClients(await getPlan(owner))) return null;
   const side: CompanionChatSide =
     account?.email && identityKey(account.email) === identityKey(owner) ? "advisor" : "client";
   return { owner, side, chatKey };

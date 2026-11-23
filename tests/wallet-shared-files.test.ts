@@ -68,7 +68,9 @@ describe("the route that serves one", () => {
 
   it("checks the code, the trip and the flag — all three", () => {
     assert.match(route, /getSharedItineraryByShareId\(shareId\)/);
-    assert.match(route, /sharedAttachmentIds\(shared\.itinerary\)\.has\(id\)/);
+    assert.match(route, /sharedAttachmentIds\(shared\.itinerary, travelerId\)\.has\(id\)/);
+    assert.match(route, /getSharedTraveler\(shareId, viewer.email\)/);
+    assert.match(route, /sharedAttachmentIds\(invite.currentItinerary, travelerId\)\.has\(id\)/);
   });
 
   it("asks the store as the owner it resolved, never as anything in the request", () => {

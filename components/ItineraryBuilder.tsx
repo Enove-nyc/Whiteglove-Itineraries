@@ -71,6 +71,7 @@ import {
 } from "@/data/itinerary";
 import type { SavedPlace } from "@/data/route-utils";
 import { addImportedItemsToItinerary, type ImportedItem } from "@/data/smart-import";
+import { lakeComoSample } from "@/data/lake-como-sample";
 import SmartImportPanel from "@/components/SmartImportPanel";
 
 const ROUTE_KEY = "whiteGloveMyRoute";
@@ -79,10 +80,13 @@ const inputClass = "mt-1 w-full rounded-md border border-[var(--gold-light)] bg-
 const caption = "text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500";
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `id-${Math.random().toString(36).slice(2)}`);
 
+const GUEST_DRAFT_KEY = "wg-itinerary-guest-draft";
+
 type Tab = "flight" | "hotel" | "activity" | "import" | null;
 type ItineraryView = "days" | "calendar";
 
-export default function ItineraryBuilder({ crossings = [], today: serverToday = "", assume = BUILT_IN_ASSUMPTIONS, templates = [], itineraries = false, kosher = false }: {
+export default function ItineraryBuilder({ crossings = [], today: serverToday = "", assume = BUILT_IN_ASSUMPTIONS, templates = [], itineraries = false, kosher = false, entry }: {
+  entry?: "sample" | "import";
   /** What is known about the borders this trip crosses. Read on the server. */
   crossings?: Crossing[];
   /**
@@ -119,7 +123,12 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // account has asked for them. Never merely because a trip holds the data.
   const showZmanimHere = !itineraries || kosher;
   const [itin, setItin] = useState<Itinerary>(emptyItinerary());
-  const [tab, setTab] = useState<Tab>(null);
+  const [tab, setTab] = useState<Tab>(entry === "import" ? "import" : null);
+  const [showSample, setShowSample] = useState(entry === "sample");
+  const [sampleStart, setSampleStart] = useState("");
+  const [guest, setGuest] = useState(false);
+  const [draftStatus, setDraftStatus] = useState("");
+  const [savingDraft, setSavingDraft] = useState(false);
   // Which flight the top form is editing, if any. Null means adding a new one.
   const [editingFlightId, setEditingFlightId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -177,7 +186,6 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
   // null until the first trips read decides, so the editor does not flash up
   // before the list for somebody who has several.
   const [mode, setMode] = useState<"list" | "edit" | null>(null);
-  const [tripCount, setTripCount] = useState(0);
   useEffect(() => {
     let active = true;
     fetch("/api/account/trips", { cache: "no-store" })
@@ -189,8 +197,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           setMode((m) => m ?? "edit");
           return;
         }
-        setTripCount(d.trips.length);
-        setMode((m) => (m === null ? (d.trips.length >= 2 ? "list" : "edit") : m));
+        setMode((m) => (m === null ? (d.trips.length >= 2 && !entry && !(itineraries && localStorage.getItem(GUEST_DRAFT_KEY)) ? "list" : "edit") : m));
       })
       .catch(() => {
         if (active) setMode((m) => m ?? "edit");
@@ -198,26 +205,31 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
     return () => {
       active = false;
     };
-  }, [reloadKey]);
+  }, [reloadKey, entry, itineraries]);
 
-  // Load: the account, and nothing else.
-  //
-  // THERE IS NO BROWSER COPY TO FALL BACK TO. A trip used to be kept in
-  // localStorage as well, which meant a signed-out visitor could build a real
-  // itinerary that existed on one device, in one browser, and was gone the
-  // moment they cleared their history or picked up their phone — and they
-  // were told so in the smallest print on the page. A trip is somebody's
-  // travel plans; the only honest place for it is their account.
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const res = await fetch("/api/account/itinerary", { cache: "no-store" });
+        if (itineraries && (res.ok || res.status === 401)) {
+          const raw = localStorage.getItem(GUEST_DRAFT_KEY);
+          if (raw || res.status === 401 || entry === "sample") {
+            if (!active) return;
+            setItin(raw ? { ...emptyItinerary(), ...JSON.parse(raw) } : emptyItinerary());
+            setTripId(null);
+            setGuest(true);
+            setLoaded(true);
+            setLoadedKey(reloadKey);
+            return;
+          }
+        }
         if (res.ok) {
           const data = await res.json();
           if (!active) return;
           setItin(data?.itinerary ? { ...emptyItinerary(), ...data.itinerary } : emptyItinerary());
           setTripId(data?.tripId ?? null);
+          setGuest(false);
           setLoaded(true);
           setLoadedKey(reloadKey);
           return;
@@ -233,21 +245,62 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
     return () => {
       active = false;
     };
-  }, [reloadKey]);
+  }, [reloadKey, entry, itineraries]);
 
-  // The one chokepoint every add, edit and reorder in this builder funnels
-  // through. Gated here rather than at each of the dozens of buttons that
-  // call it: the first attempt to change anything, signed out, opens the
-  // sign-in dialog instead of writing a change nowhere it can be got back
-  // from; once signed in, this and every later call go straight through.
   function persist(next: Itinerary): Promise<boolean> {
     if (loadedKey !== reloadKey) return Promise.resolve(false);
-    let completion = Promise.resolve(false);
-    requireSignIn(() => {
-      setItin(next);
-      completion = saveQueue.enqueue({ itinerary: next, tripId: tripId ?? undefined });
-    }, "Sign in to save");
-    return completion;
+    if (guest) {
+      try {
+        localStorage.setItem(GUEST_DRAFT_KEY, JSON.stringify(next));
+        setItin(next);
+        setDraftStatus("");
+        return Promise.resolve(true);
+      } catch {
+        setDraftStatus("This browser could not store your draft. Free some space or enable site storage, then try again.");
+        return Promise.resolve(false);
+      }
+    }
+    setItin(next);
+    return saveQueue.enqueue({ itinerary: next, tripId: tripId ?? undefined });
+  }
+
+  async function saveGuestDraft() {
+    setSavingDraft(true);
+    setDraftStatus("");
+    try {
+      const response = await fetch("/api/account/trips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "import", itinerary: itin }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.activeId) throw new Error(result.error || "Could not save the trip.");
+      localStorage.removeItem(GUEST_DRAFT_KEY);
+      setTripId(result.activeId);
+      setGuest(false);
+      setDraftStatus("Saved to your account.");
+    } catch (error) {
+      setDraftStatus(error instanceof Error ? error.message : "Could not save the trip. Try again.");
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
+  async function publishChanges() {
+    if (!tripId) return;
+    setDraftStatus("Publishing…");
+    try {
+      const response = await fetch("/api/account/traveler-share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "publish", tripId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not publish changes.");
+      setDraftStatus("Changes published. Travelers can keep using their original invites.");
+    } catch (error) {
+      setDraftStatus(error instanceof Error ? error.message : "Could not publish changes.");
+    }
   }
 
   const set = (patch: Partial<Itinerary>) => persist({ ...itin, ...patch });
@@ -480,16 +533,23 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
       {/* Back to the index — the planner is a CRM now, one itinerary at a time.
           Always here in edit mode: even with a single itinerary it is the way
           to the list, where a new one is started and the others are managed. */}
-      <button
+      {!guest && <button
         type="button"
         disabled={saveState === "saving" || saveState === "error"}
         onClick={() => setMode("list")}
         className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--navy)] underline decoration-[var(--gold)] decoration-2 underline-offset-4"
       >
         ← Back to all itineraries
-      </button>
+      </button>}
       <div id="itinerary-save-status" role="status" aria-live="polite" className="sticky top-16 z-30 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--surface)] px-4 py-3 text-sm">
         <span className="mr-auto font-semibold text-[var(--navy)]">{itin.title?.trim() || "Your trip"}{itin.startDate ? " · " + tripBarDates({ startDate: itin.startDate, endDate: itin.endDate }) : ""} · Editing</span>
+        {guest && <>
+          <span>Guest draft · stored in this browser</span>
+          <button type="button" disabled={savingDraft} onClick={() => requireSignIn(() => void saveGuestDraft(), "Sign in to save your trip")} className={toolbarButton(true)}>
+            {savingDraft ? "Saving…" : "Save to your account"}
+          </button>
+        </>}
+        {draftStatus && <span>{draftStatus}</span>}
         {saveState === "saving" && <span>Saving…</span>}
         {saveState === "saved" && <span className="text-emerald-800">Saved to your account</span>}
         {saveState === "error" && <><span className="text-red-800">Could not save. Your changes are still here.</span><button type="button" onClick={() => saveQueue.retry()} className="min-h-11 rounded-md border border-red-800 px-3 font-semibold text-red-800">Try again</button></>}
@@ -516,7 +576,32 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           to start from. In front of the editor rather than instead of it —
           everything below stays usable with this ignored or collapsed. See
           lib/trip-setup.ts. */}
+      {showSample && (
+        <form className="rounded-xl border border-[var(--gold-light)] bg-white p-5" onSubmit={async (event) => {
+          event.preventDefault();
+          if (await persist(lakeComoSample(sampleStart))) setShowSample(false);
+        }}>
+          <h2 className="text-xl font-semibold text-[var(--navy)]">Copy the Lake Como sample</h2>
+          <p className="mt-2 text-sm text-stone-700">This replaces the draft in this browser. Leave the date blank to keep the stops unscheduled.</p>
+          <label className="my-3 block max-w-xs">
+            <span className={caption}>First day (optional)</span>
+            <DateField ariaLabel="Sample start date" className={inputClass} value={sampleStart} onChange={setSampleStart} />
+          </label>
+          <button type="submit" className={toolbarButton(true)}>Copy sample</button>
+        </form>
+      )}
+      {!showSample && itin.title === "Three days on Lake Como" && (
+        <p className="text-sm text-stone-700">{itin.startDate ? "Next, add a booking to make the trip your own." : "Next, set your trip dates and assign the stops to days, or add a booking."}</p>
+      )}
+      {!hasDates && itineraries && (
+        <div className="rounded-xl border border-[var(--gold-light)] bg-white p-4">
+          {viewer?.signedIn && tab === "import"
+            ? <SmartImportPanel onImport={importSmartImportItems} onCancel={() => setTab(null)} />
+            : <button type="button" className={toolbarButton(true)} onClick={() => requireSignIn(() => setTab("import"), "Sign in to import a booking")}>Import a booking</button>}
+        </div>
+      )}
       <TripSetupPanel
+        key={itin.title === "Three days on Lake Como" ? "lake-como" : loadedKey}
         itineraries={itineraries}
         itin={itin}
         onNext={(step) => {
@@ -531,7 +616,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           }
         }}
         templates={templates}
-        signedIn={viewer === null ? null : Boolean(viewer.signedIn)}
+        signedIn={guest ? false : viewer === null ? null : Boolean(viewer.signedIn)}
         onApply={(patch, template) => {
           const base = { ...itin, ...patch };
           persist(template ? applyTemplate(base, template, uid) : base);
@@ -605,7 +690,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           <button type="button" onClick={() => { setEditingLodgingId(null); setTab(tab === "hotel" ? null : "hotel"); }} className={toolbarButton(nextSetup === "stay")}>Hotel</button>
           <button type="button" onClick={() => setTab(tab === "activity" ? null : "activity")} className={toolbarButton(nextSetup === "stops")}>Stop</button>
           <button type="button" onClick={importSavedRoute} className={toolbarButton(false)}>Saved route</button>
-          <button type="button" onClick={() => setTab(tab === "import" ? null : "import")} className={toolbarButton(false)}>Smart Import</button>
+          <button type="button" onClick={() => tab === "import" ? setTab(null) : requireSignIn(() => setTab("import"), "Sign in to import a booking")} className={toolbarButton(false)}>Smart Import</button>
           <button type="button" onClick={planMyRoute} disabled={planning} className={`ml-auto ${toolbarButton(unscheduled.length > 0)} disabled:opacity-60`}>{planning ? "Planning…" : "Plan my route"}</button>
           {planNote && <span className="text-xs font-semibold text-[var(--navy)]">{planNote}</span>}
         </div>
@@ -640,7 +725,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
           />
         )}
         {tab === "activity" && <ActivityForm startDate={itin.startDate} onAdd={async (a) => { if (!await addActivity(a)) return false; setTab(null); }} itineraries={itineraries} />}
-        {tab === "import" && <SmartImportPanel onImport={importSmartImportItems} onCancel={() => setTab(null)} />}
+        {tab === "import" && viewer?.signedIn && <SmartImportPanel onImport={importSmartImportItems} onCancel={() => setTab(null)} />}
         </div>
       </section>
       )}
@@ -739,7 +824,8 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
                 <DayCard
                   key={day.date}
                   day={day}
-                  signedIn={Boolean(viewer?.signedIn)}
+                  signedIn={Boolean(viewer?.signedIn) && !guest}
+                  walletTravelers={itineraries ? travelersOf(itin) : undefined}
                   isToday={day.date === todayInTrip}
                   adjustments={itin.adjustments ?? []}
                   zmanim={zmanimForToday?.[day.date]}
@@ -777,6 +863,10 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
             <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
           </summary>
           <div className="border-t border-[var(--gold-light)] p-3">
+            {itineraries && tripId && !guest && <div className="mb-4 space-y-2 text-sm text-stone-600">
+              <p>Enter each traveler’s email and send an invitation. New travelers choose their own password. The first invite publishes your itinerary. Use Publish changes after editing. Everyone invited can chat together. Each traveler can open their own assigned documents.</p>
+              <button type="button" disabled={saveState === "saving" || saveState === "error" || draftStatus === "Publishing…"} onClick={() => void publishChanges()} className={toolbarButton(false)}>Publish changes to travelers</button>
+            </div>}
             <TravelersPanel
               travelers={travelersOf(itin)}
               onChange={(travelers) => set({ travelers, travelerName: travelers[0]?.name ?? "" })}
@@ -786,10 +876,12 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
                 set({ bookingFor, travelers, travelerName: travelers[0]?.name ?? "" });
               }}
               tripId={tripId}
+              privateInvites={itineraries}
+              tripSaving={saveState === "saving" || saveState === "error"}
             />
           </div>
         </details>
-        <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
+        {!guest && <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
             <span className="text-sm font-semibold text-[var(--navy)]">Share this itinerary</span>
             <span aria-hidden="true" className="text-lg text-[var(--gold-ink)] transition-transform group-open:rotate-180">⌄</span>
@@ -799,7 +891,7 @@ export default function ItineraryBuilder({ crossings = [], today: serverToday = 
             {/* Renders nothing at all unless this is a Business account. */}
             <SendToClientPanel />
           </div>
-        </details>
+        </details>}
         <details className="group rounded-xl border border-[var(--gold-light)] bg-[#FAF8F3]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
             <span className="text-sm font-semibold text-[var(--navy)]">Rooms for this trip</span>
@@ -912,7 +1004,7 @@ function clockMins(t?: string): number | null {
 const OPENS_THE_DAY = -1;
 const CLOSES_THE_DAY = 100000;
 
-function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjustment, onClearAdjustments, burials, itineraries = false, signedIn, onMove, onUpdate, onSetAttachments, onRemove, onAddStop, onSaveLodging, onRemoveLodging, onAddFlight, onUpdateFlight, onRemoveFlight, allDates }: {
+function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjustment, onClearAdjustments, burials, itineraries = false, signedIn, walletTravelers, onMove, onUpdate, onSetAttachments, onRemove, onAddStop, onSaveLodging, onRemoveLodging, onAddFlight, onUpdateFlight, onRemoveFlight, allDates }: {
   day: ReturnType<typeof buildDays>[number];
   /** Today, on the traveler's own device. Marked, and opened. */
   isToday?: boolean;
@@ -925,6 +1017,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
   defaultOpen?: boolean;
   /** Boarding passes need an account; without one there is nowhere to put them. */
   signedIn: boolean;
+  walletTravelers?: ItinTraveler[];
   burials: Record<string, string[]>;
   /** True on the White Glove Itineraries brand — no kosher tools here. */
   itineraries?: boolean;
@@ -1049,6 +1142,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
             key={legFlight.id}
             attachments={legFlight.attachments}
             signedIn={signedIn}
+            travelers={walletTravelers}
             onChange={(attachments) => onUpdateFlight({ ...legFlight, attachments })}
           />
         ))}
@@ -1145,6 +1239,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
         <StopAttachments
           attachments={a.attachments}
           signedIn={signedIn}
+          travelers={walletTravelers}
           onChange={(attachments) => onSetAttachments(a.id, attachments)}
         />
         {/* No location means no driving time and an overstated free day.
@@ -1328,6 +1423,7 @@ function DayCard({ day, isToday, defaultOpen, adjustments, zmanim, onRecordAdjus
         <StopAttachments
           attachments={day.lodging.attachments}
           signedIn={signedIn}
+          travelers={walletTravelers}
           onChange={(attachments) => onSaveLodging({ ...day.lodging!, attachments })}
         />
       )}
@@ -2448,12 +2544,15 @@ const TRAVELER_KINDS: Array<{ value: NonNullable<ItinTraveler["kind"]>; label: s
   { value: "infant", label: "Infant" },
 ];
 
-function TravelerShareLink({ tripId, traveler }: { tripId: string | null; traveler: ItinTraveler }) {
+function TravelerShareLink({ tripId, traveler, privateInvites, tripSaving }: { tripId: string | null; traveler: ItinTraveler; privateInvites: boolean; tripSaving: boolean }) {
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [revoked, setRevoked] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [emailed, setEmailed] = useState(false);
 
-  async function create() {
+  async function invite(action: "invite" | "revoke") {
     if (!tripId) return;
     setBusy(true);
     setError("");
@@ -2461,35 +2560,47 @@ function TravelerShareLink({ tripId, traveler }: { tripId: string | null; travel
       const res = await fetch("/api/account/traveler-share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tripId, travelerId: traveler.id }),
+        body: JSON.stringify({ tripId, travelerId: traveler.id, action: privateInvites && action === "invite" ? "email" : action }),
       });
       const data = await res.json().catch(() => null);
+      if (action === "revoke" && res.ok) { setLink(""); setEmailed(false); setRevoked(true); return; }
       if (!res.ok || !data?.shareId) {
         setError(data?.error || "Could not create that link.");
         return;
       }
+      setRevoked(false);
+      setCopied(false);
       setLink(`${window.location.origin}/t/${data.shareId}/app`);
+      setEmailed(data.emailed === true);
+    } catch {
+      setError("Could not reach the server. Try again.");
     } finally {
       setBusy(false);
     }
   }
 
-  if (link) {
-    return (
-      <div className="mt-1.5 flex w-full min-w-0 items-center gap-2 text-xs">
-        <input readOnly value={link} className="min-w-0 flex-1 truncate border border-[var(--gold-light)] bg-[#FAF8F3] px-2 py-1 text-[var(--navy)]" onFocus={(e) => e.target.select()} />
-        <button type="button" onClick={() => navigator.clipboard?.writeText(link)} className="font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2">
-          Copy
-        </button>
-      </div>
-    );
-  }
+  if (privateInvites && !tripId) return null;
+
   return (
-    <div className="mt-1.5 w-full">
-      <button type="button" onClick={create} disabled={busy || !tripId} className="text-xs font-semibold text-[var(--navy)] underline decoration-[var(--gold)] underline-offset-2 disabled:opacity-40">
-        {traveler.hasOwnAccess ? "Get access link" : "Create access link"}
-      </button>
-      {error && <p className="mt-1 text-xs font-semibold text-red-700">{error}</p>}
+    <div className="mt-1.5 w-full space-y-2 text-xs">
+      {privateInvites && emailed && <p role="status">Invitation email sent.</p>}
+      {privateInvites && link && <a href={link + "?screen=messages"} className="inline-flex min-h-11 items-center px-2 font-semibold underline">Open family chat</a>}
+      {link && !privateInvites ? (
+        <>
+          <input aria-label="Traveler invite link" readOnly value={link} className={inputClass} onFocus={(event) => event.target.select()} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="inline-flex min-h-11 items-center px-2 font-semibold underline underline-offset-4" onClick={() => void navigator.clipboard.writeText(link).then(() => setCopied(true)).catch(() => setError("Select the link to copy it."))}>{copied ? "Copied" : "Copy invite"}</button>
+
+          </div>
+        </>
+      ) : (
+        <button type="button" onClick={() => void invite("invite")} disabled={busy || !tripId || tripSaving || (privateInvites && !traveler.email?.includes("@"))} className="inline-flex min-h-11 items-center px-2 font-semibold underline underline-offset-4">
+          {privateInvites ? (emailed || traveler.hasOwnAccess && !revoked ? "Resend invitation email" : "Email invitation") : traveler.hasOwnAccess ? "Get invite link" : "Create access link"}
+        </button>
+      )}
+      {privateInvites && !revoked && (link || traveler.hasOwnAccess) && <button type="button" disabled={busy || tripSaving} onClick={() => void invite("revoke")} className="inline-flex min-h-11 items-center px-2 font-semibold underline underline-offset-4">Revoke invite</button>}
+      {revoked && <p role="status">Invite revoked.</p>}
+      {error && <p role="alert" className="text-red-700">{error}</p>}
     </div>
   );
 }
@@ -2500,12 +2611,16 @@ function TravelersPanel({
   bookingFor,
   onBookingFor,
   tripId,
+  privateInvites = false,
+  tripSaving = false,
 }: {
   travelers: ItinTraveler[];
   onChange: (t: ItinTraveler[]) => void;
   bookingFor?: "self" | "someone-else";
   onBookingFor: (answer: "self" | "someone-else", traveler?: ItinTraveler) => void;
   tripId?: string | null;
+  privateInvites?: boolean;
+  tripSaving?: boolean;
 }) {
   const [name, setName] = useState("");
   const [kind, setKind] = useState<NonNullable<ItinTraveler["kind"]>>("adult");
@@ -2608,7 +2723,11 @@ function TravelersPanel({
                 placeholder="Family / group (optional)"
                 className="min-w-0 flex-1 border border-[var(--gold-light)] bg-[#FAF8F3] px-2 py-1 text-xs text-[var(--navy)] outline-none"
               />
-              <TravelerShareLink tripId={tripId ?? null} traveler={t} />
+              {privateInvites && <label className="w-full">
+                <span className={caption}>Traveler’s sign-in email</span>
+                <input type="email" value={t.email ?? ""} onChange={(event) => update(t.id, { email: event.target.value })} className={inputClass} />
+              </label>}
+              <TravelerShareLink tripId={tripId ?? null} traveler={t} privateInvites={privateInvites} tripSaving={tripSaving} />
             </li>
           ))}
         </ul>

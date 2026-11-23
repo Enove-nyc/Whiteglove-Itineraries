@@ -302,8 +302,7 @@ export default function TripSetupPanel({
             {signedIn === false ? (
               <>
                 <p className="mt-1.5 text-sm leading-6 text-stone-600">
-                  Trips are saved securely to your account, so yours is on every device you sign in on.
-                  Sign in and the first thing you add starts it.
+                  Your guest draft stays in this browser. Save it to your account when you want to open it on another device or invite travelers.
                 </p>
                 <Link
                   href="/login?next=%2Fitinerary"

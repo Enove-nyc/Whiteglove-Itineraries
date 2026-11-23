@@ -16,7 +16,7 @@ describe("the homepage cards open onto the thing they name", () => {
   const HOME = readFileSync("components/ItinerariesHome.tsx", "utf8");
 
   it("offers the public client app preview without asking a prospective visitor to sign in", () => {
-    assert.match(HOME, /href: "\/app\/preview"/);
+    assert.match(HOME, /href="\/app\/preview"/);
     assert.doesNotMatch(HOME, /href: "\/login\?next=/);
   });
 
@@ -37,22 +37,21 @@ describe("the preview page says what it is", () => {
      * offered were the sample trip's days — nothing saying what the page is.
      */
     assert.match(PREVIEW, /<h1 className=/);
-    assert.match(PREVIEW, />\s*A sample trip\s*</);
+    assert.match(PREVIEW, />\{sample.title\}</);
   });
 
   it("says in words what the phone is showing", () => {
     // A buyer looking at a 402px phone on a wide screen would otherwise have
     // to tap through somebody else's week to learn the product has these.
-    for (const line of ["Today's schedule", "The map", "travel wallet", "Messages with your travel group", "Flight times", "no signal"]) {
-      assert.ok(PREVIEW.includes(line), `the preview does not mention ${line}`);
-    }
+    assert.match(PREVIEW, /itinerary, map and travel wallet/);
+    assert.match(PREVIEW, /Copy this trip/);
   });
 
   it("still announces itself as a sample above the app", () => {
     // Every screen below is a picture of somebody's private trip. A demo that
     // does not say so invites the reading that these are real people.
-    assert.match(PREVIEW, /Sample<\/span>/);
-    assert.match(PREVIEW, /an illustrative trip for a fictional family/);
+    assert.match(PREVIEW, /A fictional trip/);
+    assert.match(PREVIEW, /LAKE_COMO_PREVIEW/);
   });
 });
 

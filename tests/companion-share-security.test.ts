@@ -19,9 +19,10 @@ describe("a traveler-scoped link can never hand out the trip's own unredacted to
   const REPORT_ROUTE = readFileSync("app/api/companion/report/route.ts", "utf8");
 
   it("the chat prop handed to the client component is this traveler's own token, not a resolved one", () => {
-    const chatBlock = TRAVELER_PAGE.slice(TRAVELER_PAGE.indexOf("const chat = {"), TRAVELER_PAGE.indexOf("const chat = {") + 120);
+    const chatBlock = TRAVELER_PAGE.slice(TRAVELER_PAGE.indexOf("const chat = {"), TRAVELER_PAGE.indexOf("const chat = {") + 240);
     assert.match(chatBlock, /shareId,/);
-    assert.match(chatBlock, /side: "client"/);
+    assert.match(chatBlock, /side: organizer \? "advisor" as const : "client"/);
+    assert.doesNotMatch(chatBlock, /internalChatKey/);
   });
 
   it("getSharedTraveler documents internalChatKey as server-side only, never to be sent to a browser", () => {

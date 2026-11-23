@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSharedTraveler } from "@/lib/account-store";
 import { inspectAccountInvitation } from "@/lib/account-invitations";
 import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
 import { sameOrigin } from "@/lib/secure-access";
@@ -14,6 +15,10 @@ export async function POST(request: NextRequest) {
   try {
     const invitation = typeof body?.invitationToken === "string" ? await inspectAccountInvitation(body.invitationToken) : null;
     if (!invitation) return NextResponse.json({ error: "This invitation is not available. Contact White Glove for a new link." }, { status: 403, headers });
-    return NextResponse.json({ identity: invitation.identity, expiresAt: invitation.expiresAt }, { headers });
+    const shareId = invitation.tripShareId;
+    if (shareId && !await getSharedTraveler(shareId, invitation.identity)) {
+      return NextResponse.json({ error: "This trip invitation is no longer available. Ask the person who invited you for a new link." }, { status: 403, headers });
+    }
+    return NextResponse.json({ identity: invitation.identity, expiresAt: invitation.expiresAt, ...(shareId ? { next: `/t/${encodeURIComponent(shareId)}/app` } : {}) }, { headers });
   } catch { return NextResponse.json({ error: "The invitation could not be checked. Please try again." }, { status: 503, headers }); }
 }

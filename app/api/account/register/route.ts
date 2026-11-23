@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, requesterKey, tooManyMessage } from "@/lib/rate-limit";
-import { createAccount } from "@/lib/account-store";
+import { accountCookieName, createAccount, createSessionCookie } from "@/lib/account-store";
 import { inspectAccountInvitation, invitationId } from "@/lib/account-invitations";
 import { normalizeIdentity } from "@/lib/identity";
 import { smsConfigured } from "@/lib/sms";
@@ -37,6 +37,17 @@ export async function POST(request: NextRequest) {
   if (!result.ok) {
     const reason = "code" in result ? result.code : undefined;
     return NextResponse.json({ error: result.error }, { status: reason === "unavailable" ? 503 : reason === "invitation" ? 403 : reason === "exists" ? 409 : 400, headers });
+  }
+  if ("tripVerified" in result && result.tripVerified) {
+    const response = NextResponse.json({ ok: true, email: result.email, verificationRequired: false }, { headers });
+    response.cookies.set(accountCookieName(), createSessionCookie(result.email), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    return response;
   }
   const delivery = await verificationCodeTo(result.email, result.verificationCode, brandFromRequestHeaders(request.headers));
   return NextResponse.json({ ok: true, email: result.email, verificationRequired: true, sentVia: delivery.via, sentTo: delivery.to, delivered: delivery.ok, deliveryError: delivery.error }, { headers });

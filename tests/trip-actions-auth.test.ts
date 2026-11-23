@@ -2,31 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-/**
- * EVERY ACTION THAT KEEPS SOMEBODY'S PERSONAL DATA ASKS FOR AN ACCOUNT FIRST,
- * AND NOTHING IS KEPT IN A BROWSER INSTEAD.
- *
- * The site used to do this in two different ways at once. Most actions —
- * favourite, add to Route, add to itinerary, review — opened the sign-in
- * dialog and resumed on the far side of it. But three did not: the kosher
- * list's "Add to my trip" and the booking partners' "add this to your trip"
- * wrote straight into localStorage with nobody signed in, and "Add Rome to a
- * trip" was a link to the recommendations questionnaire that saved nothing at
- * all. A visitor could therefore build a real trip that existed in one
- * browser on one device, and the planner told them so in small print.
- *
- * These pin the rule rather than the wording: the writer reaches the account,
- * and the gate is what stands in front of it.
- */
-
 const read = (path: string) => readFileSync(path, "utf8");
 const withoutComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("no trip is kept in the browser", () => {
-  it("the planner reads and writes the account, and nothing else", () => {
+describe("temporary guest drafts and signed-in trip storage", () => {
+  it("the planner stores guest drafts in a dedicated browser key", () => {
     const builder = withoutComments(read("components/ItineraryBuilder.tsx"));
-    assert.doesNotMatch(builder, /localStorage\.setItem/);
+    assert.match(builder, /localStorage\.setItem\(GUEST_DRAFT_KEY/);
+    assert.match(builder, /localStorage\.removeItem\(GUEST_DRAFT_KEY/);
     assert.match(builder, /fetch\("\/api\/account\/itinerary"/);
     // The one localStorage read left is the saved Route being imported into a
     // trip, which is a different collection and mirrored to the account.
@@ -44,7 +28,7 @@ describe("no trip is kept in the browser", () => {
 
 describe("every trip action stands behind the same dialog", () => {
   const GATED: Array<[string, string]> = [
-    ["components/ItineraryBuilder.tsx", "building or changing a trip"],
+    ["components/ItineraryBuilder.tsx", "saving or importing a guest trip"],
     ["components/KosherNearby.tsx", "adding kosher food to a trip"],
     ["components/BookPartners.tsx", "adding a flight, stay or car"],
     ["components/AddDestinationToTrip.tsx", "adding a destination to a trip"],

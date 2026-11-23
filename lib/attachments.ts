@@ -204,13 +204,13 @@ export function withoutAttachments<T extends { flights?: unknown[]; lodging?: un
  */
 export function travelerAttachments<
   T extends { flights?: unknown[]; lodging?: unknown[]; activities?: unknown[] },
->(itinerary: T): T {
+>(itinerary: T, travelerId?: string): T {
   const keep = <R,>(rows: R[] | undefined): R[] | undefined =>
     rows?.map((row) => {
       if (!row || typeof row !== "object" || !("attachments" in row)) return row;
       const rest = { ...(row as Record<string, unknown>) };
       const shared = Array.isArray(rest.attachments)
-        ? (rest.attachments as Array<{ shared?: boolean }>).filter((a) => a?.shared === true)
+        ? (rest.attachments as Array<{ shared?: boolean; travelerId?: string }>).filter((a) => travelerId ? a?.travelerId === travelerId : a?.shared === true && !a.travelerId)
         : [];
       if (shared.length) rest.attachments = shared;
       else delete rest.attachments;
@@ -226,18 +226,18 @@ export function travelerAttachments<
 }
 
 /** Every attachment id on a trip that the traveler was given. */
-type RowWithFiles = { id?: string; attachments?: Array<{ id?: string; shared?: boolean }> };
+type RowWithFiles = { id?: string; attachments?: Array<{ id?: string; shared?: boolean; travelerId?: string }> };
 
 export function sharedAttachmentIds(itinerary: {
   flights?: RowWithFiles[];
   lodging?: RowWithFiles[];
   activities?: RowWithFiles[];
-}): Set<string> {
+}, travelerId?: string): Set<string> {
   const ids = new Set<string>();
   for (const rows of [itinerary.flights, itinerary.lodging, itinerary.activities]) {
     for (const row of rows ?? []) {
       for (const attachment of row?.attachments ?? []) {
-        if (attachment?.shared === true && typeof attachment.id === "string") ids.add(attachment.id);
+        if (typeof attachment?.id === "string" && (travelerId ? attachment.travelerId === travelerId : attachment.shared === true && !attachment.travelerId)) ids.add(attachment.id);
       }
     }
   }

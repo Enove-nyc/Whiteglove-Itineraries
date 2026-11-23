@@ -65,7 +65,7 @@ export default async function TermsOfUsePage() {
         <div className="mx-auto max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-[0.26em] text-[var(--gold-ink)]">{siteName}</p>
           <h1 className="mt-5 font-[family-name:var(--font-display)] text-4xl leading-tight text-[var(--navy)] sm:text-5xl">Terms of Use</h1>
-          <p className="mt-4 text-sm text-stone-500">Last updated: {UPDATED}</p>
+          <p className="mt-4 text-sm text-stone-500">Last updated: {itineraries ? "November 22, 2026" : UPDATED}</p>
         </div>
       </section>
 
@@ -94,6 +94,7 @@ export default async function TermsOfUsePage() {
             <li>use the Service for any unlawful purpose or in violation of these terms;</li>
             <li>attempt to access accounts, data, or systems that are not yours;</li>
             <li>scrape, copy, or redistribute our content in bulk without permission;</li>
+            {itineraries && <li>post harassment, threats, hate, sexual exploitation, scams, or another person’s private information without permission. Use the Report control beside a message to ask White Glove to review the message or traveler.</li>}
             <li>interfere with or disrupt the Service or the networks it relies on.</li>
           </ul>
         </Section>
