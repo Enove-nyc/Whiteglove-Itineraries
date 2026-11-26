@@ -1,0 +1,61 @@
+name: Publish family app to Play internal testing
+
+# An explicit release tag selects a previously successful signed build.
+on:
+  push:
+    tags: ['family-play-internal-*']
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: family-play-internal
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify publishing configuration and selected build
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROVIDER: ${{ vars.WG_PLAY_WIF_PROVIDER }}
+          ACCOUNT: ${{ vars.WG_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$PROVIDER" || -z "$ACCOUNT" ]]; then
+            echo "::error::Google Play publishing identity is not configured (WG_PLAY_WIF_PROVIDER and WG_PLAY_SERVICE_ACCOUNT). Authorize a dedicated identity in Google Play Console first."
+            exit 1
+          fi
+          [[ "$GITHUB_REF_NAME" =~ ^family-play-internal-([0-9]+)$ ]]
+          run_id="${BASH_REMATCH[1]}"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" | jq -e '.conclusion == "success" and .path == ".github/workflows/native-itineraries.yml" and .head_branch == "codex/family-trip-play-store"'
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          name: itineraries-release-aab
+          path: release
+          run-id: ${{ steps.build.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: itineraries-release-verification
+          path: release
+          run-id: ${{ steps.build.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - uses: google-github-actions/auth@v3
+        id: auth
+        with:
+          workload_identity_provider: ${{ vars.WG_PLAY_WIF_PROVIDER }}
+          service_account: ${{ vars.WG_PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Publish only to internal testing
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: node scripts/publish-family-play.mjs release
