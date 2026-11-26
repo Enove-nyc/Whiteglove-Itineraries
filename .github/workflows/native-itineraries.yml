@@ -92,3 +92,94 @@ jobs:
           name: itineraries-release-verification
           path: native/itineraries/release-verification.json
           if-no-files-found: error
+
+  publish-internal:
+    name: Verify and publish Google Play internal release
+    if: github.repository_id == '1345300652' && github.ref == 'refs/heads/codex/family-trip-play-store'
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: play-family-internal
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: itineraries-release-aab
+      - uses: actions/download-artifact@v4
+        with:
+          name: itineraries-release-verification
+      - name: Authenticate to Google Play without a service account key
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/1061566886622/locations/global/workloadIdentityPools/play-family-github/providers/github-actions
+          service_account: play-family-internal@white-glove-001.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Publish only a newer verified bundle to internal testing
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import { readFileSync } from 'node:fs';
+
+          const packageName = 'com.whitegloveitineraries.family';
+          const report = JSON.parse(readFileSync('release-verification.json', 'utf8'));
+          const bundle = readFileSync('app-release.aab');
+          const digest = createHash('sha256').update(bundle).digest('hex');
+          assert.equal(report.applicationId, packageName);
+          assert.equal(report.aabSha256, digest);
+          assert.ok(Number.isSafeInteger(report.versionCode) && report.versionCode > 0);
+
+          const origin = 'https://androidpublisher.googleapis.com';
+          const app = '/androidpublisher/v3/applications/' + packageName;
+          async function request(path, method = 'GET', body, type = 'application/json') {
+            const headers = { Authorization: 'Bearer ' + process.env.PLAY_ACCESS_TOKEN };
+            if (body !== undefined) headers['Content-Type'] = type;
+            const response = await fetch(origin + path, {
+              method, headers, body, signal: AbortSignal.timeout(120_000),
+            });
+            const result = await response.text();
+            if (!response.ok) throw new Error(method + ' ' + path + ' (' + response.status + '): ' + result);
+            return result ? JSON.parse(result) : null;
+          }
+
+          const { id } = await request(app + '/edits', 'POST', '{}');
+          const edit = app + '/edits/' + encodeURIComponent(id);
+          let committed = false;
+          try {
+            const { tracks = [] } = await request(edit + '/tracks');
+            const internal = tracks.filter(({ track }) => track === 'internal' || track === 'qa');
+            assert.equal(internal.length, 1, 'Expected exactly one internal testing track');
+            const { track, releases = [] } = internal[0];
+            const codes = releases.flatMap(release => release.versionCodes ?? []).map(Number);
+            const current = Math.max(0, ...codes);
+            if (report.versionCode <= current) {
+              console.log('Verified Google Play access for ' + packageName + ' on ' + track +
+                '; latest version code is ' + current + '. No release change needed.');
+            } else {
+              const uploaded = await request('/upload' + edit + '/bundles?uploadType=media',
+                'POST', bundle, 'application/octet-stream');
+              assert.equal(uploaded.versionCode, report.versionCode);
+              assert.equal(uploaded.sha256?.toLowerCase(), digest);
+              const trackPath = edit + '/tracks/' + track;
+              const release = { status: 'completed', versionCodes: [String(report.versionCode)] };
+              const updated = await request(trackPath, 'PUT', JSON.stringify({ track, releases: [release] }));
+              assert.equal(updated.track, track);
+              assert.ok(updated.releases.some(item => item.versionCodes?.includes(String(report.versionCode))));
+              await request(edit + ':commit', 'POST');
+              committed = true;
+              console.log('Published version code ' + report.versionCode + ' to internal testing.');
+            }
+          } finally {
+            if (!committed) {
+              try { await request(edit, 'DELETE'); } catch (error) { console.warn(error.message); }
+            }
+          }
+          NODE
